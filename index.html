@@ -671,6 +671,80 @@
             <button class="logout-btn" onclick="handleLogout()">Logout</button>
         </header>
 
+        <!-- Edit Expense Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Edit Transaction</h2>
+                    <button class="close-modal" onclick="closeEditModal()">×</button>
+                </div>
+                <form id="editExpenseForm" class="expense-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editDate">Date *</label>
+                            <input type="date" id="editDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCategory">Category *</label>
+                            <select id="editCategory" required>
+                                <option value="">Select Category</option>
+                                <option value="Housing">Housing</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Groceries">Groceries</option>
+                                <option value="Dining Out">Dining Out</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Personal Care">Personal Care</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Insurance">Insurance</option>
+                                <option value="Savings">Savings</option>
+                                <option value="Education">Education</option>
+                                <option value="Gifts">Gifts</option>
+                                <option value="Subscriptions">Subscriptions</option>
+                                <option value="Investment Subscription">Investment Subscription</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editAmount">Amount *</label>
+                            <input type="number" id="editAmount" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editPaymentMethod">Payment Method *</label>
+                            <select id="editPaymentMethod" required>
+                                <option value="">Select Method</option>
+                                <option value="Chase Debit">Chase Debit</option>
+                                <option value="Chase Credit">Chase Credit</option>
+                                <option value="PNC Debit">PNC Debit</option>
+                                <option value="PNC Credit">PNC Credit</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="PayPal">PayPal</option>
+                                <option value="Zelle">Zelle</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editVendor">Vendor</label>
+                            <input type="text" id="editVendor">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDescription">Description *</label>
+                            <input type="text" id="editDescription" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editNotes">Notes (Optional)</label>
+                        <textarea id="editNotes"></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
@@ -927,6 +1001,20 @@
 
             // Setup auth form handlers
             setupAuthHandlers();
+
+            // Setup edit form handler
+            const editForm = document.getElementById('editExpenseForm');
+            if (editForm) {
+                editForm.addEventListener('submit', saveEditedExpense);
+            }
+
+            // Close modal when clicking outside of it
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('editModal');
+                if (event.target === modal) {
+                    closeEditModal();
+                }
+            });
         });
 
         function setupAuthHandlers() {
@@ -1186,6 +1274,68 @@
             }
         }
 
+        // Edit modal functions
+        let currentEditingExpenseId = null;
+
+        function openEditModal(id) {
+            const expense = expenses.find(exp => exp.id === id);
+            if (!expense) return;
+
+            currentEditingExpenseId = id;
+
+            // Populate form with existing data
+            document.getElementById('editDate').value = expense.date;
+            document.getElementById('editCategory').value = expense.category;
+            document.getElementById('editAmount').value = expense.amount;
+            document.getElementById('editPaymentMethod').value = expense.payment_method;
+            document.getElementById('editVendor').value = expense.vendor || '';
+            document.getElementById('editDescription').value = expense.description;
+            document.getElementById('editNotes').value = expense.notes || '';
+
+            // Show modal
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            currentEditingExpenseId = null;
+        }
+
+        async function saveEditedExpense(e) {
+            e.preventDefault();
+
+            const updatedExpense = {
+                date: document.getElementById('editDate').value,
+                category: document.getElementById('editCategory').value,
+                description: document.getElementById('editDescription').value,
+                amount: parseFloat(document.getElementById('editAmount').value),
+                payment_method: document.getElementById('editPaymentMethod').value,
+                vendor: document.getElementById('editVendor').value,
+                notes: document.getElementById('editNotes').value
+            };
+
+            const { error } = await supabaseClient
+                .from('expenses')
+                .update(updatedExpense)
+                .eq('id', currentEditingExpenseId);
+
+            if (error) {
+                alert('Error updating expense: ' + error.message);
+                return;
+            }
+
+            // Update local data
+            const expenseIndex = expenses.findIndex(exp => exp.id === currentEditingExpenseId);
+            if (expenseIndex !== -1) {
+                expenses[expenseIndex] = { ...expenses[expenseIndex], ...updatedExpense };
+            }
+
+            closeEditModal();
+            renderAllMonths();
+            renderDashboard();
+            alert('Expense updated successfully!');
+        }
+
         // Income handling
         function setupIncomeForm() {
             document.getElementById('incomeForm').addEventListener('submit', function(e) {
@@ -1424,8 +1574,9 @@
                             <td>${exp.vendor || '-'}</td>
                             <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
                             <td>${exp.payment_method}</td>
-                            <td>
-                                <button class="btn btn-danger" onclick="deleteExpense(${exp.id})">Delete</button>
+                            <td style="display: flex; gap: 5px;">
+                                <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8em;" onclick="openEditModal(${exp.id})">Edit</button>
+                                <button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.8em;" onclick="deleteExpense(${exp.id})">Delete</button>
                             </td>
                         </tr>
                     `;
