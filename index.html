@@ -1198,7 +1198,12 @@
 
             // Render charts if needed
             if (months.includes(tabName)) {
-                setTimeout(() => renderMonthChart(tabName), 100);
+                // Render the month view with fresh data
+                const monthIndex = months.indexOf(tabName);
+                setTimeout(() => {
+                    renderMonth(tabName, monthIndex);
+                    renderMonthChart(tabName);
+                }, 100);
             } else if (tabName === 'dashboard') {
                 setTimeout(() => {
                     renderYearChart();
@@ -1471,6 +1476,12 @@
             });
 
             const monthContainer = document.getElementById(month);
+            
+            // If container doesn't exist, something went wrong
+            if (!monthContainer) {
+                console.error(`Month container not found for: ${month}`);
+                return;
+            }
 
             let html = `<h2 style="margin-bottom: 20px; color: #495057;">${monthNames[monthIndex]} ${currentYear}</h2>`;
 
