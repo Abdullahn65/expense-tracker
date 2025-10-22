@@ -1641,7 +1641,27 @@
                 }).reduce((sum, exp) => sum + exp.amount, 0);
             });
 
-            drawBarChart(ctx, monthlyTotals, monthNames, canvas.width, canvas.height);
+            // Draw the chart and store bar positions
+            const barPositions = drawBarChart(ctx, monthlyTotals, monthNames, canvas.width, canvas.height);
+
+            // Add click listener for interactivity
+            canvas.style.cursor = 'pointer';
+            canvas.addEventListener('click', function(event) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Check if click is on any bar
+                for (let i = 0; i < barPositions.length; i++) {
+                    const bar = barPositions[i];
+                    if (x >= bar.x && x <= bar.x + bar.width && 
+                        y >= bar.y && y <= bar.y + bar.height) {
+                        // Clicked on month bar, navigate to that month
+                        switchTab(months[i]);
+                        break;
+                    }
+                }
+            }, { once: false });
         }
 
         function renderIncomeVsSpendingChart() {
@@ -1879,11 +1899,17 @@
                 ctx.fillText(`$${value.toFixed(0)}`, padding - 10, y);
             }
 
+            // Store bar positions for click detection
+            const barPositions = [];
+
             // Draw bars with shadow
             data.forEach((value, index) => {
                 const barHeight = (value / maxValue) * chartHeight;
                 const x = padding + index * (chartWidth / data.length) + 8;
                 const y = height - padding - barHeight;
+
+                // Store bar position for click detection
+                barPositions.push({ x, y, width: barWidth, height: barHeight });
 
                 // Add shadow
                 ctx.shadowColor = 'rgba(102, 126, 234, 0.3)';
@@ -1932,6 +1958,9 @@
             ctx.lineTo(padding, height - padding);
             ctx.lineTo(width - padding, height - padding);
             ctx.stroke();
+
+            // Return bar positions for click detection
+            return barPositions;
         }
 
         function drawComparisonChart(ctx, incomeData, spendingData, labels, width, height) {
