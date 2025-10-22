@@ -1504,8 +1504,9 @@
                         <td>${exp.category}</td>
                         <td>${exp.description}</td>
                         <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
-                        <td>
-                            <button class="btn btn-danger" onclick="deleteExpense(${exp.id})">Delete</button>
+                        <td style="display: flex; gap: 5px;">
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8em;" onclick="openEditModal(${exp.id})">Edit</button>
+                            <button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.8em;" onclick="deleteExpense(${exp.id})">Delete</button>
                         </td>
                     </tr>
                 `;
