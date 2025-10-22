@@ -666,7 +666,7 @@
     <!-- Main App -->
     <div id="app" class="container">
         <header>
-            <h1>💰 Expense Tracker 2025</h1>
+            <h1>💰 Expense Tracker <span id="yearDisplay">2025</span></h1>
             <p class="subtitle">Track your spending, stay on budget</p>
             <button class="logout-btn" onclick="handleLogout()">Logout</button>
         </header>
@@ -699,7 +699,7 @@
         <div class="content">
             <!-- Dashboard Tab -->
             <div class="tab-content active" id="dashboard">
-                <h2 style="margin-bottom: 20px; color: #495057;">Annual Summary 2025</h2>
+                <h2 style="margin-bottom: 20px; color: #495057;">Annual Summary <span id="dashboardYear">2025</span></h2>
 
                 <div class="summary-cards">
                     <div class="summary-card">
@@ -908,6 +908,9 @@
 
         const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        // Get current year dynamically
+        const currentYear = new Date().getFullYear();
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
@@ -1309,17 +1312,17 @@
         function renderMonth(month, monthIndex) {
             const monthExpenses = expenses.filter(exp => {
                 const expDate = new Date(exp.date);
-                return expDate.getFullYear() === 2025 && expDate.getMonth() === monthIndex;
+                return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
             }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             const monthIncome = income.filter(inc => {
                 const incDate = new Date(inc.date);
-                return incDate.getFullYear() === 2025 && incDate.getMonth() === monthIndex;
+                return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
             });
 
             const monthContainer = document.getElementById(month);
 
-            let html = `<h2 style="margin-bottom: 20px; color: #495057;">${monthNames[monthIndex]} 2025</h2>`;
+            let html = `<h2 style="margin-bottom: 20px; color: #495057;">${monthNames[monthIndex]} ${currentYear}</h2>`;
 
             // Summary cards
             const totalSpent = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -1453,7 +1456,7 @@
 
             const monthExpenses = expenses.filter(exp => {
                 const expDate = new Date(exp.date);
-                return expDate.getFullYear() === 2025 && expDate.getMonth() === monthIndex;
+                return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
             });
 
             const categoryTotals = calculateCategoryTotals(monthExpenses);
@@ -1483,7 +1486,7 @@
             const monthlyTotals = months.map((month, index) => {
                 return expenses.filter(exp => {
                     const expDate = new Date(exp.date);
-                    return expDate.getFullYear() === 2025 && expDate.getMonth() === index;
+                    return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
                 }).reduce((sum, exp) => sum + exp.amount, 0);
             });
 
@@ -1503,14 +1506,14 @@
             const monthlyIncome = months.map((month, index) => {
                 return income.filter(inc => {
                     const incDate = new Date(inc.date);
-                    return incDate.getFullYear() === 2025 && incDate.getMonth() === index;
+                    return incDate.getFullYear() === currentYear && incDate.getMonth() === index;
                 }).reduce((sum, inc) => sum + inc.amount, 0);
             });
 
             const monthlySpending = months.map((month, index) => {
                 return expenses.filter(exp => {
                     const expDate = new Date(exp.date);
-                    return expDate.getFullYear() === 2025 && expDate.getMonth() === index;
+                    return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
                 }).reduce((sum, exp) => sum + exp.amount, 0);
             });
 
@@ -1522,7 +1525,7 @@
             if (!canvas) return;
 
             const yearExpenses = expenses.filter(exp => {
-                return new Date(exp.date).getFullYear() === 2025;
+                return new Date(exp.date).getFullYear() === currentYear;
             });
 
             const categoryTotals = calculateCategoryTotals(yearExpenses);
@@ -1699,6 +1702,13 @@
             const maxValue = Math.max(...data, 1);
             const barWidth = chartWidth / data.length - 15;
 
+            // Modern color palette - consistent with pie chart
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
+                '#a8edea', '#fed6e3', '#c471f5', '#12c2e9'
+            ];
+
             // Draw grid lines
             ctx.strokeStyle = '#374151';
             ctx.lineWidth = 1;
@@ -1725,15 +1735,16 @@
                 const y = height - padding - barHeight;
 
                 // Add shadow
-                ctx.shadowColor = 'rgba(6, 182, 212, 0.4)';
+                ctx.shadowColor = 'rgba(102, 126, 234, 0.3)';
                 ctx.shadowBlur = 10;
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 4;
 
-                // Create gradient for bar
+                // Create gradient for bar with consistent colors
+                const baseColor = colors[index % colors.length];
                 const gradient = ctx.createLinearGradient(0, y, 0, height - padding);
-                gradient.addColorStop(0, '#06b6d4');
-                gradient.addColorStop(1, '#a855f7');
+                gradient.addColorStop(0, lightenColor(baseColor, 15));
+                gradient.addColorStop(1, baseColor);
 
                 ctx.fillStyle = gradient;
 
@@ -1780,6 +1791,10 @@
             const maxValue = Math.max(...incomeData, ...spendingData, 1);
             const barWidth = (chartWidth / labels.length - 20) / 2;
 
+            // Modern color palette - consistent
+            const incomeColor = '#43e97b';
+            const spendingColor = '#667eea';
+
             // Draw grid lines
             ctx.strokeStyle = '#374151';
             ctx.lineWidth = 1;
@@ -1809,14 +1824,14 @@
                 const incomeHeight = (income / maxValue) * chartHeight;
                 const incomeY = height - padding - incomeHeight;
 
-                ctx.shadowColor = 'rgba(40, 167, 69, 0.3)';
+                ctx.shadowColor = 'rgba(67, 233, 123, 0.3)';
                 ctx.shadowBlur = 10;
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 4;
 
                 const incomeGradient = ctx.createLinearGradient(0, incomeY, 0, height - padding);
-                incomeGradient.addColorStop(0, '#28a745');
-                incomeGradient.addColorStop(1, '#20c997');
+                incomeGradient.addColorStop(0, lightenColor(incomeColor, 15));
+                incomeGradient.addColorStop(1, incomeColor);
 
                 ctx.fillStyle = incomeGradient;
                 ctx.beginPath();
@@ -1835,8 +1850,8 @@
                 ctx.shadowOffsetY = 4;
 
                 const spendingGradient = ctx.createLinearGradient(0, spendingY, 0, height - padding);
-                spendingGradient.addColorStop(0, '#667eea');
-                spendingGradient.addColorStop(1, '#764ba2');
+                spendingGradient.addColorStop(0, lightenColor(spendingColor, 15));
+                spendingGradient.addColorStop(1, spendingColor);
 
                 ctx.fillStyle = spendingGradient;
                 ctx.beginPath();
@@ -1848,14 +1863,14 @@
 
                 // Draw values on top of bars
                 if (income > 0) {
-                    ctx.fillStyle = '#28a745';
+                    ctx.fillStyle = incomeColor;
                     ctx.font = 'bold 11px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText(`$${income.toFixed(0)}`, x + barWidth / 2, incomeY - 5);
                 }
 
                 if (spending > 0) {
-                    ctx.fillStyle = '#667eea';
+                    ctx.fillStyle = spendingColor;
                     ctx.font = 'bold 11px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText(`$${spending.toFixed(0)}`, x + barWidth + 4 + barWidth / 2, spendingY - 5);
@@ -1882,7 +1897,7 @@
             const legendY = 20;
 
             // Income legend
-            ctx.fillStyle = '#28a745';
+            ctx.fillStyle = '#43e97b';
             ctx.beginPath();
             ctx.roundRect(legendX, legendY, 20, 15, 3);
             ctx.fill();
@@ -1892,7 +1907,7 @@
             ctx.fillText('Income', legendX + 30, legendY + 12);
 
             // Spending legend
-            ctx.fillStyle = '#a855f7';
+            ctx.fillStyle = '#667eea';
             ctx.beginPath();
             ctx.roundRect(legendX + 120, legendY, 20, 15, 3);
             ctx.fill();
@@ -1903,12 +1918,16 @@
         // Dashboard
         function renderDashboard() {
             const yearExpenses = expenses.filter(exp => {
-                return new Date(exp.date).getFullYear() === 2025;
+                return new Date(exp.date).getFullYear() === currentYear;
             });
 
             const yearIncome = income.filter(inc => {
-                return new Date(inc.date).getFullYear() === 2025;
+                return new Date(inc.date).getFullYear() === currentYear;
             });
+
+            // Update year display
+            document.getElementById('yearDisplay').textContent = currentYear;
+            document.getElementById('dashboardYear').textContent = currentYear;
 
             const totalSpent = yearExpenses.reduce((sum, exp) => sum + exp.amount, 0);
             const totalIncome = yearIncome.reduce((sum, inc) => sum + inc.amount, 0);
