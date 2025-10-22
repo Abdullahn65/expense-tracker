@@ -749,6 +749,7 @@
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="income">Income</button>
+            <button class="nav-tab" data-tab="expenses">Expenses</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
             <div class="month-dropdown-container">
                 <label for="monthSelector" style="color: #9ca3af; font-size: 0.9em; margin: 0;">View Month:</label>
@@ -923,6 +924,13 @@
 
                 <h3 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">Income History</h3>
                 <div id="incomeList"></div>
+            </div>
+
+            <!-- Expense History Tab -->
+            <div class="tab-content" id="expenses">
+                <h2 style="margin-bottom: 20px; color: #495057;">Expense History</h2>
+                <p style="margin-bottom: 30px; color: #6c757d;">View all expenses with option to edit or delete</p>
+                <div id="expenseList"></div>
             </div>
 
             <!-- Monthly Tabs -->
@@ -1122,6 +1130,7 @@
             renderDashboard();
             renderBudgetSettings();
             renderIncomeList();
+            renderExpenseList();
         }
 
         async function loadData() {
@@ -1259,6 +1268,7 @@
             // Refresh views
             renderAllMonths();
             renderDashboard();
+            renderExpenseList();
         }
 
         async function deleteExpense(id) {
@@ -1276,6 +1286,7 @@
                 expenses = expenses.filter(exp => exp.id !== id);
                 renderAllMonths();
                 renderDashboard();
+                renderExpenseList();
             }
         }
 
@@ -1338,6 +1349,7 @@
             closeEditModal();
             renderAllMonths();
             renderDashboard();
+            renderExpenseList();
             alert('Expense updated successfully!');
         }
 
@@ -1455,6 +1467,61 @@
             `;
 
             incomeList.innerHTML = html;
+        }
+
+        function renderExpenseList() {
+            const expenseList = document.getElementById('expenseList');
+            const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (sortedExpenses.length === 0) {
+                expenseList.innerHTML = `
+                    <div class="empty-state">
+                        <p style="font-size: 1.2em;">No expenses yet</p>
+                        <p style="margin-top: 10px;">Add your first expense using "Add Expense" tab</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table class="expense-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Vendor</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            sortedExpenses.forEach(exp => {
+                html += `
+                    <tr>
+                        <td>${new Date(exp.date).toLocaleDateString()}</td>
+                        <td>${exp.category}</td>
+                        <td>${exp.description}</td>
+                        <td>${exp.vendor || '-'}</td>
+                        <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
+                        <td>${exp.payment_method}</td>
+                        <td style="display: flex; gap: 5px;">
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8em;" onclick="openEditModal(${exp.id})">Edit</button>
+                            <button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.8em;" onclick="deleteExpense(${exp.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            expenseList.innerHTML = html;
         }
 
         // Render monthly views
