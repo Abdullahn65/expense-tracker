@@ -1569,7 +1569,7 @@
         }
 
         // Recurring Transactions
-        function setupRecurringForm() {
+        function setupRecurringForm_OLD() {
             const form = document.getElementById('recurringForm');
             if (form) {
                 form.addEventListener('submit', addRecurringTransaction);
@@ -1788,10 +1788,13 @@
             frequencySelect.addEventListener('change', updateRequiredFields);
             
             // Form submission
-            document.getElementById('recurringForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                addRecurringTransaction();
-            });
+            const recurringForm = document.getElementById('recurringForm');
+            if (recurringForm) {
+                recurringForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    addRecurringTransaction(e);
+                });
+            }
         }
 
         async function addIncome() {
