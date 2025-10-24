@@ -747,16 +747,16 @@
 
         <!-- Quick Add Manager Modal -->
         <div id="quickAddManagerModal" class="modal">
-            <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-content" style="max-width: 650px;">
                 <div class="modal-header">
                     <h2 class="modal-title">Quick Add Manager</h2>
                     <button class="close-modal" onclick="closeQuickAddManager()">×</button>
                 </div>
-                <div style="padding: 20px; max-height: 600px; overflow-y: auto;">
-                    <h3 style="margin-bottom: 15px; color: #495057;">Pinned Templates</h3>
-                    <div id="pinnedTemplatesList" style="margin-bottom: 30px;"></div>
+                <div style="padding: 24px; max-height: 600px; overflow-y: auto; background: #000000;">
+                    <h3 style="margin-bottom: 16px; color: #d1d5db; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📌 Pinned Templates</h3>
+                    <div id="pinnedTemplatesList" style="margin-bottom: 32px;"></div>
 
-                    <h3 style="margin-bottom: 15px; color: #495057;">Suggested (Click to pin)</h3>
+                    <h3 style="margin-bottom: 16px; color: #d1d5db; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💡 Suggested</h3>
                     <div id="suggestedTemplatesList"></div>
                 </div>
                 <div style="padding: 20px; display: flex; gap: 10px; border-top: 1px solid #1f1f1f;">
@@ -1619,19 +1619,19 @@
             // Render pinned templates
             const pinnedContainer = document.getElementById('pinnedTemplatesList');
             if (quickAddPinned.length === 0) {
-                pinnedContainer.innerHTML = '<p style="color: #6c757d; font-size: 0.9em;">No pinned templates yet. Pin some from the suggested list below!</p>';
+                pinnedContainer.innerHTML = '<p style="color: #6c757d; font-size: 0.9em; margin-bottom: 20px;">No pinned templates yet. Pin some from the suggested list below!</p>';
             } else {
                 let html = '';
                 quickAddPinned.forEach((template, idx) => {
                     html += `
-                        <div style="background: #0a0a0a; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1f1f1f;">
+                        <div style="background: #1a1a1a; padding: 14px; border-radius: 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid #2a2a2a; hover: border-color: #404040; transition: all 0.2s ease;">
                             <div>
-                                <div style="font-weight: 600; color: #e5e7eb;">${template.vendor || template.category}</div>
-                                <div style="font-size: 0.9em; color: #9ca3af;">$${template.amount.toFixed(2)} • ${template.category}</div>
+                                <div style="font-weight: 600; color: #e5e7eb; font-size: 0.95em;">${template.vendor || template.category}</div>
+                                <div style="font-size: 0.85em; color: #9ca3af; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category}</div>
                             </div>
-                            <div style="display: flex; gap: 5px;">
-                                <button class="btn btn-secondary" onclick="editQuickAddTemplate(${idx})" style="padding: 6px 10px; font-size: 0.8em;">Edit</button>
-                                <button class="btn btn-danger" onclick="unpinQuickAddTemplate(${idx})" style="padding: 6px 10px; font-size: 0.8em;">Unpin</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-secondary" onclick="editQuickAddTemplate(${idx})" style="padding: 8px 12px; font-size: 0.85em; min-width: 70px; white-space: nowrap;">Edit</button>
+                                <button class="btn btn-danger" onclick="unpinQuickAddTemplate(${idx})" style="padding: 8px 12px; font-size: 0.85em; min-width: 70px; white-space: nowrap;">Unpin</button>
                             </div>
                         </div>
                     `;
@@ -1648,15 +1648,15 @@
                 suggestedTemplates.forEach((template, idx) => {
                     const isPinned = quickAddPinned.some(p => p.category === template.category && p.amount === template.amount);
                     html += `
-                        <div style="background: #0a0a0a; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1f1f1f; ${isPinned ? 'opacity: 0.5;' : ''}">
+                        <div style="background: #1a1a1a; padding: 14px; border-radius: 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid #2a2a2a; transition: all 0.2s ease; ${isPinned ? 'opacity: 0.6;' : ''}">
                             <div>
-                                <div style="font-weight: 600; color: #e5e7eb;">${template.vendor || template.category}</div>
-                                <div style="font-size: 0.9em; color: #9ca3af;">$${template.amount.toFixed(2)} • ${template.category} • Used ${template.frequency || 1}x</div>
+                                <div style="font-weight: 600; color: #e5e7eb; font-size: 0.95em;">${template.vendor || template.category}</div>
+                                <div style="font-size: 0.85em; color: #9ca3af; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${template.frequency || 1}x</div>
                             </div>
                             <button class="btn ${isPinned ? 'btn-secondary' : 'btn-primary'}" 
                                     onclick="pinQuickAddTemplate(${JSON.stringify(template).replace(/"/g, '&quot;')})" 
-                                    style="padding: 6px 10px; font-size: 0.8em;">
-                                ${isPinned ? 'Pinned ✓' : 'Pin'}
+                                    style="padding: 8px 12px; font-size: 0.85em; min-width: 80px; white-space: nowrap;">
+                                ${isPinned ? '✓ Pinned' : '📌 Pin'}
                             </button>
                         </div>
                     `;
