@@ -1620,12 +1620,12 @@
                 category: document.getElementById('recurringCategory').value,
                 amount: parseFloat(document.getElementById('recurringAmount').value),
                 frequency: document.getElementById('recurringFrequency').value,
-                dayOfWeek: document.getElementById('recurringDayOfWeek').value || null,
-                dayOfMonth: document.getElementById('recurringDayOfMonth').value || null,
-                paymentMethod: document.getElementById('recurringPaymentMethod').value,
+                day_of_week: document.getElementById('recurringDayOfWeek').value || null,
+                day_of_month: document.getElementById('recurringDayOfMonth').value || null,
+                payment_method: document.getElementById('recurringPaymentMethod').value,
                 vendor: document.getElementById('recurringVendor').value,
                 active: true,
-                nextDueDate: calculateNextDueDate(
+                next_due_date: calculateNextDueDate(
                     document.getElementById('recurringFrequency').value,
                     document.getElementById('recurringDayOfWeek').value,
                     document.getElementById('recurringDayOfMonth').value
@@ -1695,13 +1695,13 @@
             recurringTransactions
                 .filter(r => r.active)
                 .forEach(recurring => {
-                    const status = new Date(recurring.nextDueDate) <= new Date() ? 'Due Now' : 'Pending';
+                    const status = new Date(recurring.next_due_date) <= new Date() ? 'Due Now' : 'Pending';
                     html += `
                         <tr>
                             <td>${recurring.name}</td>
                             <td style="font-weight: 600;">$${recurring.amount.toFixed(2)}</td>
                             <td style="text-transform: capitalize;">${recurring.frequency}</td>
-                            <td>${new Date(recurring.nextDueDate).toLocaleDateString()}</td>
+                            <td>${new Date(recurring.next_due_date).toLocaleDateString()}</td>
                             <td style="color: ${status === 'Due Now' ? '#ef4444' : '#6c757d'};">${status}</td>
                             <td style="display: flex; gap: 5px;">
                                 <button class="btn btn-primary" style="padding: 6px 10px; font-size: 0.8em;" onclick="confirmRecurring(${recurring.id})">Confirm & Add</button>
@@ -1722,11 +1722,11 @@
             // Create an expense from this recurring transaction
             const expense = {
                 id: Date.now(),
-                date: recurring.nextDueDate,
+                date: recurring.next_due_date,
                 category: recurring.category,
                 description: recurring.name,
                 amount: recurring.amount,
-                payment_method: recurring.paymentMethod,
+                payment_method: recurring.payment_method,
                 vendor: recurring.vendor,
                 notes: `Auto-created from recurring: ${recurring.name}`,
                 created_at: new Date().toISOString()
@@ -1744,14 +1744,14 @@
             expenses.push(expense);
 
             // Update next due date for recurring transaction
-            const nextDate = calculateNextDueDate(recurring.frequency, recurring.dayOfWeek, recurring.dayOfMonth);
+            const nextDate = calculateNextDueDate(recurring.frequency, recurring.day_of_week, recurring.day_of_month);
             const { error: updateError } = await supabaseClient
                 .from('recurring_transactions')
-                .update({ nextDueDate: nextDate })
+                .update({ next_due_date: nextDate })
                 .eq('id', id);
 
             if (!updateError) {
-                recurring.nextDueDate = nextDate;
+                recurring.next_due_date = nextDate;
             }
 
             renderRecurringList();
