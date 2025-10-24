@@ -993,7 +993,7 @@
                                 <option value="yearly">Yearly</option>
                             </select>
                         </div>
-                        <div class="form-group" id="dayOfWeekGroup" style="display: none;">
+                        <div class="form-group">
                             <label for="recurringDayOfWeek" id="dayOfWeekLabel">Day of Week (for weekly)</label>
                             <select id="recurringDayOfWeek">
                                 <option value="">Select Day</option>
@@ -1006,7 +1006,7 @@
                                 <option value="6">Saturday</option>
                             </select>
                         </div>
-                        <div class="form-group" id="dayOfMonthGroup" style="display: none;">
+                        <div class="form-group">
                             <label for="recurringDayOfMonth" id="dayOfMonthLabel">Day of Month (for monthly)</label>
                             <input type="number" id="recurringDayOfMonth" min="1" max="31">
                         </div>
@@ -1569,7 +1569,7 @@
         }
 
         // Recurring Transactions
-        function setupRecurringForm_OLD() {
+        function setupRecurringForm() {
             const form = document.getElementById('recurringForm');
             if (form) {
                 form.addEventListener('submit', addRecurringTransaction);
@@ -1595,7 +1595,7 @@
                     document.getElementById('recurringDayOfWeek').value,
                     document.getElementById('recurringDayOfMonth').value
                 ),
-                createdAt: new Date().toISOString()
+                created_at: new Date().toISOString()
             };
 
             const { error } = await supabaseClient
@@ -1757,30 +1757,24 @@
             const dayOfMonthLabel = document.getElementById('dayOfMonthLabel');
             const dayOfWeekInput = document.getElementById('recurringDayOfWeek');
             const dayOfMonthInput = document.getElementById('recurringDayOfMonth');
-            const dayOfWeekGroup = document.getElementById('dayOfWeekGroup');
-            const dayOfMonthGroup = document.getElementById('dayOfMonthGroup');
             
-            // Function to update required fields and visibility based on frequency
+            // Function to update required fields based on frequency
             function updateRequiredFields() {
                 const frequency = frequencySelect.value;
                 
-                // Reset all to not required and hidden
+                // Reset all to not required
                 dayOfWeekInput.required = false;
                 dayOfMonthInput.required = false;
-                dayOfWeekGroup.style.display = 'none';
-                dayOfMonthGroup.style.display = 'none';
                 dayOfWeekLabel.textContent = 'Day of Week (for weekly)';
                 dayOfMonthLabel.textContent = 'Day of Month (for monthly)';
                 
-                // Set required and visible based on frequency
+                // Set required based on frequency
                 if (frequency === 'weekly' || frequency === 'biweekly') {
                     dayOfWeekInput.required = true;
-                    dayOfWeekGroup.style.display = 'block';
-                    dayOfWeekLabel.innerHTML = 'Day of Week (for weekly/bi-weekly) <span style="color: #f93;" >*</span>';
+                    dayOfWeekLabel.innerHTML = 'Day of Week (for weekly) <span style="color: #f93;" >*</span>';
                 } else if (frequency === 'monthly' || frequency === 'quarterly' || frequency === 'yearly') {
                     dayOfMonthInput.required = true;
-                    dayOfMonthGroup.style.display = 'block';
-                    dayOfMonthLabel.innerHTML = 'Day of Month (for monthly/quarterly/yearly) <span style="color: #f93;">*</span>';
+                    dayOfMonthLabel.innerHTML = 'Day of Month (for monthly) <span style="color: #f93;">*</span>';
                 }
             }
             
@@ -1788,13 +1782,10 @@
             frequencySelect.addEventListener('change', updateRequiredFields);
             
             // Form submission
-            const recurringForm = document.getElementById('recurringForm');
-            if (recurringForm) {
-                recurringForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    addRecurringTransaction(e);
-                });
-            }
+            document.getElementById('recurringForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addRecurringTransaction();
+            });
         }
 
         async function addIncome() {
