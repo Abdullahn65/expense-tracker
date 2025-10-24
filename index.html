@@ -1614,8 +1614,16 @@
         async function addRecurringTransaction(e) {
             e.preventDefault();
 
+            // Get current user
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                alert('Error: You must be logged in to add a recurring transaction');
+                return;
+            }
+
             const recurring = {
                 id: Date.now(),
+                user_id: user.id,
                 name: document.getElementById('recurringName').value,
                 category: document.getElementById('recurringCategory').value,
                 amount: parseFloat(document.getElementById('recurringAmount').value),
