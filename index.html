@@ -1217,7 +1217,7 @@
             setTimeout(() => successDiv.style.display = 'none', 5000);
         }
 
-        function initializeApp() {
+        async function initializeApp() {
             // Set default date to today in local timezone
             const today = new Date();
             const year = today.getFullYear();
@@ -1244,6 +1244,12 @@
             
             // Setup quick add manage button
             document.getElementById('manageQuickAddBtn').addEventListener('click', openQuickAddManager);
+
+            // Auto-process due recurring transactions
+            await processOverdueRecurringTransactions();
+
+            // Check for due transactions every 5 minutes
+            setInterval(processOverdueRecurringTransactions, 5 * 60 * 1000);
         }
 
         async function loadData() {
@@ -1703,16 +1709,15 @@
             recurringTransactions
                 .filter(r => r.active)
                 .forEach(recurring => {
-                    const status = new Date(recurring.next_due_date) <= new Date() ? 'Due Now' : 'Pending';
+                    const status = new Date(recurring.next_due_date) <= new Date() ? 'Due Now (Auto-creating)' : 'Pending';
                     html += `
                         <tr>
                             <td>${recurring.name}</td>
                             <td style="font-weight: 600;">$${recurring.amount.toFixed(2)}</td>
                             <td style="text-transform: capitalize;">${recurring.frequency}</td>
                             <td>${new Date(recurring.next_due_date).toLocaleDateString()}</td>
-                            <td style="color: ${status === 'Due Now' ? '#ef4444' : '#6c757d'};">${status}</td>
-                            <td style="display: flex; gap: 5px;">
-                                <button class="btn btn-primary" style="padding: 6px 10px; font-size: 0.8em;" onclick="confirmRecurring(${recurring.id})">Confirm & Add</button>
+                            <td style="color: ${status === 'Due Now (Auto-creating)' ? '#ef4444' : '#6c757d'};">${status}</td>
+                            <td>
                                 <button class="btn btn-danger" style="padding: 6px 10px; font-size: 0.8em;" onclick="deleteRecurring(${recurring.id})">Delete</button>
                             </td>
                         </tr>
@@ -1761,12 +1766,83 @@
             if (!updateError) {
                 recurring.next_due_date = nextDate;
             }
-
             renderRecurringList();
             renderExpenseList();
             renderAllMonths();
             renderDashboard();
             alert(`Expense added: ${recurring.name} - $${recurring.amount.toFixed(2)}`);
+        }
+
+        // Auto-process overdue recurring transactions
+        async function processOverdueRecurringTransactions() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to midnight for accurate comparison
+
+            let processed = 0;
+
+            for (const recurring of recurringTransactions) {
+                if (!recurring.active) continue;
+
+                const nextDueDate = new Date(recurring.next_due_date);
+                nextDueDate.setHours(0, 0, 0, 0);
+
+                // If next due date is today or earlier, create the expense
+                if (nextDueDate <= today) {
+                    try {
+                        // Create an expense from this recurring transaction
+                        const expense = {
+                            id: Date.now() + Math.random(), // Ensure unique ID
+                            date: recurring.next_due_date,
+                            category: recurring.category,
+                            description: recurring.name,
+                            amount: recurring.amount,
+                            payment_method: recurring.payment_method,
+                            vendor: recurring.vendor,
+                            notes: `Auto-created from recurring: ${recurring.name}`,
+                            created_at: new Date().toISOString()
+                        };
+
+                        const { error } = await supabaseClient
+                            .from('expenses')
+                            .insert([expense]);
+
+                        if (error) {
+                            console.error('Error auto-adding expense:', error);
+                            continue;
+                        }
+
+                        expenses.push(expense);
+                        processed++;
+
+                        // Calculate and update next due date
+                        const nextDate = calculateNextDueDate(
+                            recurring.frequency,
+                            recurring.day_of_week,
+                            recurring.day_of_month
+                        );
+
+                        const { error: updateError } = await supabaseClient
+                            .from('recurring_transactions')
+                            .update({ next_due_date: nextDate })
+                            .eq('id', recurring.id);
+
+                        if (!updateError) {
+                            recurring.next_due_date = nextDate;
+                        }
+                    } catch (error) {
+                        console.error('Error processing recurring transaction:', error);
+                    }
+                }
+            }
+
+            // If any were processed, refresh the views
+            if (processed > 0) {
+                console.log(`Auto-processed ${processed} recurring transaction(s)`);
+                renderRecurringList();
+                renderExpenseList();
+                renderAllMonths();
+                renderDashboard();
+            }
         }
 
         async function deleteRecurring(id) {
