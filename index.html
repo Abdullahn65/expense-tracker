@@ -1571,8 +1571,43 @@
         // Recurring Transactions
         function setupRecurringForm() {
             const form = document.getElementById('recurringForm');
+            const frequencySelect = document.getElementById('recurringFrequency');
+            const dayOfWeekLabel = document.getElementById('dayOfWeekLabel');
+            const dayOfMonthLabel = document.getElementById('dayOfMonthLabel');
+            const dayOfWeekInput = document.getElementById('recurringDayOfWeek');
+            const dayOfMonthInput = document.getElementById('recurringDayOfMonth');
+            
+            // Function to update required fields based on frequency
+            function updateRequiredFields() {
+                const frequency = frequencySelect.value;
+                
+                // Reset all to not required
+                dayOfWeekInput.required = false;
+                dayOfMonthInput.required = false;
+                dayOfWeekLabel.textContent = 'Day of Week (for weekly)';
+                dayOfMonthLabel.textContent = 'Day of Month (for monthly)';
+                
+                // Set required based on frequency
+                if (frequency === 'weekly' || frequency === 'biweekly') {
+                    dayOfWeekInput.required = true;
+                    dayOfWeekLabel.innerHTML = 'Day of Week (for weekly) <span style="color: #f93;" >*</span>';
+                } else if (frequency === 'monthly' || frequency === 'quarterly' || frequency === 'yearly') {
+                    dayOfMonthInput.required = true;
+                    dayOfMonthLabel.innerHTML = 'Day of Month (for monthly) <span style="color: #f93;">*</span>';
+                }
+            }
+            
+            // Listen to frequency changes
+            if (frequencySelect) {
+                frequencySelect.addEventListener('change', updateRequiredFields);
+            }
+            
+            // Form submission
             if (form) {
-                form.addEventListener('submit', addRecurringTransaction);
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    addRecurringTransaction(e);
+                });
             }
         }
 
@@ -1751,42 +1786,6 @@
             });
         }
 
-        function setupRecurringForm() {
-            const frequencySelect = document.getElementById('recurringFrequency');
-            const dayOfWeekLabel = document.getElementById('dayOfWeekLabel');
-            const dayOfMonthLabel = document.getElementById('dayOfMonthLabel');
-            const dayOfWeekInput = document.getElementById('recurringDayOfWeek');
-            const dayOfMonthInput = document.getElementById('recurringDayOfMonth');
-            
-            // Function to update required fields based on frequency
-            function updateRequiredFields() {
-                const frequency = frequencySelect.value;
-                
-                // Reset all to not required
-                dayOfWeekInput.required = false;
-                dayOfMonthInput.required = false;
-                dayOfWeekLabel.textContent = 'Day of Week (for weekly)';
-                dayOfMonthLabel.textContent = 'Day of Month (for monthly)';
-                
-                // Set required based on frequency
-                if (frequency === 'weekly' || frequency === 'biweekly') {
-                    dayOfWeekInput.required = true;
-                    dayOfWeekLabel.innerHTML = 'Day of Week (for weekly) <span style="color: #f93;" >*</span>';
-                } else if (frequency === 'monthly' || frequency === 'quarterly' || frequency === 'yearly') {
-                    dayOfMonthInput.required = true;
-                    dayOfMonthLabel.innerHTML = 'Day of Month (for monthly) <span style="color: #f93;">*</span>';
-                }
-            }
-            
-            // Listen to frequency changes
-            frequencySelect.addEventListener('change', updateRequiredFields);
-            
-            // Form submission
-            document.getElementById('recurringForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                addRecurringTransaction();
-            });
-        }
 
         async function addIncome() {
             const incomeEntry = {
