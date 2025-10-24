@@ -745,6 +745,26 @@
             </div>
         </div>
 
+        <!-- Quick Add Manager Modal -->
+        <div id="quickAddManagerModal" class="modal">
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2 class="modal-title">Quick Add Manager</h2>
+                    <button class="close-modal" onclick="closeQuickAddManager()">×</button>
+                </div>
+                <div style="padding: 20px; max-height: 600px; overflow-y: auto;">
+                    <h3 style="margin-bottom: 15px; color: #495057;">Pinned Templates</h3>
+                    <div id="pinnedTemplatesList" style="margin-bottom: 30px;"></div>
+
+                    <h3 style="margin-bottom: 15px; color: #495057;">Suggested (Click to pin)</h3>
+                    <div id="suggestedTemplatesList"></div>
+                </div>
+                <div style="padding: 20px; display: flex; gap: 10px; border-top: 1px solid #1f1f1f;">
+                    <button class="btn btn-primary" onclick="closeQuickAddManager()" style="flex: 1;">Done</button>
+                </div>
+            </div>
+        </div>
+
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
@@ -1125,9 +1145,13 @@
 
             // Close modal when clicking outside of it
             window.addEventListener('click', function(event) {
-                const modal = document.getElementById('editModal');
-                if (event.target === modal) {
+                const editModal = document.getElementById('editModal');
+                const quickAddModal = document.getElementById('quickAddManagerModal');
+                if (event.target === editModal) {
                     closeEditModal();
+                }
+                if (event.target === quickAddModal) {
+                    closeQuickAddManager();
                 }
             });
         });
@@ -1527,19 +1551,29 @@
 
         function renderQuickAddButtons() {
             const container = document.getElementById('quickAddButtons');
-            const suggestedTemplates = analyzeExpenses();
+            
+            // Show pinned templates first, then suggested
+            let displayTemplates = [...quickAddPinned];
+            if (displayTemplates.length < 6) {
+                const suggested = analyzeExpenses();
+                const nonPinned = suggested.filter(t => !quickAddPinned.some(p => p.category === t.category && p.amount === t.amount));
+                displayTemplates = [...displayTemplates, ...nonPinned];
+            }
+            displayTemplates = displayTemplates.slice(0, 6);
 
-            if (suggestedTemplates.length === 0) {
+            if (displayTemplates.length === 0) {
                 container.innerHTML = '<p style="color: #6c757d; font-size: 0.9em;">Add some expenses first to see quick add suggestions</p>';
                 return;
             }
 
             let html = '';
-            suggestedTemplates.forEach((template, idx) => {
+            displayTemplates.forEach((template, idx) => {
+                const isPinned = quickAddPinned.some(p => p.category === template.category && p.amount === template.amount);
                 html += `
-                    <button type="button" class="btn btn-secondary" style="padding: 10px 16px; font-size: 0.9em;" 
+                    <button type="button" class="btn btn-secondary" style="padding: 10px 16px; font-size: 0.9em; position: relative;" 
                             onclick="useQuickAdd(${template.amount}, '${template.category}', '${template.vendor || ''}', ${idx})">
                         ${template.vendor ? template.vendor : template.category} $${template.amount.toFixed(2)}
+                        ${isPinned ? '<span style="position: absolute; top: 2px; right: 5px; font-size: 0.8em;">📌</span>' : ''}
                     </button>
                 `;
             });
@@ -1571,7 +1605,117 @@
         }
 
         function openQuickAddManager() {
-            alert('Quick Add Manager - Coming Soon!\n\nYou can pin/unpin your favorite transactions here to always show them as quick add buttons.');
+            document.getElementById('quickAddManagerModal').classList.add('active');
+            renderQuickAddManager();
+        }
+
+        function closeQuickAddManager() {
+            document.getElementById('quickAddManagerModal').classList.remove('active');
+        }
+
+        function renderQuickAddManager() {
+            const suggestedTemplates = analyzeExpenses();
+            
+            // Render pinned templates
+            const pinnedContainer = document.getElementById('pinnedTemplatesList');
+            if (quickAddPinned.length === 0) {
+                pinnedContainer.innerHTML = '<p style="color: #6c757d; font-size: 0.9em;">No pinned templates yet. Pin some from the suggested list below!</p>';
+            } else {
+                let html = '';
+                quickAddPinned.forEach((template, idx) => {
+                    html += `
+                        <div style="background: #0a0a0a; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1f1f1f;">
+                            <div>
+                                <div style="font-weight: 600; color: #e5e7eb;">${template.vendor || template.category}</div>
+                                <div style="font-size: 0.9em; color: #9ca3af;">$${template.amount.toFixed(2)} • ${template.category}</div>
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn btn-secondary" onclick="editQuickAddTemplate(${idx})" style="padding: 6px 10px; font-size: 0.8em;">Edit</button>
+                                <button class="btn btn-danger" onclick="unpinQuickAddTemplate(${idx})" style="padding: 6px 10px; font-size: 0.8em;">Unpin</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                pinnedContainer.innerHTML = html;
+            }
+
+            // Render suggested templates
+            const suggestedContainer = document.getElementById('suggestedTemplatesList');
+            if (suggestedTemplates.length === 0) {
+                suggestedContainer.innerHTML = '<p style="color: #6c757d; font-size: 0.9em;">Add some expenses first to see suggestions</p>';
+            } else {
+                let html = '';
+                suggestedTemplates.forEach((template, idx) => {
+                    const isPinned = quickAddPinned.some(p => p.category === template.category && p.amount === template.amount);
+                    html += `
+                        <div style="background: #0a0a0a; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1f1f1f; ${isPinned ? 'opacity: 0.5;' : ''}">
+                            <div>
+                                <div style="font-weight: 600; color: #e5e7eb;">${template.vendor || template.category}</div>
+                                <div style="font-size: 0.9em; color: #9ca3af;">$${template.amount.toFixed(2)} • ${template.category} • Used ${template.frequency || 1}x</div>
+                            </div>
+                            <button class="btn ${isPinned ? 'btn-secondary' : 'btn-primary'}" 
+                                    onclick="pinQuickAddTemplate(${JSON.stringify(template).replace(/"/g, '&quot;')})" 
+                                    style="padding: 6px 10px; font-size: 0.8em;">
+                                ${isPinned ? 'Pinned ✓' : 'Pin'}
+                            </button>
+                        </div>
+                    `;
+                });
+                suggestedContainer.innerHTML = html;
+            }
+        }
+
+        function pinQuickAddTemplate(template) {
+            const isPinned = quickAddPinned.some(p => p.category === template.category && p.amount === template.amount);
+            
+            if (isPinned) {
+                unpinQuickAddTemplate(quickAddPinned.findIndex(p => p.category === template.category && p.amount === template.amount));
+            } else {
+                quickAddPinned.push({ ...template, pinned: true });
+                saveQuickAddTemplates();
+                renderQuickAddManager();
+                renderQuickAddButtons();
+            }
+        }
+
+        function unpinQuickAddTemplate(idx) {
+            quickAddPinned.splice(idx, 1);
+            saveQuickAddTemplates();
+            renderQuickAddManager();
+            renderQuickAddButtons();
+        }
+
+        function editQuickAddTemplate(idx) {
+            const template = quickAddPinned[idx];
+            const newAmount = prompt(`Edit amount for "${template.vendor || template.category}":`, template.amount);
+            
+            if (newAmount !== null && !isNaN(newAmount)) {
+                quickAddPinned[idx].amount = parseFloat(newAmount);
+                saveQuickAddTemplates();
+                renderQuickAddManager();
+                renderQuickAddButtons();
+            }
+        }
+
+        async function saveQuickAddTemplates() {
+            // Save to database
+            const { error } = await supabaseClient
+                .from('quick_add_templates')
+                .delete()
+                .neq('id', 0); // Delete all
+
+            if (!error && quickAddPinned.length > 0) {
+                const templatesWithUser = quickAddPinned.map(t => ({
+                    category: t.category,
+                    amount: t.amount,
+                    vendor: t.vendor,
+                    pinned: true
+                }));
+
+                await supabaseClient
+                    .from('quick_add_templates')
+                    .insert(templatesWithUser);
+            }
         }
 
         // Recurring Transactions
