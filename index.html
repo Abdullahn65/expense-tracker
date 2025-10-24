@@ -1357,17 +1357,25 @@
         }
 
         function switchTab(tabName) {
-            // Update nav tabs
+            // Update nav tabs (only for nav-tabs that exist)
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Only set active if the nav-tab exists for this tabName
+            const navTab = document.querySelector(`[data-tab="${tabName}"]`);
+            if (navTab) {
+                navTab.classList.add('active');
+            }
 
             // Update content
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
-            document.getElementById(tabName).classList.add('active');
+            const tabContent = document.getElementById(tabName);
+            if (tabContent) {
+                tabContent.classList.add('active');
+            }
 
             // Render charts if needed
             if (months.includes(tabName)) {
@@ -2104,6 +2112,25 @@
             }
         }
 
+        function highlightIncomeEntry(incomeId) {
+            // Remove previous highlights
+            document.querySelectorAll('tr').forEach(row => {
+                row.style.backgroundColor = '';
+            });
+
+            // Highlight the clicked row
+            const row = document.getElementById(`income-${incomeId}`);
+            if (row) {
+                row.style.backgroundColor = '#2a4a2a';
+                
+                // Fade out after 1.5 seconds
+                setTimeout(() => {
+                    row.style.transition = 'background-color 0.5s ease';
+                    row.style.backgroundColor = '';
+                }, 1500);
+            }
+        }
+
         function renderIncomeList() {
             const incomeList = document.getElementById('incomeList');
             const sortedIncome = [...income].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -2134,13 +2161,13 @@
 
             sortedIncome.forEach(inc => {
                 html += `
-                    <tr>
+                    <tr id="income-${inc.id}" style="cursor: pointer; transition: background-color 0.2s ease;" onclick="highlightIncomeEntry(${inc.id})">
                         <td>${new Date(inc.date).toLocaleDateString()}</td>
                         <td>${inc.source}</td>
                         <td>${inc.description}</td>
                         <td style="font-weight: 600; color: #28a745;">$${inc.amount.toFixed(2)}</td>
                         <td>
-                            <button class="btn btn-danger" onclick="deleteIncome(${inc.id})">Delete</button>
+                            <button class="btn btn-danger" onclick="deleteIncome(${inc.id}); event.stopPropagation();">Delete</button>
                         </td>
                     </tr>
                 `;
