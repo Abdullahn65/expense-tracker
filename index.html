@@ -1269,6 +1269,9 @@
             // Setup quick add manage button
             document.getElementById('manageQuickAddBtn').addEventListener('click', openQuickAddManager);
 
+            // Fix any existing recurring transactions with incorrect dates
+            await fixRecurringTransactionDates();
+
             // Auto-process due recurring transactions
             await processOverdueRecurringTransactions();
 
@@ -1818,7 +1821,8 @@
                     const targetDay = parseInt(dayOfWeek);
                     const currentDay = nextDate.getDay();
                     let daysAhead = targetDay - currentDay;
-                    if (daysAhead <= 0) daysAhead += 7;
+                    if (daysAhead < 0) daysAhead += 7;  // Changed from <= to < so today won't trigger
+                    if (daysAhead === 0) daysAhead = 7; // If it's the target day today, schedule for next week
                     nextDate.setDate(nextDate.getDate() + daysAhead);
                     break;
                 case 'biweekly':
@@ -1986,6 +1990,33 @@
                 renderExpenseList();
                 renderAllMonths();
                 renderDashboard();
+            }
+        }
+
+        // Fix existing recurring transactions with incorrect next_due_date
+        async function fixRecurringTransactionDates() {
+            for (const recurring of recurringTransactions) {
+                if (!recurring.active) continue;
+
+                // Recalculate the correct next due date
+                const correctNextDueDate = calculateNextDueDate(
+                    recurring.frequency,
+                    recurring.day_of_week,
+                    recurring.day_of_month
+                );
+
+                // If it's different from current, update it
+                if (recurring.next_due_date !== correctNextDueDate) {
+                    const { error } = await supabaseClient
+                        .from('recurring_transactions')
+                        .update({ next_due_date: correctNextDueDate })
+                        .eq('id', recurring.id);
+
+                    if (!error) {
+                        recurring.next_due_date = correctNextDueDate;
+                        console.log(`Fixed next_due_date for ${recurring.name}: ${correctNextDueDate}`);
+                    }
+                }
             }
         }
 
