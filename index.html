@@ -523,12 +523,17 @@
             overflow-x: auto;
             border: 1px solid var(--hairline);
             backdrop-filter: blur(20px);
-            max-height: 350px;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         .year-chart-container canvas {
             max-height: 300px !important;
             width: 100% !important;
+            height: auto !important;
+            display: block;
         }
 
         .monthly-chart-card {
@@ -2631,7 +2636,12 @@
                             padding: 12,
                             bodyFont: { size: 14, weight: 'bold' },
                             callbacks: {
-                                label: (context) => `$${context.parsed.toFixed(2)}`
+                                label: (context) => {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `$${value.toFixed(2)} (${percentage}%)`;
+                                }
                             }
                         }
                     }
@@ -3143,7 +3153,12 @@
                             titleFont: { size: 11 },
                             bodyFont: { size: 10, weight: 'bold' },
                             callbacks: {
-                                label: (context) => `$${context.parsed.toFixed(0)}`
+                                label: (context) => {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `$${value.toFixed(0)} (${percentage}%)`;
+                                }
                             }
                         }
                     }
