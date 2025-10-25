@@ -523,17 +523,19 @@
             overflow-x: auto;
             border: 1px solid var(--hairline);
             backdrop-filter: blur(20px);
-            min-height: 350px;
+            min-height: 400px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
         }
 
         .year-chart-container canvas {
-            max-height: 300px !important;
+            flex: 1;
+            max-height: 350px !important;
             width: 100% !important;
             height: auto !important;
             display: block;
+            min-height: 300px;
         }
 
         .monthly-chart-card {
@@ -1438,11 +1440,12 @@
 
             // Render dashboard charts after all data is loaded
             setTimeout(() => {
+                console.log('Rendering charts. Expenses count:', expenses.length, 'Income count:', income.length);
                 renderYearChart();
                 renderIncomeVsSpendingChart();
                 renderYearCategoryChart();
                 renderDashboardMonthlyCharts();
-            }, 300);
+            }, 500);
         }
 
         async function loadData() {
@@ -1550,11 +1553,12 @@
                 }, 100);
             } else if (tabName === 'dashboard') {
                 setTimeout(() => {
+                    console.log('Dashboard tab clicked. Rendering charts. Expenses count:', expenses.length);
                     renderYearChart();
                     renderIncomeVsSpendingChart();
                     renderYearCategoryChart();
                     renderDashboardMonthlyCharts();
-                }, 100);
+                }, 200);
                 // Reset month dropdown when switching away from month tabs
                 const monthSelector = document.getElementById('monthSelector');
                 if (monthSelector) {
