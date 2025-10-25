@@ -6,6 +6,23 @@
     <title>Expense Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root {
+            --hud-bg-dark: #030409;
+            --hud-bg-medium: #070911;
+            --hud-panel: rgba(9, 12, 20, 0.92);
+            --hud-panel-light: rgba(15, 19, 31, 0.75);
+            --hud-border: rgba(59, 130, 246, 0.25);
+            --hud-border-strong: rgba(59, 130, 246, 0.55);
+            --hud-accent: #4b9fff;
+            --hud-accent-strong: #67b4ff;
+            --hud-text-primary: #f1f5f9;
+            --hud-text-secondary: #94a3b8;
+            --hud-text-muted: #64748b;
+            --hud-danger: #ef4444;
+            --hud-danger-strong: #dc2626;
+            --hud-success: #22d3ee;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,10 +31,12 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            background: radial-gradient(circle at 20% 20%, rgba(29, 78, 216, 0.18) 0%, transparent 55%),
+                        radial-gradient(circle at 80% 15%, rgba(12, 74, 110, 0.12) 0%, transparent 50%),
+                        linear-gradient(160deg, var(--hud-bg-dark) 0%, #010205 45%, var(--hud-bg-medium) 100%);
             min-height: 100vh;
             padding: 0;
-            color: #e0e7ff;
+            color: var(--hud-text-primary);
             position: relative;
             overflow-x: hidden;
         }
@@ -25,35 +44,49 @@
         body::before {
             content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+            inset: 0;
+            background: radial-gradient(circle at 50% 120%, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(10, 13, 24, 0.75), rgba(1, 2, 5, 0.85));
+            mix-blend-mode: screen;
             pointer-events: none;
             z-index: 0;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1280px;
             margin: 0 auto;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
-            border-radius: 16px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            background: linear-gradient(180deg, rgba(8, 11, 20, 0.95) 0%, rgba(5, 7, 13, 0.92) 100%);
+            border-radius: 22px;
+            box-shadow: 0 50px 80px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(59, 130, 246, 0.08);
             overflow: hidden;
-            border: 1px solid rgba(148, 163, 184, 0.1);
+            border: 1px solid rgba(15, 23, 42, 0.55);
             position: relative;
             z-index: 1;
         }
 
+        .container::before {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border-radius: 16px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            pointer-events: none;
+        }
+
         header {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
+            background: linear-gradient(180deg, rgba(3, 5, 12, 0.95) 0%, rgba(4, 7, 15, 0.9) 70%, rgba(7, 11, 24, 0.85) 100%);
             color: white;
-            padding: 48px 48px;
+            padding: 52px 56px 44px;
             text-align: left;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.18);
             position: relative;
         }
 
@@ -64,71 +97,127 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+            background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.35), transparent);
         }
 
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 800;
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .subtitle {
-            opacity: 0.7;
-            font-size: 1em;
-            font-weight: 400;
-            letter-spacing: 0.5px;
-            color: #cbd5e1;
-        }
-
-        .nav-tabs {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            background: rgba(15, 23, 42, 0.5);
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-            padding: 0;
-            flex-wrap: wrap;
-            backdrop-filter: blur(10px);
-        }
-
-        .nav-tab {
-            padding: 18px 28px;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            font-size: 0.95em;
-            font-weight: 500;
-            color: #94a3b8;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-            position: relative;
-            letter-spacing: 0.3px;
-        }
-
-        .nav-tab:hover {
-            background: rgba(99, 102, 241, 0.05);
-            color: #cbd5e1;
-        }
-
-        .nav-tab.active {
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        .nav-tab.active::after {
+        header::after {
             content: '';
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #6366f1, #3b82f6);
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+            opacity: 0.5;
+        }
+
+        h1 {
+            font-size: 2.6em;
+            margin-bottom: 12px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #f8fafc 10%, #67b4ff 45%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            opacity: 0.85;
+            font-size: 1em;
+            font-weight: 400;
+            letter-spacing: 0.6px;
+            color: var(--hud-text-secondary);
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle::before {
+            content: '';
+            width: 38px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.4), transparent);
+        }
+
+        .nav-tabs {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: rgba(5, 7, 15, 0.9);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.25);
+            padding: 0;
+            flex-wrap: wrap;
+            backdrop-filter: blur(18px);
+            position: relative;
+            box-shadow: inset 0 -1px 0 rgba(59, 130, 246, 0.35);
+        }
+
+        .nav-tabs::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.06), rgba(59, 130, 246, 0.12));
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .nav-tab {
+            padding: 20px 30px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--hud-text-secondary);
+            transition: all 0.35s ease;
+            white-space: nowrap;
+            position: relative;
+            letter-spacing: 0.35px;
+            text-transform: uppercase;
+        }
+
+        .nav-tab::before {
+            content: '';
+            position: absolute;
+            inset: 8px 12px;
+            border: 1px solid rgba(59, 130, 246, 0.08);
+            border-radius: 8px;
+            transition: all 0.35s ease;
+        }
+
+        .nav-tab:hover {
+            color: var(--hud-text-primary);
+        }
+
+        .nav-tab:hover::before {
+            border-color: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
+        }
+
+        .nav-tab.active {
+            color: #ffffff;
+            font-weight: 700;
+            text-shadow: 0 0 14px rgba(59, 130, 246, 0.6);
+        }
+
+        .nav-tab.active::before {
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 0 24px rgba(59, 130, 246, 0.45);
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 14px;
+            right: 14px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-strong));
+            border-radius: 999px;
         }
 
         .month-dropdown-container {
@@ -136,37 +225,41 @@
             align-items: center;
             gap: 12px;
             margin-left: auto;
-            padding-right: 20px;
+            padding-right: 24px;
+            position: relative;
+            z-index: 1;
         }
 
         .month-dropdown {
-            padding: 12px 18px;
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 8px;
-            background: rgba(15, 23, 42, 0.6);
+            padding: 12px 20px;
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            border-radius: 10px;
+            background: rgba(5, 7, 13, 0.92);
             color: #ffffff;
             font-size: 0.9em;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 160px;
-            backdrop-filter: blur(10px);
+            transition: all 0.35s ease;
+            min-width: 180px;
+            backdrop-filter: blur(12px);
+            letter-spacing: 0.4px;
         }
 
         .month-dropdown:hover {
-            border-color: rgba(99, 102, 241, 0.5);
-            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(59, 130, 246, 0.55);
+            background: rgba(4, 6, 12, 0.95);
+            box-shadow: 0 0 18px rgba(59, 130, 246, 0.28);
         }
 
         .month-dropdown:focus {
             outline: none;
-            border-color: #6366f1;
-            background: rgba(15, 23, 42, 0.9);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            border-color: rgba(59, 130, 246, 0.85);
+            background: rgba(3, 5, 11, 0.95);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
         }
 
         .content {
-            padding: 48px;
+            padding: 52px;
             background: transparent;
         }
 
@@ -180,18 +273,28 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(12px); }
+            from { opacity: 0; transform: translateY(14px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .expense-form {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-            padding: 32px;
-            border-radius: 12px;
-            margin-bottom: 32px;
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
+            background: linear-gradient(190deg, rgba(5, 7, 13, 0.95) 0%, rgba(3, 4, 9, 0.9) 100%);
+            padding: 36px;
+            border-radius: 16px;
+            margin-bottom: 36px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 26px 48px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(16px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .expense-form::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 55%);
+            pointer-events: none;
         }
 
         .form-grid {
@@ -207,34 +310,36 @@
         }
 
         label {
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 10px;
-            color: #cbd5e1;
-            font-size: 0.85em;
+            color: var(--hud-text-secondary);
+            font-size: 0.82em;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
 
         input, select, textarea {
-            padding: 13px 16px;
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 8px;
+            padding: 14px 18px;
+            border: 1px solid rgba(59, 130, 246, 0.22);
+            border-radius: 10px;
             font-size: 0.95em;
-            transition: all 0.3s ease;
-            background: rgba(15, 23, 42, 0.6);
+            transition: all 0.35s ease;
+            background: rgba(4, 6, 12, 0.92);
             color: #ffffff;
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.18);
         }
 
         input:hover, select:hover, textarea:hover {
-            border-color: rgba(99, 102, 241, 0.4);
-            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(59, 130, 246, 0.45);
+            background: rgba(3, 5, 11, 0.96);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #6366f1;
-            background: rgba(15, 23, 42, 0.9);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            border-color: rgba(59, 130, 246, 0.75);
+            background: rgba(2, 4, 9, 0.98);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25), inset 0 0 0 1px rgba(59, 130, 246, 0.45);
         }
 
         textarea {
@@ -244,28 +349,30 @@
 
         .btn {
             padding: 14px 32px;
-            border: none;
-            border-radius: 8px;
+            border: 1px solid transparent;
+            border-radius: 10px;
             font-size: 0.95em;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-height: 48px;
-            letter-spacing: 0.3px;
+            transition: all 0.35s ease;
+            min-height: 50px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+            background: linear-gradient(120deg, rgba(15, 118, 210, 0.95) 0%, rgba(37, 99, 235, 0.95) 50%, rgba(59, 130, 246, 0.95) 100%);
             color: #ffffff;
             width: 100%;
-            font-weight: 700;
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+            font-weight: 800;
+            box-shadow: 0 18px 35px rgba(59, 130, 246, 0.35);
+            border-color: rgba(59, 130, 246, 0.65);
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+            background: linear-gradient(120deg, rgba(37, 99, 235, 1) 0%, rgba(29, 78, 216, 1) 55%, rgba(59, 130, 246, 1) 100%);
             transform: translateY(-2px);
-            box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 22px 45px rgba(59, 130, 246, 0.45);
         }
 
         .btn-primary:active {
@@ -273,107 +380,144 @@
         }
 
         .btn-danger {
-            background: #ef4444;
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.95), rgba(239, 68, 68, 0.95));
             color: white;
-            padding: 10px 18px;
+            padding: 10px 20px;
             font-size: 0.85em;
-            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+            box-shadow: 0 12px 25px rgba(248, 113, 113, 0.35);
+            border-color: rgba(248, 113, 113, 0.6);
         }
 
         .btn-danger:hover {
-            background: #dc2626;
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+            background: linear-gradient(135deg, rgba(252, 165, 165, 1), rgba(220, 38, 38, 1));
+            box-shadow: 0 16px 35px rgba(239, 68, 68, 0.45);
         }
 
         .btn-secondary {
-            background: rgba(148, 163, 184, 0.1);
-            color: #cbd5e1;
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(5, 7, 15, 0.85);
+            color: var(--hud-text-secondary);
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.14);
         }
 
         .btn-secondary:hover {
-            background: rgba(148, 163, 184, 0.2);
-            color: #e0e7ff;
+            background: rgba(3, 5, 11, 0.95);
+            color: var(--hud-text-primary);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 14px 25px rgba(59, 130, 246, 0.25);
         }
 
         .expense-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 24px;
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-            border-radius: 12px;
+            background: linear-gradient(185deg, rgba(5, 7, 13, 0.95) 0%, rgba(3, 4, 9, 0.9) 100%);
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 28px 48px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.18);
+            position: relative;
+        }
+
+        .expense-table::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(120deg, rgba(59, 130, 246, 0.08), transparent 65%);
         }
 
         .expense-table th {
-            background: rgba(99, 102, 241, 0.1);
-            color: #cbd5e1;
+            background: linear-gradient(90deg, rgba(15, 23, 42, 0.85), rgba(2, 6, 23, 0.85));
+            color: var(--hud-text-secondary);
             padding: 18px;
             text-align: left;
             font-weight: 700;
             text-transform: uppercase;
             font-size: 0.75em;
-            letter-spacing: 1px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.28);
         }
 
         .expense-table td {
             padding: 16px 18px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.05);
-            color: #cbd5e1;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.25);
+            color: var(--hud-text-primary);
+            position: relative;
         }
 
         .expense-table tr:hover {
-            background: rgba(99, 102, 241, 0.05);
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(29, 78, 216, 0.12));
         }
 
         .summary-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
+            gap: 28px;
+            margin-bottom: 40px;
         }
 
         .summary-card {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.6) 100%);
-            padding: 32px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            background: linear-gradient(180deg, rgba(5, 7, 13, 0.92) 0%, rgba(4, 6, 11, 0.92) 100%);
+            padding: 34px;
+            border-radius: 16px;
+            box-shadow: 0 32px 48px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.18);
+            transition: all 0.35s ease;
+            backdrop-filter: blur(14px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 82% 18%, rgba(59, 130, 246, 0.35), transparent 48%);
+            opacity: 0.35;
+            pointer-events: none;
         }
 
         .summary-card:hover {
-            border-color: rgba(99, 102, 241, 0.3);
-            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.2);
+            border-color: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 40px 65px rgba(59, 130, 246, 0.25);
+            transform: translateY(-4px);
         }
 
         .summary-card h3 {
-            color: #94a3b8;
-            font-size: 0.75em;
+            color: var(--hud-text-secondary);
+            font-size: 0.78em;
             margin-bottom: 14px;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
+            letter-spacing: 1.6px;
             font-weight: 700;
         }
 
         .summary-card .value {
-            font-size: 2.5em;
+            font-size: 2.45em;
             font-weight: 800;
-            color: #ffffff;
-            letter-spacing: -0.5px;
+            color: #f8fafc;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
         }
 
         .chart-container {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-            padding: 32px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 32px;
-            border: 1px solid rgba(148, 163, 184, 0.1);
+            background: linear-gradient(185deg, rgba(6, 9, 17, 0.95) 0%, rgba(5, 7, 12, 0.9) 100%);
+            padding: 36px;
+            border-radius: 16px;
+            box-shadow: 0 32px 48px rgba(0, 0, 0, 0.6);
+            margin-bottom: 36px;
+            border: 1px solid rgba(59, 130, 246, 0.18);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 60%);
+            pointer-events: none;
         }
 
         canvas {
@@ -382,63 +526,78 @@
         }
 
         .budget-item {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%);
-            padding: 24px;
-            border-radius: 12px;
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            margin-bottom: 16px;
-            transition: all 0.3s ease;
+            background: linear-gradient(175deg, rgba(6, 8, 15, 0.95) 0%, rgba(3, 4, 9, 0.9) 100%);
+            padding: 26px;
+            border-radius: 14px;
+            border: 1px solid rgba(59, 130, 246, 0.16);
+            box-shadow: 0 24px 42px rgba(0, 0, 0, 0.55);
+            margin-bottom: 18px;
+            transition: all 0.35s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .budget-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(59, 130, 246, 0.12), transparent 65%);
+            pointer-events: none;
         }
 
         .budget-item:hover {
-            border-color: rgba(99, 102, 241, 0.3);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 32px 60px rgba(59, 130, 246, 0.2);
+            transform: translateY(-3px);
         }
 
         .budget-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
         .budget-category {
             font-weight: 700;
-            color: #cbd5e1;
+            color: var(--hud-text-primary);
+            letter-spacing: 0.8px;
         }
 
         .budget-amount {
             font-weight: 700;
-            color: #cbd5e1;
+            color: var(--hud-accent);
         }
 
         .progress-bar {
             width: 100%;
-            height: 8px;
-            background: rgba(148, 163, 184, 0.1);
-            border-radius: 4px;
+            height: 10px;
+            background: rgba(8, 11, 20, 0.9);
+            border-radius: 999px;
             overflow: hidden;
-            margin-top: 12px;
+            margin-top: 16px;
+            border: 1px solid rgba(59, 130, 246, 0.18);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #6366f1, #3b82f6);
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.9), rgba(59, 130, 246, 0.98));
             transition: width 0.4s ease;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            color: #000000;
+            color: #020617;
             font-weight: 700;
-            font-size: 0.7em;
-            padding-right: 4px;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+            font-size: 0.72em;
+            padding-right: 6px;
+            text-shadow: none;
+            box-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
         }
 
         .progress-fill.over-budget {
-            background: linear-gradient(90deg, #ef4444, #dc2626);
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            background: linear-gradient(90deg, rgba(248, 113, 113, 0.95), rgba(239, 68, 68, 0.95));
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            color: #0f172a;
         }
 
         .budget-form {
@@ -450,14 +609,18 @@
         .empty-state {
             text-align: center;
             padding: 80px 20px;
-            color: #94a3b8;
+            color: var(--hud-text-secondary);
+            border: 1px dashed rgba(59, 130, 246, 0.35);
+            border-radius: 16px;
+            background: rgba(4, 6, 12, 0.88);
         }
 
         .empty-state svg {
             width: 120px;
             height: 120px;
             margin-bottom: 24px;
-            opacity: 0.15;
+            opacity: 0.2;
+            filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.25));
         }
 
         .category-breakdown {
@@ -467,32 +630,45 @@
         .category-item {
             display: flex;
             justify-content: space-between;
-            padding: 16px;
-            background: rgba(99, 102, 241, 0.05);
-            margin-bottom: 12px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            color: #cbd5e1;
-            transition: all 0.3s ease;
+            padding: 18px 20px;
+            background: linear-gradient(180deg, rgba(5, 7, 13, 0.95) 0%, rgba(3, 4, 9, 0.92) 100%);
+            margin-bottom: 14px;
+            border-radius: 14px;
+            box-shadow: 0 18px 30px rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            color: var(--hud-text-primary);
+            transition: all 0.35s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(59, 130, 246, 0.1), transparent 65%);
+            pointer-events: none;
         }
 
         .category-item:hover {
-            background: rgba(99, 102, 241, 0.1);
-            border-color: rgba(99, 102, 241, 0.3);
+            border-color: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 22px 35px rgba(59, 130, 246, 0.2);
+            transform: translateY(-3px);
         }
 
         .export-btn {
             display: inline-block;
-            margin-top: 24px;
+            margin-top: 28px;
         }
 
         .amount-positive {
-            color: #22c55e;
+            color: #34d399;
+            text-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
         }
 
         .amount-negative {
-            color: #ef4444;
+            color: #f87171;
+            text-shadow: 0 0 12px rgba(248, 113, 113, 0.45);
         }
 
         @media (max-width: 768px) {
@@ -528,69 +704,88 @@
         }
 
         .year-chart-container {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-            padding: 32px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 32px;
+            background: linear-gradient(185deg, rgba(6, 9, 17, 0.95) 0%, rgba(4, 6, 12, 0.92) 100%);
+            padding: 36px;
+            border-radius: 16px;
+            box-shadow: 0 34px 52px rgba(0, 0, 0, 0.6);
+            margin-bottom: 36px;
             overflow-x: auto;
-            border: 1px solid rgba(148, 163, 184, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.18);
+            position: relative;
+        }
+
+        .year-chart-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(120deg, rgba(59, 130, 246, 0.08), transparent 65%);
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 18px;
-            margin-top: 24px;
+            gap: 22px;
+            margin-top: 28px;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-            color: #cbd5e1;
-            padding: 24px;
-            border-radius: 12px;
+            background: linear-gradient(185deg, rgba(5, 7, 13, 0.95) 0%, rgba(3, 4, 9, 0.92) 100%);
+            color: var(--hud-text-secondary);
+            padding: 26px;
+            border-radius: 14px;
             text-align: center;
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            transition: all 0.3s ease;
+            border: 1px solid rgba(59, 130, 246, 0.18);
+            transition: all 0.35s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.35), transparent 55%);
+            pointer-events: none;
+            opacity: 0.35;
         }
 
         .stat-card:hover {
-            border-color: rgba(99, 102, 241, 0.3);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 24px 48px rgba(59, 130, 246, 0.22);
+            transform: translateY(-3px);
         }
 
         h2, h3 {
-            color: #f0f9ff;
+            color: var(--hud-text-primary);
         }
 
         .stat-card .label {
-            font-size: 0.8em;
-            opacity: 0.75;
-            margin-bottom: 10px;
+            font-size: 0.82em;
+            opacity: 0.85;
+            margin-bottom: 12px;
             text-transform: uppercase;
-            letter-spacing: 0.7px;
-            font-weight: 600;
+            letter-spacing: 0.75px;
+            font-weight: 700;
         }
 
         .stat-card .value {
-            font-size: 2em;
-            font-weight: 700;
-            color: #ffffff;
+            font-size: 2.1em;
+            font-weight: 800;
+            color: #f8fafc;
+            text-shadow: 0 0 18px rgba(59, 130, 246, 0.35);
         }
 
         .modal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            inset: 0;
+            background: rgba(1, 2, 6, 0.82);
             z-index: 1000;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            backdrop-filter: blur(4px);
+            padding: 24px;
+            backdrop-filter: blur(8px);
         }
 
         .modal.active {
@@ -598,15 +793,24 @@
         }
 
         .modal-content {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
-            border-radius: 16px;
-            padding: 36px;
-            max-width: 550px;
+            background: linear-gradient(190deg, rgba(5, 7, 14, 0.96) 0%, rgba(3, 4, 9, 0.94) 100%);
+            border-radius: 20px;
+            padding: 38px;
+            max-width: 560px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.22);
+            box-shadow: 0 42px 72px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(59, 130, 246, 0.1);
+            position: relative;
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent 60%);
+            pointer-events: none;
         }
 
         .modal-header {
@@ -617,31 +821,35 @@
         }
 
         .modal-title {
-            font-size: 1.8em;
+            font-size: 1.9em;
             font-weight: 800;
-            color: #ffffff;
-            letter-spacing: -0.5px;
+            color: #f8fafc;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
         }
 
         .close-modal {
-            background: rgba(148, 163, 184, 0.1);
-            border: none;
+            background: rgba(5, 7, 15, 0.75);
+            border: 1px solid rgba(59, 130, 246, 0.28);
             font-size: 1.5em;
             cursor: pointer;
-            color: #94a3b8;
+            color: var(--hud-text-secondary);
             padding: 8px;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            transition: all 0.35s ease;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.18);
         }
 
         .close-modal:hover {
             color: #ffffff;
-            background: rgba(99, 102, 241, 0.2);
+            background: rgba(59, 130, 246, 0.25);
+            border-color: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 14px 28px rgba(59, 130, 246, 0.25);
         }
 
         .auth-container {
@@ -649,82 +857,86 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            padding: 24px;
+            background: linear-gradient(135deg, #01030a 0%, #081123 50%, #01030a 100%);
             position: relative;
+            overflow: hidden;
         }
 
         .auth-container::before {
             content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+            inset: 0;
+            background:
+                linear-gradient(transparent 96%, rgba(59, 130, 246, 0.08) 100%),
+                linear-gradient(90deg, transparent 96%, rgba(59, 130, 246, 0.08) 100%),
+                radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.12) 0%, transparent 55%),
+                radial-gradient(circle at 80% 40%, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
             pointer-events: none;
             z-index: 0;
+            opacity: 0.8;
         }
 
         .auth-box {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
-            padding: 48px;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            max-width: 450px;
+            background: linear-gradient(185deg, rgba(5, 7, 15, 0.96) 0%, rgba(3, 4, 9, 0.94) 100%);
+            padding: 52px;
+            border-radius: 20px;
+            box-shadow: 0 45px 60px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(59, 130, 246, 0.1);
+            max-width: 470px;
             width: 100%;
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.22);
             position: relative;
             z-index: 1;
+            overflow: hidden;
         }
 
         .auth-box::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+            inset: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), transparent 65%);
+            pointer-events: none;
         }
 
         .auth-title {
-            color: #ffffff;
-            font-size: 2.2em;
+            color: #f8fafc;
+            font-size: 2.4em;
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             font-weight: 800;
-            letter-spacing: -0.5px;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
         }
 
         .auth-subtitle {
-            color: #cbd5e1;
+            color: var(--hud-text-secondary);
             text-align: center;
-            margin-bottom: 36px;
+            margin-bottom: 38px;
             font-size: 1em;
-            font-weight: 400;
+            font-weight: 500;
+            letter-spacing: 0.4px;
         }
 
         .logout-btn {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.95), rgba(239, 68, 68, 0.95));
             color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
+            padding: 10px 22px;
+            border: 1px solid rgba(248, 113, 113, 0.6);
+            border-radius: 10px;
             cursor: pointer;
             font-size: 0.85em;
             float: right;
             margin-top: 16px;
-            font-weight: 600;
-            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
-            transition: all 0.3s ease;
+            font-weight: 700;
+            box-shadow: 0 16px 28px rgba(239, 68, 68, 0.35);
+            transition: all 0.35s ease;
+            text-transform: uppercase;
         }
 
         .logout-btn:hover {
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+            background: linear-gradient(135deg, rgba(252, 165, 165, 1), rgba(185, 28, 28, 1));
+            box-shadow: 0 22px 38px rgba(239, 68, 68, 0.45);
+            transform: translateY(-2px);
         }
 
         #app {
@@ -736,23 +948,29 @@
         }
 
         .error-message {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
-            color: #fca5a5;
-            padding: 14px 16px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.15) 0%, rgba(239, 68, 68, 0.12) 100%);
+            color: rgba(254, 202, 202, 0.9);
+            padding: 16px 18px;
+            border-radius: 12px;
+            margin-bottom: 24px;
             display: none;
-            border: 1px solid rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.35);
+            box-shadow: 0 12px 28px rgba(248, 113, 113, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
         }
 
         .success-message {
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%);
-            color: #86efac;
-            padding: 14px 16px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.15) 0%, rgba(16, 185, 129, 0.12) 100%);
+            color: rgba(204, 251, 241, 0.9);
+            padding: 16px 18px;
+            border-radius: 12px;
+            margin-bottom: 24px;
             display: none;
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            box-shadow: 0 12px 28px rgba(16, 185, 129, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
         }
     </style>
 </head>
@@ -870,14 +1088,14 @@
                     <h2 class="modal-title">Quick Add Manager</h2>
                     <button class="close-modal" onclick="closeQuickAddManager()">×</button>
                 </div>
-                <div style="padding: 24px; max-height: 600px; overflow-y: auto; background: #000000;">
-                    <h3 style="margin-bottom: 16px; color: #d1d5db; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📌 Pinned Templates</h3>
+                <div style="padding: 26px; max-height: 600px; overflow-y: auto; background: rgba(4, 6, 12, 0.94); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);">
+                    <h3 style="margin-bottom: 16px; color: #cbd5e1; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📌 Pinned Templates</h3>
                     <div id="pinnedTemplatesList" style="margin-bottom: 32px;"></div>
 
-                    <h3 style="margin-bottom: 16px; color: #d1d5db; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💡 Suggested</h3>
+                    <h3 style="margin-bottom: 16px; color: #cbd5e1; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💡 Suggested</h3>
                     <div id="suggestedTemplatesList"></div>
                 </div>
-                <div style="padding: 20px; display: flex; gap: 10px; border-top: 1px solid #1f1f1f;">
+                <div style="padding: 20px; display: flex; gap: 10px; border-top: 1px solid rgba(59, 130, 246, 0.25);">
                     <button class="btn btn-primary" onclick="closeQuickAddManager()" style="flex: 1;">Done</button>
                 </div>
             </div>
@@ -891,7 +1109,7 @@
             <button class="nav-tab" data-tab="recurring">Recurring</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
             <div class="month-dropdown-container">
-                <label for="monthSelector" style="color: #9ca3af; font-size: 0.9em; margin: 0;">View Month:</label>
+                <label for="monthSelector" style="color: #cbd5e1; font-size: 0.85em; margin: 0; text-transform: uppercase; letter-spacing: 0.6px;">View Month:</label>
                 <select id="monthSelector" class="month-dropdown">
                     <option value="">Select a Month</option>
                     <option value="jan">January</option>
@@ -935,17 +1153,17 @@
                 </div>
 
                 <div class="year-chart-container">
-                    <h3 style="margin-bottom: 20px; color: #495057;">Monthly Spending Overview</h3>
+                    <h3 style="margin-bottom: 20px; color: #9fbefc;">Monthly Spending Overview</h3>
                     <canvas id="yearChart"></canvas>
                 </div>
 
                 <div class="year-chart-container">
-                    <h3 style="margin-bottom: 20px; color: #495057;">Income vs Spending Comparison</h3>
+                    <h3 style="margin-bottom: 20px; color: #9fbefc;">Income vs Spending Comparison</h3>
                     <canvas id="incomeVsSpendingChart"></canvas>
                 </div>
 
                 <div class="year-chart-container">
-                    <h3 style="margin-bottom: 20px; color: #495057;">Category Breakdown (Year)</h3>
+                    <h3 style="margin-bottom: 20px; color: #9fbefc;">Category Breakdown (Year)</h3>
                     <canvas id="yearCategoryChart"></canvas>
                 </div>
 
@@ -954,16 +1172,16 @@
 
             <!-- Add Expense Tab -->
             <div class="tab-content" id="add">
-                <h2 style="margin-bottom: 20px; color: #495057;">Add New Expense</h2>
+                <h2 style="margin-bottom: 20px; color: #9fbefc;">Add New Expense</h2>
                 
                 <!-- Quick Add Section -->
-                <div style="margin-bottom: 30px; padding: 20px; background: #1f1f1f; border-radius: 8px; border: 1px solid #2a2a2a;">
-                    <h3 style="margin-bottom: 15px; color: #9ca3af; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">Quick Add</h3>
+                <div style="margin-bottom: 30px; padding: 24px; background: rgba(4, 6, 12, 0.94); border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.22); box-shadow: 0 18px 32px rgba(0, 0, 0, 0.55);">
+                    <h3 style="margin-bottom: 15px; color: #cbd5e1; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.6px;">Quick Add</h3>
                     <div id="quickAddButtons" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;"></div>
-                    <button type="button" id="manageQuickAddBtn" class="btn btn-secondary" style="font-size: 0.85em; padding: 8px 12px;">+ Manage Quick Add</button>
+                    <button type="button" id="manageQuickAddBtn" class="btn btn-secondary" style="font-size: 0.8em; padding: 10px 16px; letter-spacing: 0.5px;">+ Manage Quick Add</button>
                 </div>
 
-                <hr style="border: none; border-top: 1px solid #1f1f1f; margin: 30px 0;">
+                <hr style="border: none; border-top: 1px solid rgba(59, 130, 246, 0.28); margin: 32px 0;">
 
                 <form class="expense-form" id="expenseForm">
                     <div class="form-grid">
@@ -1030,10 +1248,10 @@
 
             <!-- Income Tab -->
             <div class="tab-content" id="income">
-                <h2 style="margin-bottom: 20px; color: #495057;">Income Tracking</h2>
+                <h2 style="margin-bottom: 20px; color: #9fbefc;">Income Tracking</h2>
 
                 <form class="expense-form" id="incomeForm">
-                    <h3 style="margin-bottom: 15px; color: #495057;">Add Income</h3>
+                    <h3 style="margin-bottom: 15px; color: #9fbefc;">Add Income</h3>
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="incomeDate">Date *</label>
@@ -1071,24 +1289,24 @@
                     <button type="submit" class="btn btn-primary">Add Income</button>
                 </form>
 
-                <h3 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">Income History</h3>
+                <h3 style="margin-top: 40px; margin-bottom: 20px; color: #9fbefc;">Income History</h3>
                 <div id="incomeList"></div>
             </div>
 
             <!-- Expense History Tab -->
             <div class="tab-content" id="expenses">
-                <h2 style="margin-bottom: 20px; color: #495057;">Expense History</h2>
-                <p style="margin-bottom: 30px; color: #6c757d;">View all expenses with option to edit or delete</p>
+                <h2 style="margin-bottom: 20px; color: #9fbefc;">Expense History</h2>
+                <p style="margin-bottom: 30px; color: #94a3b8;">View all expenses with option to edit or delete</p>
                 <div id="expenseList"></div>
             </div>
 
             <!-- Recurring Transactions Tab -->
             <div class="tab-content" id="recurring">
-                <h2 style="margin-bottom: 20px; color: #495057;">Recurring Transactions</h2>
-                <p style="margin-bottom: 30px; color: #6c757d;">Set up automatic recurring expenses that you confirm before saving</p>
+                <h2 style="margin-bottom: 20px; color: #9fbefc;">Recurring Transactions</h2>
+                <p style="margin-bottom: 30px; color: #94a3b8;">Set up automatic recurring expenses that you confirm before saving</p>
                 
-                <form class="expense-form" id="recurringForm" style="margin-bottom: 40px; padding: 20px; background: #1f1f1f; border-radius: 8px; border: 1px solid #2a2a2a;">
-                    <h3 style="margin-bottom: 15px; color: #e5e7eb;">Add New Recurring Transaction</h3>
+                <form class="expense-form" id="recurringForm" style="margin-bottom: 40px; padding: 26px; background: rgba(4, 6, 12, 0.94); border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.22); box-shadow: 0 20px 34px rgba(0, 0, 0, 0.55);">
+                    <h3 style="margin-bottom: 18px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.6px;">Add New Recurring Transaction</h3>
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="recurringName">Name/Description *</label>
@@ -1171,7 +1389,7 @@
                     <button type="submit" class="btn btn-primary">Add Recurring Transaction</button>
                 </form>
 
-                <h3 style="margin-bottom: 20px; color: #e5e7eb;">Active Recurring Transactions</h3>
+                <h3 style="margin-bottom: 20px; color: #f8fafc;">Active Recurring Transactions</h3>
                 <div id="recurringList"></div>
             </div>
 
@@ -1191,8 +1409,8 @@
 
             <!-- Budget Tab -->
             <div class="tab-content" id="budget">
-                <h2 style="margin-bottom: 20px; color: #495057;">Budget Settings</h2>
-                <p style="margin-bottom: 30px; color: #6c757d;">Set your monthly budget for each category</p>
+                <h2 style="margin-bottom: 20px; color: #9fbefc;">Budget Settings</h2>
+                <p style="margin-bottom: 30px; color: #94a3b8;">Set your monthly budget for each category</p>
                 <div class="budget-form" id="budgetForm"></div>
                 <button class="btn btn-primary" onclick="saveBudgets()" style="margin-top: 20px;">Save Budgets</button>
             </div>
@@ -1699,7 +1917,7 @@
             displayTemplates = displayTemplates.slice(0, 6);
 
             if (displayTemplates.length === 0) {
-                container.innerHTML = '<p style="color: #6c757d; font-size: 0.9em;">Add some expenses first to see quick add suggestions</p>';
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em;">Add some expenses first to see quick add suggestions</p>';
                 return;
             }
 
@@ -1756,19 +1974,19 @@
             // Render pinned templates
             const pinnedContainer = document.getElementById('pinnedTemplatesList');
             if (quickAddPinned.length === 0) {
-                pinnedContainer.innerHTML = '<p style="color: #6c757d; font-size: 0.9em; margin-bottom: 20px;">No pinned templates yet. Pin some from the suggested list below!</p>';
+                pinnedContainer.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em; margin-bottom: 20px;">No pinned templates yet. Pin some from the suggested list below!</p>';
             } else {
                 let html = '';
                 quickAddPinned.forEach((template, idx) => {
                     html += `
-                        <div style="background: #1a1a1a; padding: 14px; border-radius: 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid #2a2a2a; hover: border-color: #404040; transition: all 0.2s ease;">
+                        <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 18px 20px; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45); transition: all 0.35s ease;">
                             <div>
-                                <div style="font-weight: 600; color: #e5e7eb; font-size: 0.95em;">${template.vendor || template.category}</div>
-                                <div style="font-size: 0.85em; color: #9ca3af; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category}</div>
+                                <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${template.vendor || template.category}</div>
+                                <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category}</div>
                             </div>
                             <div style="display: flex; gap: 8px;">
-                                <button class="btn btn-secondary" onclick="editQuickAddTemplate(${idx})" style="padding: 8px 12px; font-size: 0.85em; min-width: 70px; white-space: nowrap;">Edit</button>
-                                <button class="btn btn-danger" onclick="unpinQuickAddTemplate(${idx})" style="padding: 8px 12px; font-size: 0.85em; min-width: 70px; white-space: nowrap;">Unpin</button>
+                                <button class="btn btn-secondary" onclick="editQuickAddTemplate(${idx})" style="padding: 10px 14px; font-size: 0.75em; min-width: 80px; white-space: nowrap;">Edit</button>
+                                <button class="btn btn-danger" onclick="unpinQuickAddTemplate(${idx})" style="padding: 10px 14px; font-size: 0.75em; min-width: 80px; white-space: nowrap;">Unpin</button>
                             </div>
                         </div>
                     `;
@@ -1779,20 +1997,20 @@
             // Render suggested templates
             const suggestedContainer = document.getElementById('suggestedTemplatesList');
             if (suggestedTemplates.length === 0) {
-                suggestedContainer.innerHTML = '<p style="color: #6c757d; font-size: 0.9em;">Add some expenses first to see suggestions</p>';
+                suggestedContainer.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em;">Add some expenses first to see suggestions</p>';
             } else {
                 let html = '';
                 suggestedTemplates.forEach((template, idx) => {
                     const isPinned = quickAddPinned.some(p => p.category === template.category && p.amount === template.amount);
                     html += `
-                        <div style="background: #1a1a1a; padding: 14px; border-radius: 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid #2a2a2a; transition: all 0.2s ease; ${isPinned ? 'opacity: 0.6;' : ''}">
+                        <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 18px 20px; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45); transition: all 0.35s ease; ${isPinned ? 'opacity: 0.55;' : ''}">
                             <div>
-                                <div style="font-weight: 600; color: #e5e7eb; font-size: 0.95em;">${template.vendor || template.category}</div>
-                                <div style="font-size: 0.85em; color: #9ca3af; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${template.frequency || 1}x</div>
+                                <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${template.vendor || template.category}</div>
+                                <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${template.frequency || 1}x</div>
                             </div>
                             <button class="btn ${isPinned ? 'btn-secondary' : 'btn-primary'}" 
                                     onclick="pinQuickAddTemplate(${JSON.stringify(template).replace(/"/g, '&quot;')})" 
-                                    style="padding: 8px 12px; font-size: 0.85em; min-width: 80px; white-space: nowrap;">
+                                    style="padding: 10px 16px; font-size: 0.75em; min-width: 90px; white-space: nowrap;">
                                 ${isPinned ? '✓ Pinned' : '📌 Pin'}
                             </button>
                         </div>
@@ -1982,7 +2200,7 @@
             const container = document.getElementById('recurringList');
 
             if (recurringTransactions.length === 0) {
-                container.innerHTML = '<p style="color: #6c757d;">No recurring transactions set up yet</p>';
+                container.innerHTML = '<p style="color: #94a3b8;">No recurring transactions set up yet</p>';
                 return;
             }
 
@@ -1998,7 +2216,7 @@
                             <td style="font-weight: 600;">$${recurring.amount.toFixed(2)}</td>
                             <td style="text-transform: capitalize;">${recurring.frequency}</td>
                             <td>${new Date(recurring.next_due_date).toLocaleDateString()}</td>
-                            <td style="color: ${status === 'Due Now (Auto-creating)' ? '#ef4444' : '#6c757d'};">${status}</td>
+                            <td style="color: ${status === 'Due Now (Auto-creating)' ? '#ef4444' : '#94a3b8'};">${status}</td>
                             <td>
                                 <button class="btn btn-danger" style="padding: 6px 10px; font-size: 0.8em;" onclick="deleteRecurring(${recurring.id})">Delete</button>
                             </td>
@@ -2384,7 +2602,7 @@
                 return;
             }
 
-            let html = `<h2 style="margin-bottom: 20px; color: #495057;">${monthNames[monthIndex]} ${currentYear}</h2>`;
+            let html = `<h2 style="margin-bottom: 20px; color: #9fbefc;">${monthNames[monthIndex]} ${currentYear}</h2>`;
 
             // Summary cards
             const totalSpent = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -2423,12 +2641,12 @@
             if (Object.keys(categoryTotals).length > 0) {
                 html += `
                     <div class="chart-container">
-                        <h3 style="margin-bottom: 20px; color: #495057; text-align: center;">Spending by Category</h3>
+                        <h3 style="margin-bottom: 20px; color: #9fbefc; text-align: center;">Spending by Category</h3>
                         <canvas id="chart-${month}"></canvas>
                     </div>
                 `;
 
-                html += '<div class="category-breakdown"><h3 style="margin-bottom: 15px; color: #495057;">Category Details</h3>';
+                html += '<div class="category-breakdown"><h3 style="margin-bottom: 15px; color: #9fbefc;">Category Details</h3>';
 
                 // Sort categories by amount
                 const sortedCategories = Object.entries(categoryTotals)
@@ -2453,7 +2671,7 @@
                                          style="width: ${Math.min(percentage, 100)}%">
                                     </div>
                                 </div>
-                                <span style="color: #9ca3af; font-size: 0.85em; min-width: 45px; text-align: right; font-weight: 600;">
+                                <span style="color: #94a3b8; font-size: 0.85em; min-width: 45px; text-align: right; font-weight: 600;">
                                     ${percentage.toFixed(0)}%
                                 </span>
                             </div>
@@ -2808,7 +3026,7 @@
 
                 // Draw value labels on y-axis
                 const value = maxValue * (1 - i / 5);
-                ctx.fillStyle = '#9ca3af';
+                ctx.fillStyle = '#94a3b8';
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
@@ -2860,7 +3078,7 @@
                 }
 
                 // Draw label
-                ctx.fillStyle = '#d1d5db';
+                ctx.fillStyle = '#94a3b8';
                 ctx.font = 'bold 12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(labels[index], x + barWidth / 2, height - padding + 20);
@@ -2903,7 +3121,7 @@
 
                 // Draw value labels on y-axis
                 const value = maxValue * (1 - i / 5);
-                ctx.fillStyle = '#9ca3af';
+                ctx.fillStyle = '#94a3b8';
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
@@ -2973,7 +3191,7 @@
                 }
 
                 // Draw label
-                ctx.fillStyle = '#d1d5db';
+                ctx.fillStyle = '#94a3b8';
                 ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(label, x + barWidth + 2, height - padding + 20);
