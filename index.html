@@ -772,6 +772,66 @@
             box-shadow: 0 0 0 3px rgba(55, 224, 255, 0.1);
         }
 
+        /* Table Styles */
+        .expense-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(15,18,24,0.85);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .expense-table thead {
+            background: rgba(15,18,24,0.95);
+            border-bottom: 2px solid rgba(55, 224, 255, 0.2);
+        }
+
+        .expense-table th {
+            padding: 14px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .expense-table td {
+            padding: 14px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .expense-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .expense-table tbody tr:hover {
+            background: rgba(55, 224, 255, 0.05);
+        }
+
+        .expense-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        #incomeList,
+        #expenseList {
+            width: 100%;
+        }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .empty-state p:first-child {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
         .modal {
             display: none;
             position: fixed;
