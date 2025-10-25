@@ -1664,7 +1664,13 @@
                 showError(error.message);
             } else {
                 showApp();
-                await loadData();
+                try {
+                    await loadData();
+                } catch (err) {
+                    console.error('Error loading data:', err);
+                    showError('Error loading data: ' + err.message);
+                    return;
+                }
                 initializeApp();
             }
         }
@@ -1723,100 +1729,110 @@
         }
 
         async function initializeApp() {
-            // Set default date to today in local timezone
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const localDate = `${year}-${month}-${day}`;
-            document.getElementById('date').value = localDate;
+            try {
+                // Set default date to today in local timezone
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const localDate = `${year}-${month}-${day}`;
+                document.getElementById('date').value = localDate;
 
-            // Set default date for income form
-            document.getElementById('incomeDate').value = localDate;
+                // Set default date for income form
+                document.getElementById('incomeDate').value = localDate;
 
-            // Setup event listeners
-            setupNavigation();
-            setupForm();
-            setupIncomeForm();
-            setupRecurringForm();
-            setupEditRecurringForm();
-            renderAllMonths();
-            renderDashboard();
-            renderComparison();
-            renderBudgetSettings();
-            renderIncomeList();
-            renderQuickAddButtons();
-            renderRecurringList();
-            
-            // Setup quick add manage button
-            document.getElementById('manageQuickAddBtn').addEventListener('click', openQuickAddManager);
-
-            // Get and log current user info for debugging
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                console.log('===== IMPORTANT FOR DEBUGGING =====');
-                console.log('Your User ID:', user.id);
-                console.log('Your Email:', user.email);
-                console.log('=====================================');
-
-                // Automatically fix legacy records without user_id
-                await autoFixLegacyRecords(user.id);
-            }
-
-            // Fix any existing recurring transactions with missing user_id
-            await fixRecurringTransactionUserIds();
-
-            // Reload recurring transactions after fixing user_ids
-            const { data: fixedRecurringData } = await supabaseClient
-                .from('recurring_transactions')
-                .select('*');
-            
-            if (fixedRecurringData) {
-                recurringTransactions = fixedRecurringData;
-                renderRecurringList();
-                console.log('Reloaded recurring transactions after fix:', recurringTransactions.length);
-            }
-
-            // Fix any existing recurring transactions with incorrect dates
-            await fixRecurringTransactionDates();
-
-            // Fix any existing income entries with missing user_id
-            await fixIncomeUserIds();
-
-            // Reload income after fixing user_ids
-            const { data: fixedIncomeData } = await supabaseClient
-                .from('income')
-                .select('*')
-                .order('date', { ascending: false });
-            
-            if (fixedIncomeData) {
-                income = fixedIncomeData;
+                // Setup event listeners
+                setupNavigation();
+                setupForm();
+                setupIncomeForm();
+                setupRecurringForm();
+                setupEditRecurringForm();
+                renderAllMonths();
+                renderDashboard();
+                renderComparison();
+                renderBudgetSettings();
                 renderIncomeList();
-                console.log('Reloaded income entries after fix:', income.length);
-            }
-
-            // Reload quick add templates after fixing user_ids
-            const { data: fixedQuickAddData } = await supabaseClient
-                .from('quick_add_templates')
-                .select('*');
-            
-            if (fixedQuickAddData) {
-                quickAddTemplates = fixedQuickAddData;
                 renderQuickAddButtons();
-                console.log('Reloaded quick add templates after fix:', quickAddTemplates.length);
+                renderRecurringList();
+                
+                // Setup quick add manage button
+                document.getElementById('manageQuickAddBtn').addEventListener('click', openQuickAddManager);
+
+                // Get and log current user info for debugging
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    console.log('===== IMPORTANT FOR DEBUGGING =====');
+                    console.log('Your User ID:', user.id);
+                    console.log('Your Email:', user.email);
+                    console.log('=====================================');
+
+                    // Automatically fix legacy records without user_id
+                    try {
+                        await autoFixLegacyRecords(user.id);
+                    } catch (err) {
+                        console.error('Error in auto-fix (non-blocking):', err);
+                        // Don't break the app if auto-fix fails
+                    }
+                }
+
+                // Fix any existing recurring transactions with missing user_id
+                await fixRecurringTransactionUserIds();
+
+                // Reload recurring transactions after fixing user_ids
+                const { data: fixedRecurringData } = await supabaseClient
+                    .from('recurring_transactions')
+                    .select('*');
+                
+                if (fixedRecurringData) {
+                    recurringTransactions = fixedRecurringData;
+                    renderRecurringList();
+                    console.log('Reloaded recurring transactions after fix:', recurringTransactions.length);
+                }
+
+                // Fix any existing recurring transactions with incorrect dates
+                await fixRecurringTransactionDates();
+
+                // Fix any existing income entries with missing user_id
+                await fixIncomeUserIds();
+
+                // Reload income after fixing user_ids
+                const { data: fixedIncomeData } = await supabaseClient
+                    .from('income')
+                    .select('*')
+                    .order('date', { ascending: false });
+                
+                if (fixedIncomeData) {
+                    income = fixedIncomeData;
+                    renderIncomeList();
+                    console.log('Reloaded income entries after fix:', income.length);
+                }
+
+                // Reload quick add templates after fixing user_ids
+                const { data: fixedQuickAddData } = await supabaseClient
+                    .from('quick_add_templates')
+                    .select('*');
+                
+                if (fixedQuickAddData) {
+                    quickAddTemplates = fixedQuickAddData;
+                    renderQuickAddButtons();
+                    console.log('Reloaded quick add templates after fix:', quickAddTemplates.length);
+                }
+
+                // Auto-process due recurring transactions
+                await processOverdueRecurringTransactions();
+
+                // Check for due transactions every 5 minutes
+                setInterval(processOverdueRecurringTransactions, 5 * 60 * 1000);
+
+                // Render dashboard monthly charts after all data is loaded
+                setTimeout(() => {
+                    console.log('Rendering monthly charts. Expenses count:', expenses.length, 'Income count:', income.length);
+                    renderDashboardMonthlyCharts();
+                }, 500);
+            } catch (err) {
+                console.error('Error in initializeApp:', err);
+                showError('Error initializing app: ' + err.message);
             }
-
-            // Auto-process due recurring transactions
-            await processOverdueRecurringTransactions();
-
-            // Check for due transactions every 5 minutes
-            setInterval(processOverdueRecurringTransactions, 5 * 60 * 1000);
-
-            // Render dashboard monthly charts after all data is loaded
-            setTimeout(() => {
-                console.log('Rendering monthly charts. Expenses count:', expenses.length, 'Income count:', income.length);
-                renderDashboardMonthlyCharts();
-            }, 500);
         }
 
         async function loadData() {
