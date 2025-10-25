@@ -377,13 +377,14 @@
             margin-bottom: 20px;
             border: 1px solid var(--hairline);
             backdrop-filter: blur(20px);
-            max-height: 280px;
-            overflow: hidden;
+            overflow: auto;
         }
 
         .chart-container canvas {
-            max-height: 250px !important;
+            max-width: 100% !important;
             width: 100% !important;
+            height: auto !important;
+            display: block;
         }
 
         .budget-item {
