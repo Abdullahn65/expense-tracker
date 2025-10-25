@@ -5,25 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --primary: #3b82f6;
-            --primary-dark: #1d4ed8;
-            --primary-light: #60a5fa;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --neutral-50: #f9fafb;
-            --neutral-100: #f3f4f6;
-            --neutral-200: #e5e7eb;
-            --neutral-300: #d1d5db;
-            --neutral-400: #9ca3af;
-            --neutral-500: #6b7280;
-            --neutral-600: #4b5563;
-            --neutral-700: #374151;
-            --neutral-800: #1f2937;
-            --neutral-900: #111827;
+            /* Shield AI Palette */
+            --bg-primary: #0A0C10;
+            --bg-surface: #0F1218;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A6B0BF;
+            --accent: #37E0FF;
+            --accent-purple: #7B61FF;
+            --danger: #FF5C5C;
+            --success: #35E6A6;
+            --hairline: rgba(255,255,255,0.08);
+            
+            /* Category Colors */
+            --cat-transport: #3B82F6;
+            --cat-dining: #8B5CF6;
+            --cat-investment: #EC4899;
+            --cat-subscriptions: #06B6D4;
+            --cat-housing: #F59E0B;
+            --cat-entertainment: #EF4444;
+            --cat-healthcare: #10B981;
+            --cat-shopping: #06B6D4;
+            --cat-other: #6366F1;
         }
 
         * {
@@ -33,10 +38,10 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
-            background: #f0f4f8;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
             min-height: 100vh;
-            color: var(--neutral-900);
+            color: var(--text-primary);
         }
 
         .container {
@@ -45,12 +50,12 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background: white;
+            background: var(--bg-primary);
         }
 
         header {
-            background: white;
-            border-bottom: 1px solid var(--neutral-200);
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--hairline);
             padding: 0 32px;
             display: flex;
             align-items: center;
@@ -59,18 +64,19 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            backdrop-filter: blur(20px);
         }
 
         h1 {
             font-size: 28px;
             font-weight: 700;
-            color: var(--neutral-900);
+            color: var(--text-primary);
             letter-spacing: -0.5px;
         }
 
         .subtitle {
             font-size: 14px;
-            color: var(--neutral-500);
+            color: var(--text-secondary);
             font-weight: 500;
         }
 
@@ -78,10 +84,11 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            background: white;
-            border-bottom: 1px solid var(--neutral-200);
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--hairline);
             padding: 0 32px;
             flex-wrap: wrap;
+            backdrop-filter: blur(20px);
         }
 
         .nav-tab {
@@ -91,7 +98,7 @@
             background: transparent;
             font-size: 14px;
             font-weight: 600;
-            color: var(--neutral-500);
+            color: var(--text-secondary);
             transition: all 0.2s ease;
             white-space: nowrap;
             border-bottom: 3px solid transparent;
@@ -99,12 +106,13 @@
         }
 
         .nav-tab:hover {
-            color: var(--neutral-700);
+            color: var(--text-primary);
         }
 
         .nav-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            text-shadow: 0 0 8px rgba(55, 224, 255, 0.3);
         }
 
         .month-dropdown-container {
@@ -117,10 +125,10 @@
 
         .month-dropdown {
             padding: 10px 16px;
-            border: 1px solid var(--neutral-300);
+            border: 1px solid var(--hairline);
             border-radius: 8px;
-            background: white;
-            color: var(--neutral-900);
+            background: var(--bg-surface);
+            color: var(--text-primary);
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
@@ -129,19 +137,19 @@
         }
 
         .month-dropdown:hover {
-            border-color: var(--primary);
-            background: var(--neutral-50);
+            border-color: var(--accent);
+            background: rgba(55, 224, 255, 0.05);
         }
 
         .month-dropdown:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(55, 224, 255, 0.1);
         }
 
         .content {
             padding: 32px;
-            background: #f0f4f8;
+            background: var(--bg-primary);
             flex: 1;
             overflow-y: auto;
         }
@@ -163,24 +171,25 @@
         h2 {
             font-size: 24px;
             font-weight: 700;
-            color: var(--neutral-900);
+            color: var(--text-primary);
             margin-bottom: 24px;
         }
 
         h3 {
             font-size: 16px;
             font-weight: 700;
-            color: var(--neutral-900);
+            color: var(--text-primary);
             margin-bottom: 16px;
         }
 
         .expense-form {
-            background: white;
+            background: rgba(15,18,24,0.85);
             padding: 32px;
             border-radius: 12px;
             margin-bottom: 32px;
-            border: 1px solid var(--neutral-200);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--hairline);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
         }
 
         .form-grid {
@@ -198,31 +207,35 @@
         label {
             font-weight: 600;
             margin-bottom: 8px;
-            color: var(--neutral-700);
+            color: var(--text-secondary);
             font-size: 14px;
         }
 
         input, select, textarea {
             padding: 12px 14px;
-            border: 1px solid var(--neutral-300);
+            border: 1px solid var(--hairline);
             border-radius: 8px;
             font-size: 14px;
             transition: all 0.2s ease;
-            background: white;
-            color: var(--neutral-900);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
             font-family: inherit;
         }
 
+        input::placeholder, select::placeholder, textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
         input:hover, select:hover, textarea:hover {
-            border-color: var(--neutral-400);
-            background: var(--neutral-50);
+            border-color: rgba(55, 224, 255, 0.3);
+            background: rgba(255,255,255,0.08);
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--accent);
+            background: rgba(55, 224, 255, 0.05);
+            box-shadow: 0 0 0 3px rgba(55, 224, 255, 0.1);
         }
 
         textarea {
@@ -243,16 +256,15 @@
         }
 
         .btn-primary {
-            background: var(--primary);
-            color: white;
+            background: linear-gradient(90deg, var(--accent), var(--accent-purple));
+            color: var(--bg-primary);
             width: 100%;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 20px rgba(55, 224, 255, 0.3);
         }
 
         .btn-primary:hover {
-            background: var(--primary-dark);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            transform: translateY(-1px);
+            box-shadow: 0 0 30px rgba(55, 224, 255, 0.5);
+            transform: translateY(-2px);
         }
 
         .btn-primary:active {
@@ -264,57 +276,59 @@
             color: white;
             padding: 10px 16px;
             font-size: 13px;
-            box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
+            box-shadow: 0 0 12px rgba(255, 92, 92, 0.3);
         }
 
         .btn-danger:hover {
-            background: #dc2626;
-            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 20px rgba(255, 92, 92, 0.5);
         }
 
         .btn-secondary {
-            background: var(--neutral-200);
-            color: var(--neutral-700);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            background: rgba(255,255,255,0.08);
+            color: var(--text-secondary);
+            border: 1px solid var(--hairline);
+            box-shadow: 0 0 0 0px rgba(55, 224, 255, 0);
         }
 
         .btn-secondary:hover {
-            background: var(--neutral-300);
-            color: var(--neutral-900);
+            background: rgba(255,255,255,0.12);
+            color: var(--text-primary);
+            border-color: rgba(55, 224, 255, 0.3);
+            box-shadow: 0 0 12px rgba(55, 224, 255, 0.2);
         }
 
         .expense-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            background: white;
+            background: rgba(15,18,24,0.85);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            border: 1px solid var(--neutral-200);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--hairline);
         }
 
         .expense-table th {
-            background: var(--neutral-100);
-            color: var(--neutral-700);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-secondary);
             padding: 16px 20px;
             text-align: left;
             font-weight: 700;
             font-size: 13px;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--neutral-200);
+            border-bottom: 1px solid var(--hairline);
             text-transform: uppercase;
         }
 
         .expense-table td {
             padding: 14px 20px;
-            border-bottom: 1px solid var(--neutral-100);
-            color: var(--neutral-900);
+            border-bottom: 1px solid var(--hairline);
+            color: var(--text-primary);
             font-size: 14px;
         }
 
         .expense-table tr:hover {
-            background: var(--neutral-50);
+            background: rgba(55, 224, 255, 0.05);
         }
 
         .summary-cards {
@@ -325,22 +339,23 @@
         }
 
         .summary-card {
-            background: white;
+            background: rgba(15,18,24,0.85);
             padding: 28px;
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            border: 1px solid var(--neutral-200);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--hairline);
             transition: all 0.2s ease;
+            backdrop-filter: blur(20px);
         }
 
         .summary-card:hover {
-            border-color: var(--neutral-300);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: rgba(55, 224, 255, 0.3);
+            box-shadow: 0 0 20px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
             transform: translateY(-2px);
         }
 
         .summary-card h3 {
-            color: var(--neutral-500);
+            color: var(--text-secondary);
             font-size: 13px;
             margin-bottom: 12px;
             text-transform: uppercase;
@@ -350,17 +365,18 @@
         .summary-card .value {
             font-size: 28px;
             font-weight: 800;
-            color: var(--neutral-900);
+            color: var(--text-primary);
             letter-spacing: -0.5px;
         }
 
         .chart-container {
-            background: white;
-            padding: 28px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            background: rgba(15,18,24,0.85);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             margin-bottom: 32px;
-            border: 1px solid var(--neutral-200);
+            border: 1px solid var(--hairline);
+            backdrop-filter: blur(20px);
         }
 
         canvas {
@@ -369,18 +385,18 @@
         }
 
         .budget-item {
-            background: white;
+            background: rgba(15,18,24,0.85);
             padding: 20px;
             border-radius: 12px;
-            border: 1px solid var(--neutral-200);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--hairline);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             margin-bottom: 16px;
             transition: all 0.2s ease;
         }
 
         .budget-item:hover {
-            border-color: var(--neutral-300);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            border-color: rgba(55, 224, 255, 0.3);
+            box-shadow: 0 0 12px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
         }
 
         .budget-header {
@@ -392,20 +408,20 @@
 
         .budget-category {
             font-weight: 700;
-            color: var(--neutral-900);
+            color: var(--text-primary);
             font-size: 14px;
         }
 
         .budget-amount {
             font-weight: 700;
-            color: var(--primary);
+            color: var(--accent);
             font-size: 14px;
         }
 
         .progress-bar {
             width: 100%;
             height: 8px;
-            background: var(--neutral-200);
+            background: rgba(255,255,255,0.05);
             border-radius: 999px;
             overflow: hidden;
             margin-top: 12px;
@@ -413,7 +429,7 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            background: linear-gradient(90deg, var(--accent), var(--accent-purple));
             transition: width 0.3s ease;
             display: flex;
             align-items: center;
@@ -423,10 +439,12 @@
             font-size: 11px;
             padding-right: 6px;
             border-radius: 999px;
+            box-shadow: 0 0 12px rgba(55, 224, 255, 0.4);
         }
 
         .progress-fill.over-budget {
-            background: linear-gradient(90deg, var(--danger), #dc2626);
+            background: linear-gradient(90deg, var(--danger), #FF8080);
+            box-shadow: 0 0 12px rgba(255, 92, 92, 0.4);
         }
 
         .budget-form {
@@ -438,10 +456,10 @@
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: var(--neutral-500);
-            border: 2px dashed var(--neutral-300);
+            color: var(--text-secondary);
+            border: 2px dashed var(--hairline);
             border-radius: 12px;
-            background: var(--neutral-50);
+            background: rgba(255,255,255,0.02);
         }
 
         .empty-state svg {
@@ -459,19 +477,19 @@
             display: flex;
             justify-content: space-between;
             padding: 16px 20px;
-            background: white;
+            background: rgba(15,18,24,0.85);
             margin-bottom: 12px;
             border-radius: 12px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--neutral-200);
-            color: var(--neutral-900);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--hairline);
+            color: var(--text-primary);
             transition: all 0.2s ease;
             font-size: 14px;
         }
 
         .category-item:hover {
-            border-color: var(--neutral-300);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            border-color: rgba(55, 224, 255, 0.3);
+            box-shadow: 0 0 12px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
         }
 
         .export-btn {
@@ -487,6 +505,209 @@
         .amount-negative {
             color: var(--danger);
             font-weight: 600;
+        }
+
+        .year-chart-container {
+            background: rgba(15,18,24,0.85);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin-bottom: 32px;
+            overflow-x: auto;
+            border: 1px solid var(--hairline);
+            backdrop-filter: blur(20px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .stat-card {
+            background: rgba(15,18,24,0.85);
+            color: var(--text-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--hairline);
+            transition: all 0.2s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+        }
+
+        .stat-card:hover {
+            border-color: rgba(55, 224, 255, 0.3);
+            box-shadow: 0 0 12px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(15,18,24,0.95);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 520px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--hairline);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .close-modal {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--hairline);
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 6px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            color: var(--text-primary);
+            background: rgba(55, 224, 255, 0.1);
+            border-color: rgba(55, 224, 255, 0.3);
+        }
+
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: var(--bg-primary);
+        }
+
+        .auth-box {
+            background: rgba(15,18,24,0.95);
+            padding: 48px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid var(--hairline);
+            backdrop-filter: blur(20px);
+        }
+
+        .auth-title {
+            color: var(--text-primary);
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .auth-subtitle {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            background: var(--danger);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            float: right;
+            margin-top: 16px;
+            font-weight: 600;
+            box-shadow: 0 0 12px rgba(255, 92, 92, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            background: #FF4747;
+            box-shadow: 0 0 20px rgba(255, 92, 92, 0.5);
+        }
+
+        #app {
+            display: none;
+        }
+
+        #auth {
+            display: block;
+        }
+
+        .error-message {
+            background: rgba(255, 92, 92, 0.1);
+            color: #FF9999;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid rgba(255, 92, 92, 0.3);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .success-message {
+            background: rgba(53, 230, 166, 0.1);
+            color: #66E6BB;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid rgba(53, 230, 166, 0.3);
+            font-size: 14px;
+            font-weight: 500;
         }
 
         @media (max-width: 768px) {
@@ -519,204 +740,6 @@
             header {
                 padding: 16px;
             }
-        }
-
-        .year-chart-container {
-            background: white;
-            padding: 28px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            margin-bottom: 32px;
-            overflow-x: auto;
-            border: 1px solid var(--neutral-200);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-top: 24px;
-        }
-
-        .stat-card {
-            background: white;
-            color: var(--neutral-500);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            border: 1px solid var(--neutral-200);
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .stat-card:hover {
-            border-color: var(--neutral-300);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
-        }
-
-        .stat-card .label {
-            font-size: 13px;
-            opacity: 0.8;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-
-        .stat-card .value {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--neutral-900);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 32px;
-            max-width: 520px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 1px solid var(--neutral-200);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--neutral-900);
-        }
-
-        .close-modal {
-            background: var(--neutral-100);
-            border: 1px solid var(--neutral-200);
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--neutral-500);
-            padding: 6px;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .close-modal:hover {
-            color: var(--neutral-900);
-            background: var(--neutral-200);
-            border-color: var(--neutral-300);
-        }
-
-        .auth-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            background: white;
-        }
-
-        .auth-box {
-            background: white;
-            padding: 48px;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
-            max-width: 420px;
-            width: 100%;
-            border: 1px solid var(--neutral-200);
-        }
-
-        .auth-title {
-            color: var(--neutral-900);
-            font-size: 28px;
-            text-align: center;
-            margin-bottom: 12px;
-            font-weight: 700;
-        }
-
-        .auth-subtitle {
-            color: var(--neutral-500);
-            text-align: center;
-            margin-bottom: 32px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .logout-btn {
-            background: var(--danger);
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            float: right;
-            margin-top: 16px;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
-            transition: all 0.2s ease;
-        }
-
-        .logout-btn:hover {
-            background: #dc2626;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-
-        #app {
-            display: none;
-        }
-
-        #auth {
-            display: block;
-        }
-
-        .error-message {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 14px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            border: 1px solid #fecaca;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .success-message {
-            background: #ecfdf5;
-            color: #065f46;
-            padding: 14px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            border: 1px solid #a7f3d0;
-            font-size: 14px;
-            font-weight: 500;
         }
     </style>
 </head>
@@ -2490,28 +2513,70 @@
             });
 
             const categoryTotals = calculateCategoryTotals(monthExpenses);
-
             if (Object.keys(categoryTotals).length === 0) return;
 
+            const shieldColors = {
+                'Transportation': '#3B82F6',
+                'Dining Out': '#8B5CF6',
+                'Investment': '#EC4899',
+                'Subscriptions': '#06B6D4',
+                'Housing': '#F59E0B',
+                'Entertainment': '#EF4444',
+                'Healthcare': '#10B981',
+                'Shopping': '#06B6D4',
+            };
+
+            const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedData.map(([cat]) => cat);
+            const data = sortedData.map(([, amount]) => amount);
+            const colors = labels.map(label => shieldColors[label] || '#6366F1');
+
+            // Destroy existing chart if any
+            if (window[`chart_${month}`]) {
+                window[`chart_${month}`].destroy();
+            }
+
             const ctx = canvas.getContext('2d');
-
-            // Make canvas wider for proper legend display
-            const minWidth = 1200;
-            canvas.width = Math.max(canvas.offsetWidth, minWidth);
-            canvas.height = 600;
-
-            drawPieChart(ctx, categoryTotals, canvas.width, canvas.height);
+            window[`chart_${month}`] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(15,18,24,0.85)',
+                        borderWidth: 3,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,18,24,0.95)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#A6B0BF',
+                            padding: 12,
+                            bodyFont: { size: 14, weight: 'bold' },
+                            callbacks: {
+                                label: (context) => `$${context.parsed.toFixed(2)}`
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function renderYearChart() {
             const canvas = document.getElementById('yearChart');
             if (!canvas) return;
-
-            const ctx = canvas.getContext('2d');
-            // Make canvas much wider to accommodate all 12 months
-            const minWidth = 1000; // Minimum width for proper spacing
-            canvas.width = Math.max(canvas.offsetWidth, minWidth);
-            canvas.height = 500;
 
             const monthlyTotals = months.map((month, index) => {
                 return expenses.filter(exp => {
@@ -2520,39 +2585,90 @@
                 }).reduce((sum, exp) => sum + exp.amount, 0);
             });
 
-            // Draw the chart and store bar positions
-            const barPositions = drawBarChart(ctx, monthlyTotals, monthNames, canvas.width, canvas.height);
+            // Destroy existing chart if any
+            if (window.yearChart) {
+                window.yearChart.destroy();
+            }
 
-            // Add click listener for interactivity
-            canvas.style.cursor = 'pointer';
-            canvas.addEventListener('click', function(event) {
-                const rect = canvas.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
-
-                // Check if click is on any bar
-                for (let i = 0; i < barPositions.length; i++) {
-                    const bar = barPositions[i];
-                    if (x >= bar.x && x <= bar.x + bar.width && 
-                        y >= bar.y && y <= bar.y + bar.height) {
-                        // Clicked on month bar, navigate to that month
-                        switchTab(months[i]);
-                        break;
+            const ctx = document.getElementById('yearChart').getContext('2d');
+            window.yearChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthNames,
+                    datasets: [{
+                        label: 'Monthly Spending',
+                        data: monthlyTotals,
+                        backgroundColor: [
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                            'rgba(59,130,246,0.8)',
+                        ],
+                        borderColor: '#37E0FF',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        hoverBackgroundColor: 'rgba(55,224,255,0.8)',
+                        hoverBorderColor: '#37E0FF',
+                        hoverBorderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,18,24,0.95)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#A6B0BF',
+                            padding: 12,
+                            callbacks: {
+                                label: (context) => `$${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255,255,255,0.08)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#A6B0BF',
+                                callback: (value) => `$${value.toLocaleString()}`
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A6B0BF'
+                            }
+                        }
                     }
                 }
-            }, { once: false });
+            });
         }
 
         function renderIncomeVsSpendingChart() {
             const canvas = document.getElementById('incomeVsSpendingChart');
             if (!canvas) return;
 
-            const ctx = canvas.getContext('2d');
-            const minWidth = 1000;
-            canvas.width = Math.max(canvas.offsetWidth, minWidth);
-            canvas.height = 500;
-
-            // Calculate monthly income and spending
             const monthlyIncome = months.map((month, index) => {
                 return income.filter(inc => {
                     const incDate = new Date(inc.date);
@@ -2567,7 +2683,82 @@
                 }).reduce((sum, exp) => sum + exp.amount, 0);
             });
 
-            drawComparisonChart(ctx, monthlyIncome, monthlySpending, monthNames, canvas.width, canvas.height);
+            // Destroy existing chart if any
+            if (window.incomeVsChart) {
+                window.incomeVsChart.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            window.incomeVsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthNames,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: monthlyIncome,
+                            backgroundColor: 'rgba(53,230,166,0.7)',
+                            borderColor: '#35E6A6',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Spending',
+                            data: monthlySpending,
+                            backgroundColor: 'rgba(59,130,246,0.7)',
+                            borderColor: '#3B82F6',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            borderSkipped: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#A6B0BF',
+                                padding: 16
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,18,24,0.95)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#A6B0BF',
+                            padding: 12,
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255,255,255,0.08)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#A6B0BF',
+                                callback: (value) => `$${value.toLocaleString()}`
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A6B0BF'
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function renderYearCategoryChart() {
@@ -2579,399 +2770,88 @@
             });
 
             const categoryTotals = calculateCategoryTotals(yearExpenses);
-
             if (Object.keys(categoryTotals).length === 0) return;
 
+            const shieldColors = {
+                'Transportation': '#3B82F6',
+                'Dining Out': '#8B5CF6',
+                'Investment': '#EC4899',
+                'Subscriptions': '#06B6D4',
+                'Housing': '#F59E0B',
+                'Entertainment': '#EF4444',
+                'Healthcare': '#10B981',
+                'Shopping': '#06B6D4',
+            };
+
+            const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedData.map(([cat]) => cat);
+            const data = sortedData.map(([, amount]) => amount);
+            const colors = labels.map(label => shieldColors[label] || '#6366F1');
+
+            // Destroy existing chart if any
+            if (window.yearCategoryChart) {
+                window.yearCategoryChart.destroy();
+            }
+
             const ctx = canvas.getContext('2d');
-            // Make canvas MUCH wider to fit legend properly
-            const minWidth = 1200;
-            canvas.width = Math.max(canvas.offsetWidth, minWidth);
-            canvas.height = 600;
-
-            drawPieChart(ctx, categoryTotals, canvas.width, canvas.height);
-        }
-
-        // Simple chart drawing functions
-        function drawPieChart(ctx, data, width, height) {
-            const total = Object.values(data).reduce((a, b) => a + b, 0);
-
-            // Modern vibrant color palette
-            const colors = [
-                '#667eea', '#764ba2', '#f093fb', '#4facfe',
-                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
-                '#a8edea', '#fed6e3', '#c471f5', '#12c2e9',
-                '#f857a6', '#ff6a00', '#00f2fe', '#4facfe'
-            ];
-
-            // Improved layout - bigger pie, better spacing
-            const pieSize = Math.min(width * 0.45, height * 0.85);
-            const centerX = pieSize / 2 + 50;
-            const centerY = height / 2;
-            const radius = pieSize / 2 - 20;
-
-            const legendX = pieSize + 100;
-            const legendStartY = 50;
-            const itemHeight = 45;
-
-            // Draw modern pie chart with shadow and 3D effect
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-            ctx.shadowBlur = 20;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 8;
-
-            let currentAngle = -Math.PI / 2;
-
-            // Sort data by amount for better visualization
-            const sortedData = Object.entries(data).sort((a, b) => b[1] - a[1]);
-
-            sortedData.forEach(([category, amount], index) => {
-                const sliceAngle = (amount / total) * 2 * Math.PI;
-
-                ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
-                ctx.closePath();
-
-                // Create gradient for each slice for modern look
-                const gradientAngle = currentAngle + sliceAngle / 2;
-                const gradient = ctx.createRadialGradient(
-                    centerX, centerY, radius * 0.3,
-                    centerX, centerY, radius
-                );
-                const baseColor = colors[index % colors.length];
-                gradient.addColorStop(0, lightenColor(baseColor, 20));
-                gradient.addColorStop(1, baseColor);
-
-                ctx.fillStyle = gradient;
-                ctx.fill();
-
-                // Draw percentage label inside slice
-                const labelAngle = currentAngle + sliceAngle / 2;
-                const labelX = centerX + Math.cos(labelAngle) * (radius * 0.65);
-                const labelY = centerY + Math.sin(labelAngle) * (radius * 0.65);
-
-                const percentage = ((amount / total) * 100).toFixed(1);
-
-                if (percentage > 4) {
-                    ctx.shadowColor = 'transparent';
-                    ctx.fillStyle = 'white';
-                    ctx.font = 'bold 16px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.lineWidth = 3;
-                    ctx.strokeText(`${percentage}%`, labelX, labelY);
-                    ctx.fillText(`${percentage}%`, labelX, labelY);
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-                    ctx.shadowBlur = 20;
-                }
-
-                currentAngle += sliceAngle;
-            });
-
-            // Reset shadow for legend
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-
-            // Draw modern legend with cards
-            let legendY = legendStartY;
-
-            sortedData.forEach(([category, amount], index) => {
-                // Modern card-style legend item
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
-                ctx.beginPath();
-                ctx.roundRect(legendX - 5, legendY - 5, width - legendX - 20, 40, 8);
-                ctx.fill();
-
-                // Color indicator bar
-                ctx.fillStyle = colors[index % colors.length];
-                ctx.beginPath();
-                ctx.roundRect(legendX, legendY, 8, 30, 4);
-                ctx.fill();
-
-                // Category name (truncate if too long)
-                ctx.fillStyle = '#2d3748';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-
-                const maxWidth = width - legendX - 40;
-                let displayCategory = category;
-                let textWidth = ctx.measureText(displayCategory).width;
-
-                // Truncate text if it's too long
-                if (textWidth > maxWidth) {
-                    while (textWidth > maxWidth - 20 && displayCategory.length > 0) {
-                        displayCategory = displayCategory.slice(0, -1);
-                        textWidth = ctx.measureText(displayCategory + '...').width;
+            window.yearCategoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(15,18,24,0.85)',
+                        borderWidth: 3,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#A6B0BF',
+                                padding: 20,
+                                font: { size: 13, weight: 'bold' },
+                                generateLabels: (chart) => {
+                                    const data = chart.data;
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const pct = ((value / total) * 100).toFixed(1);
+                                        return {
+                                            text: `${label}: $${value.toFixed(2)} (${pct}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,18,24,0.95)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#A6B0BF',
+                            padding: 12,
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = ((value / total) * 100).toFixed(1);
+                                    return `$${value.toFixed(2)} (${pct}%)`;
+                                }
+                            }
+                        }
                     }
-                    displayCategory += '...';
                 }
-
-                ctx.fillText(displayCategory, legendX + 18, legendY + 2);
-
-                // Amount and percentage
-                ctx.fillStyle = '#718096';
-                ctx.font = '13px sans-serif';
-                const percentage = ((amount / total) * 100).toFixed(1);
-                ctx.fillText(`$${amount.toFixed(2)} (${percentage}%)`, legendX + 18, legendY + 20);
-
-                legendY += itemHeight;
             });
-
-            // Draw total at the bottom with modern styling
-            legendY += 15;
-            ctx.fillStyle = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            ctx.fillStyle = '#667eea';
-            ctx.beginPath();
-            ctx.roundRect(legendX - 5, legendY - 5, width - legendX - 20, 35, 8);
-            ctx.fill();
-
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText(`Total: $${total.toFixed(2)}`, legendX + 10, legendY + 10);
-        }
-
-        // Helper function to lighten colors
-        function lightenColor(color, percent) {
-            const num = parseInt(color.replace("#",""), 16);
-            const amt = Math.round(2.55 * percent);
-            const R = (num >> 16) + amt;
-            const G = (num >> 8 & 0x00FF) + amt;
-            const B = (num & 0x0000FF) + amt;
-            return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 +
-                (G<255?G<1?0:G:255)*0x100 + (B<255?B<1?0:B:255))
-                .toString(16).slice(1);
-        }
-
-        function drawBarChart(ctx, data, labels, width, height) {
-            const padding = 80;
-            const chartWidth = width - padding * 2;
-            const chartHeight = height - padding * 2;
-
-            const maxValue = Math.max(...data, 1);
-            const barWidth = chartWidth / data.length - 15;
-
-            // Modern color palette - consistent with pie chart
-            const colors = [
-                '#667eea', '#764ba2', '#f093fb', '#4facfe',
-                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
-                '#a8edea', '#fed6e3', '#c471f5', '#12c2e9'
-            ];
-
-            // Draw grid lines
-            ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= 5; i++) {
-                const y = padding + (chartHeight / 5) * i;
-                ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(width - padding, y);
-                ctx.stroke();
-
-                // Draw value labels on y-axis
-                const value = maxValue * (1 - i / 5);
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`$${value.toFixed(0)}`, padding - 10, y);
-            }
-
-            // Store bar positions for click detection
-            const barPositions = [];
-
-            // Draw bars with shadow
-            data.forEach((value, index) => {
-                const barHeight = (value / maxValue) * chartHeight;
-                const x = padding + index * (chartWidth / data.length) + 8;
-                const y = height - padding - barHeight;
-
-                // Store bar position for click detection
-                barPositions.push({ x, y, width: barWidth, height: barHeight });
-
-                // Add shadow
-                ctx.shadowColor = 'rgba(102, 126, 234, 0.3)';
-                ctx.shadowBlur = 10;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 4;
-
-                // Create gradient for bar with consistent colors
-                const baseColor = colors[index % colors.length];
-                const gradient = ctx.createLinearGradient(0, y, 0, height - padding);
-                gradient.addColorStop(0, lightenColor(baseColor, 15));
-                gradient.addColorStop(1, baseColor);
-
-                ctx.fillStyle = gradient;
-
-                // Draw rounded rectangle bar
-                ctx.beginPath();
-                const radius = 6;
-                ctx.roundRect(x, y, barWidth, barHeight, [radius, radius, 0, 0]);
-                ctx.fill();
-
-                // Reset shadow
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-
-                // Draw value on top of bar
-                if (value > 0) {
-                    ctx.fillStyle = '#f3f4f6';
-                    ctx.font = 'bold 13px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`$${value.toFixed(0)}`, x + barWidth / 2, y - 10);
-                }
-
-                // Draw label
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = 'bold 12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(labels[index], x + barWidth / 2, height - padding + 20);
-            });
-
-            // Draw axes
-            ctx.strokeStyle = '#4b5563';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, height - padding);
-            ctx.lineTo(width - padding, height - padding);
-            ctx.stroke();
-
-            // Return bar positions for click detection
-            return barPositions;
-        }
-
-        function drawComparisonChart(ctx, incomeData, spendingData, labels, width, height) {
-            const padding = 80;
-            const chartWidth = width - padding * 2;
-            const chartHeight = height - padding * 2;
-
-            const maxValue = Math.max(...incomeData, ...spendingData, 1);
-            const barWidth = (chartWidth / labels.length - 20) / 2;
-
-            // Modern color palette - consistent
-            const incomeColor = '#43e97b';
-            const spendingColor = '#667eea';
-
-            // Draw grid lines
-            ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= 5; i++) {
-                const y = padding + (chartHeight / 5) * i;
-                ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(width - padding, y);
-                ctx.stroke();
-
-                // Draw value labels on y-axis
-                const value = maxValue * (1 - i / 5);
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`$${value.toFixed(0)}`, padding - 10, y);
-            }
-
-            // Draw bars
-            labels.forEach((label, index) => {
-                const income = incomeData[index];
-                const spending = spendingData[index];
-                const x = padding + index * (chartWidth / labels.length) + 10;
-
-                // Income bar (green)
-                const incomeHeight = (income / maxValue) * chartHeight;
-                const incomeY = height - padding - incomeHeight;
-
-                ctx.shadowColor = 'rgba(67, 233, 123, 0.3)';
-                ctx.shadowBlur = 10;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 4;
-
-                const incomeGradient = ctx.createLinearGradient(0, incomeY, 0, height - padding);
-                incomeGradient.addColorStop(0, lightenColor(incomeColor, 15));
-                incomeGradient.addColorStop(1, incomeColor);
-
-                ctx.fillStyle = incomeGradient;
-                ctx.beginPath();
-                const radius = 6;
-                ctx.roundRect(x, incomeY, barWidth, incomeHeight, [radius, radius, 0, 0]);
-                ctx.fill();
-
-                ctx.shadowColor = 'transparent';
-
-                // Spending bar (purple)
-                const spendingHeight = (spending / maxValue) * chartHeight;
-                const spendingY = height - padding - spendingHeight;
-
-                ctx.shadowColor = 'rgba(102, 126, 234, 0.3)';
-                ctx.shadowBlur = 10;
-                ctx.shadowOffsetY = 4;
-
-                const spendingGradient = ctx.createLinearGradient(0, spendingY, 0, height - padding);
-                spendingGradient.addColorStop(0, lightenColor(spendingColor, 15));
-                spendingGradient.addColorStop(1, spendingColor);
-
-                ctx.fillStyle = spendingGradient;
-                ctx.beginPath();
-                ctx.roundRect(x + barWidth + 4, spendingY, barWidth, spendingHeight, [radius, radius, 0, 0]);
-                ctx.fill();
-
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-
-                // Draw values on top of bars
-                if (income > 0) {
-                    ctx.fillStyle = incomeColor;
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`$${income.toFixed(0)}`, x + barWidth / 2, incomeY - 5);
-                }
-
-                if (spending > 0) {
-                    ctx.fillStyle = spendingColor;
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`$${spending.toFixed(0)}`, x + barWidth + 4 + barWidth / 2, spendingY - 5);
-                }
-
-                // Draw label
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(label, x + barWidth + 2, height - padding + 20);
-            });
-
-            // Draw axes
-            ctx.strokeStyle = '#4b5563';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, height - padding);
-            ctx.lineTo(width - padding, height - padding);
-            ctx.stroke();
-
-            // Draw legend
-            const legendX = padding;
-            const legendY = 20;
-
-            // Income legend
-            ctx.fillStyle = '#43e97b';
-            ctx.beginPath();
-            ctx.roundRect(legendX, legendY, 20, 15, 3);
-            ctx.fill();
-            ctx.fillStyle = '#f3f4f6';
-            ctx.font = 'bold 13px sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText('Income', legendX + 30, legendY + 12);
-
-            // Spending legend
-            ctx.fillStyle = '#667eea';
-            ctx.beginPath();
-            ctx.roundRect(legendX + 120, legendY, 20, 15, 3);
-            ctx.fill();
-            ctx.fillStyle = '#f3f4f6';
-            ctx.fillText('Spending', legendX + 150, legendY + 12);
         }
 
         // Dashboard
