@@ -334,13 +334,13 @@
         .summary-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .summary-card {
             background: rgba(15,18,24,0.85);
-            padding: 28px;
+            padding: 20px;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             border: 1px solid var(--hairline);
@@ -356,14 +356,14 @@
 
         .summary-card h3 {
             color: var(--text-secondary);
-            font-size: 13px;
-            margin-bottom: 12px;
+            font-size: 12px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .summary-card .value {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 800;
             color: var(--text-primary);
             letter-spacing: -0.5px;
@@ -509,13 +509,19 @@
 
         .year-chart-container {
             background: rgba(15,18,24,0.85);
-            padding: 32px;
+            padding: 20px;
             border-radius: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            margin-bottom: 32px;
+            margin-bottom: 20px;
             overflow-x: auto;
             border: 1px solid var(--hairline);
             backdrop-filter: blur(20px);
+            max-height: 350px;
+        }
+
+        .year-chart-container canvas {
+            max-height: 300px !important;
+            width: 100% !important;
         }
 
         .stats-grid {
@@ -899,7 +905,7 @@
         <div class="content">
             <!-- Dashboard Tab -->
             <div class="tab-content active" id="dashboard">
-                <h2 style="margin-bottom: 20px;">Annual Summary <span id="dashboardYear"></span></h2>
+                <h2 style="margin-bottom: 12px;">Annual Summary <span id="dashboardYear"></span></h2>
 
                 <div class="summary-cards">
                     <div class="summary-card">
@@ -921,17 +927,17 @@
                 </div>
 
                 <div class="year-chart-container">
-                    <h3 style="margin-bottom: 20px;">Monthly Spending Overview</h3>
+                    <h3 style="margin-bottom: 12px;">Monthly Spending Overview</h3>
                     <canvas id="yearChart"></canvas>
                 </div>
 
                 <div class="year-chart-container">
-                    <h3 style="margin-bottom: 20px;">Income vs Spending Comparison</h3>
+                    <h3 style="margin-bottom: 12px;">Income vs Spending Comparison</h3>
                     <canvas id="incomeVsSpendingChart"></canvas>
                 </div>
 
                 <div class="year-chart-container">
-                    <h3 style="margin-bottom: 20px;">Category Breakdown (Year)</h3>
+                    <h3 style="margin-bottom: 12px;">Category Breakdown (Year)</h3>
                     <canvas id="yearCategoryChart"></canvas>
                 </div>
 
