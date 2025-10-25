@@ -609,13 +609,12 @@
         }
 
         .chart-wrapper {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            clip-path: inset(100% 0 0 0);
+            transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .monthly-chart-card:hover .chart-wrapper {
-            max-height: 280px;
+            clip-path: inset(0% 0 0 0);
         }
 
         .monthly-chart-card canvas {
