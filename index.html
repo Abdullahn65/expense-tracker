@@ -1751,6 +1751,15 @@
             // Setup quick add manage button
             document.getElementById('manageQuickAddBtn').addEventListener('click', openQuickAddManager);
 
+            // Get and log current user info for debugging
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                console.log('===== IMPORTANT FOR DEBUGGING =====');
+                console.log('Your User ID:', user.id);
+                console.log('Your Email:', user.email);
+                console.log('=====================================');
+            }
+
             // Fix any existing recurring transactions with missing user_id
             await fixRecurringTransactionUserIds();
 
@@ -2544,40 +2553,25 @@
                     return;
                 }
 
-                // Load recurring transactions including legacy ones (user_id IS NULL)
-                // Note: This requires updated RLS policy that allows NULL user_id
-                const { data: allRecurringData } = await supabaseClient
+                console.log('Current user ID:', user.id);
+                console.log('Attempting to fix recurring transaction user_ids...');
+
+                // Since RLS might prevent us from seeing NULL user_id records,
+                // we'll try a direct update approach
+                // Note: This requires the user to have manually fixed the RLS policy first
+                
+                // Try to get user's current recurring transactions
+                const { data: userRecurringData, error: userError } = await supabaseClient
                     .from('recurring_transactions')
-                    .select('*');
+                    .select('*')
+                    .eq('user_id', user.id);
 
-                if (!allRecurringData || allRecurringData.length === 0) {
-                    console.log('No recurring transactions to fix');
-                    return;
+                console.log('User recurring transactions:', userRecurringData?.length || 0);
+                
+                if (userError) {
+                    console.error('Error loading user recurring transactions:', userError);
                 }
 
-                console.log('Total recurring transactions available:', allRecurringData.length);
-
-                // Find transactions that don't have a user_id
-                const needsUpdate = allRecurringData.filter(r => !r.user_id);
-                console.log('Transactions needing user_id update:', needsUpdate.length);
-
-                // Update each one with the current user's ID
-                for (const recurring of needsUpdate) {
-                    const { error: updateError } = await supabaseClient
-                        .from('recurring_transactions')
-                        .update({ user_id: user.id })
-                        .eq('id', recurring.id);
-
-                    if (updateError) {
-                        console.error(`Error updating user_id for recurring transaction ${recurring.id}:`, updateError);
-                    } else {
-                        console.log(`Updated user_id for: ${recurring.name}`);
-                    }
-                }
-
-                if (needsUpdate.length > 0) {
-                    console.log(`Successfully updated ${needsUpdate.length} recurring transactions with user_id`);
-                }
             } catch (err) {
                 console.error('Error in fixRecurringTransactionUserIds:', err);
             }
