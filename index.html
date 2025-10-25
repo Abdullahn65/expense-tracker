@@ -2262,6 +2262,9 @@
         function renderRecurringList() {
             const container = document.getElementById('recurringList');
 
+            console.log('Rendering recurring list. Total transactions:', recurringTransactions.length);
+            console.log('Recurring transactions data:', recurringTransactions);
+
             if (recurringTransactions.length === 0) {
                 container.innerHTML = '<p style="color: #94a3b8;">No recurring transactions set up yet</p>';
                 return;
@@ -2269,9 +2272,10 @@
 
             let html = '<table class="expense-table"><thead><tr><th>Name</th><th>Amount</th><th>Frequency</th><th>Next Due</th><th>Status</th><th>Action</th></tr></thead><tbody>';
 
-            recurringTransactions
-                .filter(r => r.active)
-                .forEach(recurring => {
+            const activeTransactions = recurringTransactions.filter(r => r.active !== false);
+            console.log('Active transactions:', activeTransactions.length);
+
+            activeTransactions.forEach(recurring => {
                     const status = new Date(recurring.next_due_date) <= new Date() ? 'Due Now (Auto-creating)' : 'Pending';
                     html += `
                         <tr>
