@@ -616,6 +616,57 @@
             }
         }
 
+        .comparison-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(15, 18, 24, 0.5);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .comparison-row:hover {
+            background: rgba(15, 18, 24, 0.8);
+            transform: translateX(4px);
+        }
+
+        .comparison-row.income {
+            border-left-color: var(--success);
+        }
+
+        .comparison-row.expense {
+            border-left-color: var(--danger);
+        }
+
+        .comparison-month {
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 80px;
+        }
+
+        .comparison-values {
+            display: flex;
+            gap: 24px;
+            font-size: 14px;
+        }
+
+        .comparison-value {
+            text-align: right;
+            min-width: 120px;
+        }
+
+        .comparison-value.income-val {
+            color: var(--success);
+        }
+
+        .comparison-value.expense-val {
+            color: var(--danger);
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -969,6 +1020,7 @@
 
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-tab" data-tab="comparison">Comparison</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="expenses">Expenses</button>
@@ -1024,6 +1076,25 @@
                 </div>
 
                 <button class="btn btn-secondary export-btn" onclick="exportToCSV()">Export All Data to CSV</button>
+            </div>
+
+            <!-- Comparison Tab -->
+            <div class="tab-content" id="comparison">
+                <h2 style="margin-bottom: 24px;">Income vs Expenses Comparison</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+                    <!-- Monthly Comparison Table -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">Monthly Breakdown</h3>
+                        <div id="comparisonTable" style="max-height: 500px; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- Annual Pie Chart -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">Annual Breakdown</h3>
+                        <canvas id="annualCategoryChart"></canvas>
+                    </div>
+                </div>
             </div>
 
             <!-- Add Expense Tab -->
@@ -1452,6 +1523,7 @@
             setupRecurringForm();
             renderAllMonths();
             renderDashboard();
+            renderComparison();
             renderBudgetSettings();
             renderIncomeList();
             renderExpenseList();
@@ -1584,6 +1656,16 @@
                 setTimeout(() => {
                     console.log('Dashboard tab clicked. Rendering monthly charts. Expenses count:', expenses.length);
                     renderDashboardMonthlyCharts();
+                }, 200);
+                // Reset month dropdown when switching away from month tabs
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
+            } else if (tabName === 'comparison') {
+                setTimeout(() => {
+                    console.log('Comparison tab clicked. Rendering comparison data.');
+                    renderComparison();
                 }, 200);
                 // Reset month dropdown when switching away from month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2366,7 +2448,7 @@
 
             sortedIncome.forEach(inc => {
                 html += `
-                    <tr id="income-${inc.id}" style="cursor: pointer; transition: background-color 0.2s ease;" onclick="highlightIncomeEntry(${inc.id})">
+                    <tr id="income-${inc.id}" data-income-id="${inc.id}" style="cursor: pointer; transition: background-color 0.2s ease;" onclick="highlightIncomeEntry(${inc.id})">
                         <td>${inc.date}</td>
                         <td>${inc.source}</td>
                         <td>${inc.description}</td>
@@ -2842,6 +2924,179 @@
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const percentage = ((value / total) * 100).toFixed(1);
                                     return `$${value.toFixed(0)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Comparison Page
+        function renderComparison() {
+            renderComparisonTable();
+            renderAnnualCategoryChart();
+        }
+
+        function renderComparisonTable() {
+            const tableContainer = document.getElementById('comparisonTable');
+            if (!tableContainer) return;
+
+            let html = '';
+
+            months.forEach((month, index) => {
+                const monthIncome = (income || []).filter(inc => {
+                    const incDate = new Date(inc.date);
+                    return incDate.getFullYear() === currentYear && incDate.getMonth() === index;
+                }).reduce((sum, inc) => sum + inc.amount, 0);
+
+                const monthExpenses = (expenses || []).filter(exp => {
+                    const expDate = new Date(exp.date);
+                    return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
+                }).reduce((sum, exp) => sum + exp.amount, 0);
+
+                const difference = monthIncome - monthExpenses;
+                const differenceColor = difference >= 0 ? 'var(--success)' : 'var(--danger)';
+
+                html += `
+                    <div class="comparison-row">
+                        <div class="comparison-month">${monthNames[index]}</div>
+                        <div class="comparison-values">
+                            <div class="comparison-value income-val" onclick="scrollToIncome(${index})" title="Click to view">
+                                <div style="font-size: 12px; opacity: 0.7;">Income</div>
+                                <div style="font-weight: 600;">$${monthIncome.toFixed(2)}</div>
+                            </div>
+                            <div class="comparison-value expense-val" onclick="switchToMonth(${index})" title="Click to view">
+                                <div style="font-size: 12px; opacity: 0.7;">Expenses</div>
+                                <div style="font-weight: 600;">$${monthExpenses.toFixed(2)}</div>
+                            </div>
+                            <div class="comparison-value" style="color: ${differenceColor};">
+                                <div style="font-size: 12px; opacity: 0.7;">Difference</div>
+                                <div style="font-weight: 600;">$${difference.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            tableContainer.innerHTML = html;
+        }
+
+        function scrollToIncome(monthIndex) {
+            const incomeEntry = income.find(inc => {
+                const incDate = new Date(inc.date);
+                return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
+            });
+
+            if (incomeEntry) {
+                // Highlight and scroll
+                switchTab('income');
+                setTimeout(() => {
+                    const entryElement = document.querySelector(`[data-income-id="${incomeEntry.id}"]`);
+                    if (entryElement) {
+                        entryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        entryElement.style.background = 'rgba(53, 230, 166, 0.2)';
+                        setTimeout(() => {
+                            entryElement.style.transition = 'background 0.6s ease';
+                            entryElement.style.background = 'transparent';
+                        }, 300);
+                    }
+                }, 300);
+            }
+        }
+
+        function switchToMonth(monthIndex) {
+            const month = months[monthIndex];
+            switchTab(month);
+        }
+
+        function renderAnnualCategoryChart() {
+            const canvas = document.getElementById('annualCategoryChart');
+            if (!canvas) return;
+
+            const yearExpenses = expenses.filter(exp => {
+                return new Date(exp.date).getFullYear() === currentYear;
+            });
+
+            const categoryTotals = calculateCategoryTotals(yearExpenses);
+            if (Object.keys(categoryTotals).length === 0) {
+                canvas.parentElement.innerHTML = '<div style="padding: 40px; text-align: center; color: #A6B0BF;">No expense data for annual breakdown</div>';
+                return;
+            }
+
+            const shieldColors = {
+                'Transportation': '#3B82F6',
+                'Dining Out': '#8B5CF6',
+                'Investment': '#EC4899',
+                'Subscriptions': '#06B6D4',
+                'Housing': '#F59E0B',
+                'Entertainment': '#EF4444',
+                'Healthcare': '#10B981',
+                'Shopping': '#06B6D4',
+            };
+
+            const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedData.map(([cat]) => cat);
+            const data = sortedData.map(([, amount]) => amount);
+            const colors = labels.map(label => shieldColors[label] || '#6366F1');
+
+            if (window.annualCategoryChart) {
+                window.annualCategoryChart.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            window.annualCategoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(15,18,24,0.85)',
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#A6B0BF',
+                                padding: 16,
+                                font: { size: 12, weight: 'bold' },
+                                generateLabels: (chart) => {
+                                    const data = chart.data;
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const pct = ((value / total) * 100).toFixed(1);
+                                        return {
+                                            text: `${label}: $${value.toFixed(0)} (${pct}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,18,24,0.95)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#A6B0BF',
+                            padding: 12,
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = ((value / total) * 100).toFixed(1);
+                                    return `$${value.toFixed(2)} (${pct}%)`;
                                 }
                             }
                         }
