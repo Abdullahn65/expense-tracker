@@ -538,32 +538,6 @@
             font-weight: 600;
         }
 
-        @keyframes rollDown {
-            from {
-                max-height: 0;
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                max-height: 300px;
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes rollUp {
-            from {
-                max-height: 300px;
-                opacity: 1;
-                transform: translateY(0);
-            }
-            to {
-                max-height: 0;
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-        }
-
         .monthly-chart-card {
             background: rgba(15,18,24,0.85);
             padding: 16px;
@@ -571,10 +545,13 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             border: 1px solid var(--hairline);
             backdrop-filter: blur(20px);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
         }
 
         .monthly-chart-card:hover {
@@ -592,6 +569,7 @@
             text-align: center;
             position: relative;
             z-index: 2;
+            flex-shrink: 0;
         }
 
         .monthly-chart-card h4::after {
@@ -600,7 +578,7 @@
             margin-left: 6px;
             font-size: 8px;
             opacity: 0.6;
-            transition: transform 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .monthly-chart-card:hover h4::after {
@@ -609,12 +587,17 @@
         }
 
         .chart-wrapper {
-            clip-path: inset(100% 0 0 0);
-            transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.3s ease 0.1s;
+            flex-grow: 1;
         }
 
         .monthly-chart-card:hover .chart-wrapper {
-            clip-path: inset(0% 0 0 0);
+            max-height: 300px;
+            opacity: 1;
         }
 
         .monthly-chart-card canvas {
@@ -622,6 +605,18 @@
             width: 100% !important;
             height: auto !important;
             display: block;
+            animation: popIn 0.3s ease 0.2s both;
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .stats-grid {
