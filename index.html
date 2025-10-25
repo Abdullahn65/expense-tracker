@@ -1751,6 +1751,20 @@
             // Setup quick add manage button
             document.getElementById('manageQuickAddBtn').addEventListener('click', openQuickAddManager);
 
+            // Fix any existing recurring transactions with missing user_id
+            await fixRecurringTransactionUserIds();
+
+            // Reload recurring transactions after fixing user_ids
+            const { data: fixedRecurringData } = await supabaseClient
+                .from('recurring_transactions')
+                .select('*');
+            
+            if (fixedRecurringData) {
+                recurringTransactions = fixedRecurringData;
+                renderRecurringList();
+                console.log('Reloaded recurring transactions after fix:', recurringTransactions.length);
+            }
+
             // Fix any existing recurring transactions with incorrect dates
             await fixRecurringTransactionDates();
 
@@ -1810,12 +1824,20 @@
             }
 
             // Load recurring transactions
-            const { data: recurringData } = await supabaseClient
+            const { data: recurringData, error: recurringError } = await supabaseClient
                 .from('recurring_transactions')
                 .select('*');
 
+            if (recurringError) {
+                console.error('Error loading recurring transactions:', recurringError);
+            }
+
             if (recurringData) {
                 recurringTransactions = recurringData;
+                console.log('Loaded recurring transactions:', recurringTransactions.length);
+            } else {
+                console.log('No recurring transactions data returned');
+                recurringTransactions = [];
             }
         }
 
@@ -2514,6 +2536,53 @@
         }
 
         // Fix existing recurring transactions with incorrect next_due_date
+        async function fixRecurringTransactionUserIds() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) {
+                    console.log('No user logged in, skipping user_id fix');
+                    return;
+                }
+
+                // Load recurring transactions including legacy ones (user_id IS NULL)
+                // Note: This requires updated RLS policy that allows NULL user_id
+                const { data: allRecurringData } = await supabaseClient
+                    .from('recurring_transactions')
+                    .select('*');
+
+                if (!allRecurringData || allRecurringData.length === 0) {
+                    console.log('No recurring transactions to fix');
+                    return;
+                }
+
+                console.log('Total recurring transactions available:', allRecurringData.length);
+
+                // Find transactions that don't have a user_id
+                const needsUpdate = allRecurringData.filter(r => !r.user_id);
+                console.log('Transactions needing user_id update:', needsUpdate.length);
+
+                // Update each one with the current user's ID
+                for (const recurring of needsUpdate) {
+                    const { error: updateError } = await supabaseClient
+                        .from('recurring_transactions')
+                        .update({ user_id: user.id })
+                        .eq('id', recurring.id);
+
+                    if (updateError) {
+                        console.error(`Error updating user_id for recurring transaction ${recurring.id}:`, updateError);
+                    } else {
+                        console.log(`Updated user_id for: ${recurring.name}`);
+                    }
+                }
+
+                if (needsUpdate.length > 0) {
+                    console.log(`Successfully updated ${needsUpdate.length} recurring transactions with user_id`);
+                }
+            } catch (err) {
+                console.error('Error in fixRecurringTransactionUserIds:', err);
+            }
+        }
+
         async function fixRecurringTransactionDates() {
             for (const recurring of recurringTransactions) {
                 if (!recurring.active) continue;
