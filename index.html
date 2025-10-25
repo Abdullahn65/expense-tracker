@@ -1758,6 +1758,9 @@
                 console.log('Your User ID:', user.id);
                 console.log('Your Email:', user.email);
                 console.log('=====================================');
+
+                // Automatically fix legacy records without user_id
+                await autoFixLegacyRecords(user.id);
             }
 
             // Fix any existing recurring transactions with missing user_id
@@ -2624,6 +2627,41 @@
 
             } catch (err) {
                 console.error('Error in fixIncomeUserIds:', err);
+            }
+        }
+
+        async function autoFixLegacyRecords(userId) {
+            try {
+                console.log('Starting automatic fix for legacy records...');
+
+                // Fix recurring transactions
+                const { error: recurringError } = await supabaseClient
+                    .from('recurring_transactions')
+                    .update({ user_id: userId })
+                    .is('user_id', null);
+
+                if (recurringError) {
+                    console.log('Recurring transactions error (might be normal):', recurringError.message);
+                } else {
+                    console.log('✓ Updated recurring transactions');
+                }
+
+                // Fix income entries
+                const { error: incomeError } = await supabaseClient
+                    .from('income')
+                    .update({ user_id: userId })
+                    .is('user_id', null);
+
+                if (incomeError) {
+                    console.log('Income error (might be normal):', incomeError.message);
+                } else {
+                    console.log('✓ Updated income entries');
+                }
+
+                console.log('Legacy record fix attempt completed');
+
+            } catch (err) {
+                console.error('Error in autoFixLegacyRecords:', err);
             }
         }
 
