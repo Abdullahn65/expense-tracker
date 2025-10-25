@@ -588,16 +588,13 @@
 
         .chart-wrapper {
             max-height: 0;
-            opacity: 0;
             overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-                        opacity 0.3s ease 0.1s;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             flex-grow: 1;
         }
 
         .monthly-chart-card:hover .chart-wrapper {
             max-height: 300px;
-            opacity: 1;
         }
 
         .monthly-chart-card canvas {
