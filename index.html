@@ -554,10 +554,42 @@
             flex-direction: column;
         }
 
-        .monthly-chart-card:hover {
-            border-color: rgba(55, 224, 255, 0.3);
-            box-shadow: 0 0 20px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
-            transform: translateY(-2px);
+        @media (hover: hover) {
+            .monthly-chart-card:hover {
+                border-color: rgba(55, 224, 255, 0.3);
+                box-shadow: 0 0 20px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+                transform: translateY(-2px);
+            }
+
+            .monthly-chart-card:hover h4::after {
+                transform: rotate(180deg);
+                opacity: 1;
+            }
+
+            .monthly-chart-card:hover .chart-wrapper {
+                max-height: 300px;
+            }
+        }
+
+        @media (hover: none) {
+            /* Touch devices */
+            .monthly-chart-card {
+                cursor: pointer;
+            }
+
+            .monthly-chart-card.expanded {
+                border-color: rgba(55, 224, 255, 0.3);
+                box-shadow: 0 0 20px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+            }
+
+            .monthly-chart-card.expanded h4::after {
+                transform: rotate(180deg);
+                opacity: 1;
+            }
+
+            .monthly-chart-card.expanded .chart-wrapper {
+                max-height: 300px;
+            }
         }
 
         .monthly-chart-card h4 {
@@ -570,6 +602,7 @@
             position: relative;
             z-index: 2;
             flex-shrink: 0;
+            user-select: none;
         }
 
         .monthly-chart-card h4::after {
@@ -581,20 +614,11 @@
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .monthly-chart-card:hover h4::after {
-            transform: rotate(180deg);
-            opacity: 1;
-        }
-
         .chart-wrapper {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             flex-grow: 1;
-        }
-
-        .monthly-chart-card:hover .chart-wrapper {
-            max-height: 300px;
         }
 
         .monthly-chart-card canvas {
@@ -2821,7 +2845,7 @@
 
             months.forEach((month, index) => {
                 html += `
-                    <div class="monthly-chart-card">
+                    <div class="monthly-chart-card" data-month="${month}">
                         <h4>${monthNames[index]}</h4>
                         <div class="chart-wrapper">
                             <canvas id="dashboard-chart-${month}"></canvas>
@@ -2831,6 +2855,17 @@
             });
 
             grid.innerHTML = html;
+
+            // Add touch/click handlers for mobile
+            const cards = grid.querySelectorAll('.monthly-chart-card');
+            cards.forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Only toggle if clicking on the card itself or header, not on interactive elements
+                    if (e.target === this || e.target.tagName === 'H4') {
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
 
             // Now render each chart
             months.forEach((month, index) => {
