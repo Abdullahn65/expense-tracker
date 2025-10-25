@@ -2074,7 +2074,7 @@
                             <td>${recurring.name}</td>
                             <td style="font-weight: 600;">$${recurring.amount.toFixed(2)}</td>
                             <td style="text-transform: capitalize;">${recurring.frequency}</td>
-                            <td>${new Date(recurring.next_due_date).toLocaleDateString()}</td>
+                            <td>${recurring.next_due_date}</td>
                             <td style="color: ${status === 'Due Now (Auto-creating)' ? '#ef4444' : '#94a3b8'};">${status}</td>
                             <td>
                                 <button class="btn btn-danger" style="padding: 6px 10px; font-size: 0.8em;" onclick="deleteRecurring(${recurring.id})">Delete</button>
@@ -2365,7 +2365,7 @@
             sortedIncome.forEach(inc => {
                 html += `
                     <tr id="income-${inc.id}" style="cursor: pointer; transition: background-color 0.2s ease;" onclick="highlightIncomeEntry(${inc.id})">
-                        <td>${new Date(inc.date).toLocaleDateString()}</td>
+                        <td>${inc.date}</td>
                         <td>${inc.source}</td>
                         <td>${inc.description}</td>
                         <td style="font-weight: 600; color: #28a745;">$${inc.amount.toFixed(2)}</td>
@@ -2415,7 +2415,7 @@
             sortedExpenses.forEach(exp => {
                 html += `
                     <tr>
-                        <td>${new Date(exp.date).toLocaleDateString()}</td>
+                        <td>${exp.date}</td>
                         <td>${exp.category}</td>
                         <td>${exp.description}</td>
                         <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
@@ -2561,7 +2561,7 @@
                 monthExpenses.forEach(exp => {
                     html += `
                         <tr>
-                            <td>${new Date(exp.date).toLocaleDateString()}</td>
+                            <td>${exp.date}</td>
                             <td>${exp.category}</td>
                             <td>${exp.description}</td>
                             <td>${exp.vendor || '-'}</td>
