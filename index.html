@@ -538,6 +538,32 @@
             font-weight: 600;
         }
 
+        @keyframes rollDown {
+            from {
+                max-height: 0;
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                max-height: 300px;
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes rollUp {
+            from {
+                max-height: 300px;
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                max-height: 0;
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
         .monthly-chart-card {
             background: rgba(15,18,24,0.85);
             padding: 16px;
@@ -546,6 +572,9 @@
             border: 1px solid var(--hairline);
             backdrop-filter: blur(20px);
             transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
 
         .monthly-chart-card:hover {
@@ -561,12 +590,42 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .monthly-chart-card h4::after {
+            content: '▼';
+            display: inline-block;
+            margin-left: 6px;
+            font-size: 8px;
+            opacity: 0.6;
+            transition: transform 0.3s ease;
+        }
+
+        .monthly-chart-card:hover h4::after {
+            transform: rotate(180deg);
+            opacity: 1;
+        }
+
+        .chart-wrapper {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.4s ease;
+        }
+
+        .monthly-chart-card:hover .chart-wrapper {
+            max-height: 300px;
+            opacity: 1;
         }
 
         .monthly-chart-card canvas {
             max-height: 220px !important;
             width: 100% !important;
             height: auto !important;
+            display: block;
         }
 
         .stats-grid {
@@ -2690,7 +2749,9 @@
                 html += `
                     <div class="monthly-chart-card">
                         <h4>${monthNames[index]}</h4>
-                        <canvas id="dashboard-chart-${month}"></canvas>
+                        <div class="chart-wrapper">
+                            <canvas id="dashboard-chart-${month}"></canvas>
+                        </div>
                     </div>
                 `;
             });
