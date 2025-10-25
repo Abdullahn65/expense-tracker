@@ -552,8 +552,9 @@
         }
 
         .monthly-chart-card canvas {
-            max-height: 180px !important;
+            max-height: 220px !important;
             width: 100% !important;
+            height: auto !important;
         }
 
         .stats-grid {
@@ -2632,9 +2633,26 @@
 
             // Early return if no expenses data
             if (!expenses || expenses.length === 0) {
-                console.warn('No expenses data available for yearChart');
+                const ctx = canvas.getContext('2d');
+                canvas.style.display = 'none';
+                const container = canvas.parentElement;
+                if (!container.querySelector('.no-data-message')) {
+                    const message = document.createElement('div');
+                    message.className = 'no-data-message';
+                    message.style.cssText = 'padding: 40px 20px; text-align: center; color: #A6B0BF; font-size: 14px;';
+                    message.textContent = 'No spending data yet. Add expenses to see your monthly overview.';
+                    container.appendChild(message);
+                }
                 return;
             }
+
+            // Remove no-data message if it exists
+            const container = canvas.parentElement;
+            const noDataMsg = container.querySelector('.no-data-message');
+            if (noDataMsg) {
+                noDataMsg.remove();
+            }
+            canvas.style.display = 'block';
 
             const monthlyTotals = months.map((month, index) => {
                 return expenses.filter(exp => {
@@ -2729,9 +2747,26 @@
 
             // Early return if no data
             if ((!income || income.length === 0) && (!expenses || expenses.length === 0)) {
-                console.warn('No income or expenses data available for incomeVsSpendingChart');
+                const ctx = canvas.getContext('2d');
+                canvas.style.display = 'none';
+                const container = canvas.parentElement;
+                if (!container.querySelector('.no-data-message')) {
+                    const message = document.createElement('div');
+                    message.className = 'no-data-message';
+                    message.style.cssText = 'padding: 40px 20px; text-align: center; color: #A6B0BF; font-size: 14px;';
+                    message.textContent = 'No income or spending data yet. Add transactions to see your comparison.';
+                    container.appendChild(message);
+                }
                 return;
             }
+
+            // Remove no-data message if it exists
+            const container = canvas.parentElement;
+            const noDataMsg = container.querySelector('.no-data-message');
+            if (noDataMsg) {
+                noDataMsg.remove();
+            }
+            canvas.style.display = 'block';
 
             const monthlyIncome = months.map((month, index) => {
                 return (income || []).filter(inc => {
@@ -2831,9 +2866,25 @@
 
             // Early return if no expenses data
             if (!expenses || expenses.length === 0) {
-                console.warn('No expenses data available for yearCategoryChart');
+                canvas.style.display = 'none';
+                const container = canvas.parentElement;
+                if (!container.querySelector('.no-data-message')) {
+                    const message = document.createElement('div');
+                    message.className = 'no-data-message';
+                    message.style.cssText = 'padding: 40px 20px; text-align: center; color: #A6B0BF; font-size: 14px;';
+                    message.textContent = 'No category data yet. Add expenses to see your spending breakdown.';
+                    container.appendChild(message);
+                }
                 return;
             }
+
+            // Remove no-data message if it exists
+            const container = canvas.parentElement;
+            const noDataMsg = container.querySelector('.no-data-message');
+            if (noDataMsg) {
+                noDataMsg.remove();
+            }
+            canvas.style.display = 'block';
 
             const yearExpenses = expenses.filter(exp => {
                 return new Date(exp.date).getFullYear() === currentYear;
@@ -2966,7 +3017,10 @@
         function renderDashboardMonthlyCharts() {
             // Early return if no expenses data
             if (!expenses || expenses.length === 0) {
-                console.warn('No expenses data available for renderDashboardMonthlyCharts');
+                const grid = document.getElementById('monthlyChartsGrid');
+                if (grid) {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px 20px; text-align: center; color: #A6B0BF; font-size: 14px;">No monthly data yet. Add expenses to see your monthly breakdowns.</div>';
+                }
                 return;
             }
 
@@ -3002,7 +3056,28 @@
             });
 
             const categoryTotals = calculateCategoryTotals(monthExpenses);
-            if (Object.keys(categoryTotals).length === 0) return;
+            
+            // Show message if no data for this month
+            if (Object.keys(categoryTotals).length === 0) {
+                canvas.style.display = 'none';
+                const container = canvas.parentElement;
+                if (!container.querySelector('.no-month-data-message')) {
+                    const message = document.createElement('div');
+                    message.className = 'no-month-data-message';
+                    message.style.cssText = 'padding: 20px; text-align: center; color: #A6B0BF; font-size: 12px;';
+                    message.textContent = 'No expenses';
+                    container.appendChild(message);
+                }
+                return;
+            }
+
+            // Remove no-data message if it exists
+            const container = canvas.parentElement;
+            const noMonthDataMsg = container.querySelector('.no-month-data-message');
+            if (noMonthDataMsg) {
+                noMonthDataMsg.remove();
+            }
+            canvas.style.display = 'block';
 
             const shieldColors = {
                 'Transportation': '#3B82F6',
