@@ -1795,6 +1795,17 @@
                 console.log('Reloaded income entries after fix:', income.length);
             }
 
+            // Reload quick add templates after fixing user_ids
+            const { data: fixedQuickAddData } = await supabaseClient
+                .from('quick_add_templates')
+                .select('*');
+            
+            if (fixedQuickAddData) {
+                quickAddTemplates = fixedQuickAddData;
+                renderQuickAddButtons();
+                console.log('Reloaded quick add templates after fix:', quickAddTemplates.length);
+            }
+
             // Auto-process due recurring transactions
             await processOverdueRecurringTransactions();
 
@@ -1850,12 +1861,20 @@
             }
 
             // Load quick add templates
-            const { data: quickAddData } = await supabaseClient
+            const { data: quickAddData, error: quickAddError } = await supabaseClient
                 .from('quick_add_templates')
                 .select('*');
 
+            if (quickAddError) {
+                console.error('Error loading quick add templates:', quickAddError);
+            }
+
             if (quickAddData) {
                 quickAddTemplates = quickAddData;
+                console.log('Loaded quick add templates:', quickAddTemplates.length);
+            } else {
+                console.log('No quick add templates data returned');
+                quickAddTemplates = [];
             }
 
             // Load recurring transactions
@@ -2656,6 +2675,18 @@
                     console.log('Income error (might be normal):', incomeError.message);
                 } else {
                     console.log('✓ Updated income entries');
+                }
+
+                // Fix quick add templates
+                const { error: quickAddError } = await supabaseClient
+                    .from('quick_add_templates')
+                    .update({ user_id: userId })
+                    .is('user_id', null);
+
+                if (quickAddError) {
+                    console.log('Quick add templates error (might be normal):', quickAddError.message);
+                } else {
+                    console.log('✓ Updated quick add templates');
                 }
 
                 console.log('Legacy record fix attempt completed');
