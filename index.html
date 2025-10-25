@@ -620,13 +620,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            margin-bottom: 8px;
+            padding: 10px;
             background: rgba(15, 18, 24, 0.5);
-            border-radius: 8px;
+            border-radius: 6px;
             border-left: 3px solid var(--accent);
             cursor: pointer;
             transition: all 0.2s ease;
+            font-size: 13px;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
 
         .comparison-row:hover {
@@ -645,18 +647,20 @@
         .comparison-month {
             font-weight: 600;
             color: var(--text-primary);
-            min-width: 80px;
+            min-width: 70px;
+            flex-shrink: 0;
         }
 
         .comparison-values {
             display: flex;
-            gap: 24px;
-            font-size: 14px;
+            gap: 16px;
+            font-size: 12px;
         }
 
         .comparison-value {
             text-align: right;
-            min-width: 120px;
+            min-width: 100px;
+            flex-shrink: 0;
         }
 
         .comparison-value.income-val {
@@ -1082,11 +1086,11 @@
             <div class="tab-content" id="comparison">
                 <h2 style="margin-bottom: 24px;">Income vs Expenses Comparison</h2>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; height: calc(100vh - 250px);">
                     <!-- Monthly Comparison Table -->
-                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column;">
                         <h3 style="margin-bottom: 16px; color: var(--text-primary);">Monthly Breakdown</h3>
-                        <div id="comparisonTable" style="max-height: 500px; overflow-y: auto;"></div>
+                        <div id="comparisonTable" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
                     </div>
 
                     <!-- Annual Pie Chart -->
@@ -2956,23 +2960,20 @@
                 }).reduce((sum, exp) => sum + exp.amount, 0);
 
                 const difference = monthIncome - monthExpenses;
-                const differenceColor = difference >= 0 ? 'var(--success)' : 'var(--danger)';
+                const differenceColor = difference >= 0 ? '#35E6A6' : '#FF5C5C';
 
                 html += `
                     <div class="comparison-row">
                         <div class="comparison-month">${monthNames[index]}</div>
                         <div class="comparison-values">
-                            <div class="comparison-value income-val" onclick="scrollToIncome(${index})" title="Click to view">
-                                <div style="font-size: 12px; opacity: 0.7;">Income</div>
-                                <div style="font-weight: 600;">$${monthIncome.toFixed(2)}</div>
+                            <div class="comparison-value income-val" onclick="scrollToIncome(${index})" title="Click to view income" style="cursor: pointer;">
+                                $${monthIncome.toFixed(0)}
                             </div>
-                            <div class="comparison-value expense-val" onclick="switchToMonth(${index})" title="Click to view">
-                                <div style="font-size: 12px; opacity: 0.7;">Expenses</div>
-                                <div style="font-weight: 600;">$${monthExpenses.toFixed(2)}</div>
+                            <div class="comparison-value expense-val" onclick="switchToMonth(${index})" title="Click to view" style="cursor: pointer;">
+                                $${monthExpenses.toFixed(0)}
                             </div>
                             <div class="comparison-value" style="color: ${differenceColor};">
-                                <div style="font-size: 12px; opacity: 0.7;">Difference</div>
-                                <div style="font-weight: 600;">$${difference.toFixed(2)}</div>
+                                $${Math.abs(difference).toFixed(0)}
                             </div>
                         </div>
                     </div>
