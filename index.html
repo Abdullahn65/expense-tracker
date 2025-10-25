@@ -147,6 +147,13 @@
             box-shadow: 0 0 0 3px rgba(55, 224, 255, 0.1);
         }
 
+        .month-dropdown:has(option:checked:not(:first-child)) {
+            border-color: var(--accent);
+            color: var(--accent);
+            text-shadow: 0 0 8px rgba(55, 224, 255, 0.3);
+            background: rgba(55, 224, 255, 0.05);
+        }
+
         .content {
             padding: 32px;
             background: var(--bg-primary);
