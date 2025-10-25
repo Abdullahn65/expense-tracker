@@ -1424,6 +1424,14 @@
 
             // Check for due transactions every 5 minutes
             setInterval(processOverdueRecurringTransactions, 5 * 60 * 1000);
+
+            // Render dashboard charts after all data is loaded
+            setTimeout(() => {
+                renderYearChart();
+                renderIncomeVsSpendingChart();
+                renderYearCategoryChart();
+                renderDashboardMonthlyCharts();
+            }, 300);
         }
 
         async function loadData() {
@@ -2622,6 +2630,12 @@
             const canvas = document.getElementById('yearChart');
             if (!canvas) return;
 
+            // Early return if no expenses data
+            if (!expenses || expenses.length === 0) {
+                console.warn('No expenses data available for yearChart');
+                return;
+            }
+
             const monthlyTotals = months.map((month, index) => {
                 return expenses.filter(exp => {
                     const expDate = new Date(exp.date);
@@ -2713,15 +2727,21 @@
             const canvas = document.getElementById('incomeVsSpendingChart');
             if (!canvas) return;
 
+            // Early return if no data
+            if ((!income || income.length === 0) && (!expenses || expenses.length === 0)) {
+                console.warn('No income or expenses data available for incomeVsSpendingChart');
+                return;
+            }
+
             const monthlyIncome = months.map((month, index) => {
-                return income.filter(inc => {
+                return (income || []).filter(inc => {
                     const incDate = new Date(inc.date);
                     return incDate.getFullYear() === currentYear && incDate.getMonth() === index;
                 }).reduce((sum, inc) => sum + inc.amount, 0);
             });
 
             const monthlySpending = months.map((month, index) => {
-                return expenses.filter(exp => {
+                return (expenses || []).filter(exp => {
                     const expDate = new Date(exp.date);
                     return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
                 }).reduce((sum, exp) => sum + exp.amount, 0);
@@ -2808,6 +2828,12 @@
         function renderYearCategoryChart() {
             const canvas = document.getElementById('yearCategoryChart');
             if (!canvas) return;
+
+            // Early return if no expenses data
+            if (!expenses || expenses.length === 0) {
+                console.warn('No expenses data available for yearCategoryChart');
+                return;
+            }
 
             const yearExpenses = expenses.filter(exp => {
                 return new Date(exp.date).getFullYear() === currentYear;
@@ -2934,19 +2960,19 @@
             document.getElementById('highestMonth').textContent = highestMonth;
             document.getElementById('totalYearBudget').textContent = `$${totalBudget.toFixed(2)}`;
 
-            // Render monthly charts grid
-            renderDashboardMonthlyCharts();
-            
-            // Render the big annual charts
-            setTimeout(() => {
-                renderYearChart();
-                renderIncomeVsSpendingChart();
-                renderYearCategoryChart();
-            }, 100);
+            // Note: Charts are rendered with a delay in initializeApp after data is loaded
         }
 
         function renderDashboardMonthlyCharts() {
+            // Early return if no expenses data
+            if (!expenses || expenses.length === 0) {
+                console.warn('No expenses data available for renderDashboardMonthlyCharts');
+                return;
+            }
+
             const grid = document.getElementById('monthlyChartsGrid');
+            if (!grid) return;
+
             let html = '';
 
             months.forEach((month, index) => {
