@@ -524,6 +524,36 @@
             width: 100% !important;
         }
 
+        .monthly-chart-card {
+            background: rgba(15,18,24,0.85);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--hairline);
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+
+        .monthly-chart-card:hover {
+            border-color: rgba(55, 224, 255, 0.3);
+            box-shadow: 0 0 20px rgba(55, 224, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .monthly-chart-card h4 {
+            color: var(--text-secondary);
+            font-size: 11px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .monthly-chart-card canvas {
+            max-height: 180px !important;
+            width: 100% !important;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -939,6 +969,11 @@
                 <div class="year-chart-container">
                     <h3 style="margin-bottom: 12px;">Category Breakdown (Year)</h3>
                     <canvas id="yearCategoryChart"></canvas>
+                </div>
+
+                <div style="margin-top: 24px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 16px;">Monthly Breakdown</h3>
+                    <div id="monthlyChartsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
                 </div>
 
                 <button class="btn btn-secondary export-btn" onclick="exportToCSV()">Export All Data to CSV</button>
@@ -1497,6 +1532,7 @@
                     renderYearChart();
                     renderIncomeVsSpendingChart();
                     renderYearCategoryChart();
+                    renderDashboardMonthlyCharts();
                 }, 100);
                 // Reset month dropdown when switching away from month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2895,6 +2931,102 @@
             document.getElementById('avgMonthlySpent').textContent = `$${avgMonthly.toFixed(2)}`;
             document.getElementById('highestMonth').textContent = highestMonth;
             document.getElementById('totalYearBudget').textContent = `$${totalBudget.toFixed(2)}`;
+
+            // Render monthly charts grid
+            renderDashboardMonthlyCharts();
+        }
+
+        function renderDashboardMonthlyCharts() {
+            const grid = document.getElementById('monthlyChartsGrid');
+            let html = '';
+
+            months.forEach((month, index) => {
+                html += `
+                    <div class="monthly-chart-card">
+                        <h4>${monthNames[index]}</h4>
+                        <canvas id="dashboard-chart-${month}"></canvas>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+
+            // Now render each chart
+            months.forEach((month, index) => {
+                renderDashboardMonthChart(month, index);
+            });
+        }
+
+        function renderDashboardMonthChart(month, monthIndex) {
+            const canvas = document.getElementById(`dashboard-chart-${month}`);
+            if (!canvas) return;
+
+            const monthExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
+            });
+
+            const categoryTotals = calculateCategoryTotals(monthExpenses);
+            if (Object.keys(categoryTotals).length === 0) return;
+
+            const shieldColors = {
+                'Transportation': '#3B82F6',
+                'Dining Out': '#8B5CF6',
+                'Investment': '#EC4899',
+                'Subscriptions': '#06B6D4',
+                'Housing': '#F59E0B',
+                'Entertainment': '#EF4444',
+                'Healthcare': '#10B981',
+                'Shopping': '#06B6D4',
+            };
+
+            const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedData.map(([cat]) => cat);
+            const data = sortedData.map(([, amount]) => amount);
+            const colors = labels.map(label => shieldColors[label] || '#6366F1');
+
+            // Destroy existing chart if any
+            if (window[`dashboardChart_${month}`]) {
+                window[`dashboardChart_${month}`].destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            window[`dashboardChart_${month}`] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(15,18,24,0.85)',
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,18,24,0.95)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#A6B0BF',
+                            padding: 8,
+                            titleFont: { size: 11 },
+                            bodyFont: { size: 10, weight: 'bold' },
+                            callbacks: {
+                                label: (context) => `$${context.parsed.toFixed(0)}`
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // Budget
