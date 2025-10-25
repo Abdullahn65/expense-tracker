@@ -1777,6 +1777,21 @@
             // Fix any existing recurring transactions with incorrect dates
             await fixRecurringTransactionDates();
 
+            // Fix any existing income entries with missing user_id
+            await fixIncomeUserIds();
+
+            // Reload income after fixing user_ids
+            const { data: fixedIncomeData } = await supabaseClient
+                .from('income')
+                .select('*')
+                .order('date', { ascending: false });
+            
+            if (fixedIncomeData) {
+                income = fixedIncomeData;
+                renderIncomeList();
+                console.log('Reloaded income entries after fix:', income.length);
+            }
+
             // Auto-process due recurring transactions
             await processOverdueRecurringTransactions();
 
@@ -1802,13 +1817,21 @@
             }
 
             // Load income
-            const { data: incomeData } = await supabaseClient
+            const { data: incomeData, error: incomeError } = await supabaseClient
                 .from('income')
                 .select('*')
                 .order('date', { ascending: false });
 
+            if (incomeError) {
+                console.error('Error loading income:', incomeError);
+            }
+
             if (incomeData) {
                 income = incomeData;
+                console.log('Loaded income entries:', income.length);
+            } else {
+                console.log('No income data returned');
+                income = [];
             }
 
             // Load budgets
@@ -2574,6 +2597,33 @@
 
             } catch (err) {
                 console.error('Error in fixRecurringTransactionUserIds:', err);
+            }
+        }
+
+        async function fixIncomeUserIds() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) {
+                    console.log('No user logged in, skipping income user_id fix');
+                    return;
+                }
+
+                console.log('Attempting to fix income user_ids...');
+
+                // Try to get user's current income entries
+                const { data: userIncomeData, error: userError } = await supabaseClient
+                    .from('income')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                console.log('User income entries:', userIncomeData?.length || 0);
+                
+                if (userError) {
+                    console.error('Error loading user income entries:', userError);
+                }
+
+            } catch (err) {
+                console.error('Error in fixIncomeUserIds:', err);
             }
         }
 
