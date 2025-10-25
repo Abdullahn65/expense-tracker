@@ -1347,10 +1347,7 @@
                 monthSelector.addEventListener('change', function() {
                     if (this.value) {
                         switchTab(this.value);
-                        // Reset dropdown after selection
-                        setTimeout(() => {
-                            this.value = '';
-                        }, 100);
+                        // Keep the selected month displayed (don't reset)
                     }
                 });
             }
@@ -1391,6 +1388,17 @@
                     renderIncomeVsSpendingChart();
                     renderYearCategoryChart();
                 }, 100);
+                // Reset month dropdown when switching away from month tabs
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
+            } else {
+                // Reset month dropdown when switching to non-month tabs
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
             }
         }
 
@@ -2321,11 +2329,15 @@
                                     $${amount.toFixed(2)} / $${budget.toFixed(2)}
                                 </span>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill ${isOverBudget ? 'over-budget' : ''}"
-                                     style="width: ${Math.min(percentage, 100)}%">
-                                    ${percentage > 10 ? percentage.toFixed(0) + '%' : ''}
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="progress-bar" style="flex: 1;">
+                                    <div class="progress-fill ${isOverBudget ? 'over-budget' : ''}"
+                                         style="width: ${Math.min(percentage, 100)}%">
+                                    </div>
                                 </div>
+                                <span style="color: #9ca3af; font-size: 0.85em; min-width: 45px; text-align: right; font-weight: 600;">
+                                    ${percentage.toFixed(0)}%
+                                </span>
                             </div>
                         </div>
                     `;
