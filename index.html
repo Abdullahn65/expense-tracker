@@ -621,13 +621,6 @@
             opacity: 1;
         }
 
-        .monthly-chart-card canvas {
-            max-height: 220px !important;
-            width: 100% !important;
-            height: auto !important;
-            display: block;
-        }
-
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -2758,6 +2751,22 @@
 
             grid.innerHTML = html;
 
+            // Add hover event listeners to trigger chart updates
+            const cards = grid.querySelectorAll('.monthly-chart-card');
+            cards.forEach((card, index) => {
+                card.addEventListener('mouseenter', () => {
+                    // Trigger chart resize/update after animation starts
+                    setTimeout(() => {
+                        const month = months[index];
+                        const chart = window[`dashboardChart_${month}`];
+                        if (chart) {
+                            chart.resize();
+                            chart.update();
+                        }
+                    }, 50);
+                });
+            });
+
             // Now render each chart
             months.forEach((month, index) => {
                 renderDashboardMonthChart(month, index);
@@ -2815,51 +2824,65 @@
 
             // Destroy existing chart if any
             if (window[`dashboardChart_${month}`]) {
-                window[`dashboardChart_${month}`].destroy();
+                try {
+                    window[`dashboardChart_${month}`].destroy();
+                } catch (e) {
+                    // Chart was already destroyed or in bad state
+                }
             }
 
-            const ctx = canvas.getContext('2d');
-            window[`dashboardChart_${month}`] = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderColor: 'rgba(15,18,24,0.85)',
-                        borderWidth: 2,
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    cutout: '60%',
-                    plugins: {
-                        legend: {
-                            display: false
+            // Create a new chart instance
+            try {
+                const ctx = canvas.getContext('2d');
+                window[`dashboardChart_${month}`] = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: 'rgba(15,18,24,0.85)',
+                            borderWidth: 2,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '60%',
+                        animation: {
+                            animateRotate: true,
+                            animateScale: false,
+                            duration: 400
                         },
-                        tooltip: {
-                            backgroundColor: 'rgba(15,18,24,0.95)',
-                            borderColor: '#37E0FF',
-                            borderWidth: 1,
-                            titleColor: '#FFFFFF',
-                            bodyColor: '#A6B0BF',
-                            padding: 8,
-                            titleFont: { size: 11 },
-                            bodyFont: { size: 10, weight: 'bold' },
-                            callbacks: {
-                                label: (context) => {
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `$${value.toFixed(0)} (${percentage}%)`;
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15,18,24,0.95)',
+                                borderColor: '#37E0FF',
+                                borderWidth: 1,
+                                titleColor: '#FFFFFF',
+                                bodyColor: '#A6B0BF',
+                                padding: 8,
+                                titleFont: { size: 11 },
+                                bodyFont: { size: 10, weight: 'bold' },
+                                callbacks: {
+                                    label: (context) => {
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `$${value.toFixed(0)} (${percentage}%)`;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (e) {
+                console.error('Error creating chart:', e);
+            }
         }
 
         // Budget
