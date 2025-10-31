@@ -1372,13 +1372,15 @@
                 <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
                 
                 <!-- Net Worth Tracker -->
-                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px; position: relative;">
-                    <div style="position: absolute; top: 24px; left: 24px;">
-                        <div style="font-size: 0.85em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Net Worth</div>
-                        <div style="font-size: 2em; font-weight: 700; color: #35E6A6;" id="netWorthValue">$15,590.00</div>
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">💎 Net Worth Tracker</h3>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Current Net Worth</div>
+                            <div style="font-size: 1.8em; font-weight: 700; color: #35E6A6;" id="netWorthValue">$15,590.00</div>
+                        </div>
                     </div>
-                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">💎 Net Worth Tracker</h3>
-                    <canvas id="netWorthChart" style="max-height: 300px;"></canvas>
+                    <canvas id="netWorthChart" style="max-height: 320px;"></canvas>
                 </div>
                 
                 <!-- Two column layout -->
@@ -4447,6 +4449,11 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
+                    layout: {
+                        padding: {
+                            top: 20
+                        }
+                    },
                     plugins: {
                         legend: {
                             display: false,
@@ -4459,6 +4466,9 @@
                                 color: '#94a3b8',
                                 callback: function(value) {
                                     return '$' + value.toLocaleString();
+                                },
+                                font: {
+                                    size: 11
                                 }
                             },
                             grid: { color: 'rgba(255,255,255,0.05)' }
