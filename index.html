@@ -1782,7 +1782,7 @@
         let incomeTemplates = [];
         let templateUsageStats = {};
         let baselineNetWorth = 16964.20; // Current actual net worth as of today
-        let trackingStartDate = '2025-10-30'; // Start tracking from Oct 30 (allows today's purchases to be tracked)
+        let trackingStartTime = new Date().toISOString(); // Start tracking from this exact moment (includes time)
         let currentNetWorthPeriod = 'daily';
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
@@ -4423,15 +4423,15 @@
             const data = [];
             const dates = [];
             
-            // Get all entries sorted by date
+            // Get all entries sorted by date, filter by timestamp
             const allEntries = [];
-            const todayString = new Date().toISOString().split('T')[0];
             
             expenses.forEach(exp => {
-                // Only include expenses from today onwards
-                if (exp.date >= todayString) {
+                // Only include expenses added after tracking start time
+                if (exp.date && exp.created_at && exp.created_at >= trackingStartTime) {
                     allEntries.push({
                         date: exp.date, // Keep as string "2025-10-31"
+                        created_at: exp.created_at, // ISO timestamp
                         amount: -exp.amount,
                         type: 'expense'
                     });
@@ -4439,23 +4439,25 @@
             });
             
             income.forEach(inc => {
-                // Only include income from today onwards
-                if (inc.date >= todayString) {
+                // Only include income added after tracking start time
+                if (inc.date && inc.created_at && inc.created_at >= trackingStartTime) {
                     allEntries.push({
                         date: inc.date, // Keep as string "2025-10-31"
+                        created_at: inc.created_at, // ISO timestamp
                         amount: inc.amount,
                         type: 'income'
                     });
                 }
             });
             
-            // Sort by date ascending
-            allEntries.sort((a, b) => a.date.localeCompare(b.date));
+            // Sort by creation timestamp ascending
+            allEntries.sort((a, b) => a.created_at.localeCompare(b.created_at));
             
             if (period === 'daily') {
                 // Group by day, starting from baseline
                 const dailyNetWorth = {};
                 let runningNetWorth = baselineNetWorth; // Start from $16,964.20
+                const todayString = new Date().toISOString().split('T')[0];
                 
                 allEntries.forEach(entry => {
                     const dateKey = entry.date;
@@ -4494,7 +4496,7 @@
                     monthlyNetWorth[key] = runningNetWorth;
                 });
                 
-                const currentMonth = todayString.substring(0, 7);
+                const currentMonth = new Date().toISOString().split('T')[0].substring(0, 7);
                 if (!monthlyNetWorth[currentMonth]) {
                     monthlyNetWorth[currentMonth] = baselineNetWorth;
                 }
@@ -4518,7 +4520,7 @@
                     annualNetWorth[year] = runningNetWorth;
                 });
                 
-                const currentYear = todayString.substring(0, 4);
+                const currentYear = new Date().toISOString().split('T')[0].substring(0, 4);
                 if (!annualNetWorth[currentYear]) {
                     annualNetWorth[currentYear] = baselineNetWorth;
                 }
@@ -4538,31 +4540,28 @@
             
             const { dates, data } = calculateNetWorthData(currentNetWorthPeriod);
             
-            // Calculate current net worth starting from baseline + new transactions from today
+            // Calculate current net worth: baseline + transactions added after tracking start time
             let currentNetWorth = baselineNetWorth;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayString = today.toISOString().split('T')[0]; // "2025-10-31"
             
             expenses.forEach(exp => {
-                // exp.date is a string like "2025-10-31"
-                if (exp.date === todayString || exp.date > todayString) {
+                // Only include expenses added after tracking started
+                if (exp.created_at && exp.created_at >= trackingStartTime) {
                     currentNetWorth -= exp.amount;
                 }
             });
             income.forEach(inc => {
-                // inc.date is a string like "2025-10-31"
-                if (inc.date === todayString || inc.date > todayString) {
+                // Only include income added after tracking started
+                if (inc.created_at && inc.created_at >= trackingStartTime) {
                     currentNetWorth += inc.amount;
                 }
             });
             
-            // Calculate change from baseline (only from today's transactions)
+            // Calculate change from baseline (only from transactions added after tracking start)
             const change = currentNetWorth - baselineNetWorth;
             
             console.log('🎯 Net Worth Calculation:', {
                 baselineNetWorth,
-                todayString,
+                trackingStartTime,
                 currentNetWorth,
                 change,
                 expenseCount: expenses.length,
