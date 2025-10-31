@@ -2219,13 +2219,22 @@
                 return;
             }
 
+            // Get current user
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                alert('Error: Not logged in');
+                return;
+            }
+
             const template = {
+                user_id: user.id,
                 name,
                 category,
                 amount,
                 vendor: vendor || null,
                 payment_method: paymentMethod,
                 is_favorite: false,
+                sort_order: 0,
                 times_used: 0,
                 last_used: null,
                 total_spent: 0,
