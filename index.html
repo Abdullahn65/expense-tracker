@@ -1038,6 +1038,15 @@
                 padding: 16px;
             }
         }
+
+        /* Chart legend text color fix */
+        .chartjs-render-monitor {
+            color: #FFFFFF !important;
+        }
+        
+        canvas {
+            color: #FFFFFF !important;
+        }
     </style>
 </head>
 <body>
@@ -3513,6 +3522,18 @@
                 'Shopping': '#06B6D4',
             };
 
+            // Force white text color on the canvas container
+            canvas.parentElement.style.color = '#FFFFFF';
+            const canvasStyle = document.createElement('style');
+            canvasStyle.textContent = `
+                #annualCategoryChart { color: #FFFFFF !important; }
+                #annualCategoryChart + * { color: #FFFFFF !important; }
+                .chartjs-render-monitor { color: #FFFFFF !important; }
+            `;
+            if (!document.querySelector('#annualChartStyle')) {
+                canvasStyle.id = 'annualChartStyle';
+                document.head.appendChild(canvasStyle);
+            }
             const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
             const labels = sortedData.map(([cat]) => cat);
             const data = sortedData.map(([, amount]) => amount);
@@ -3541,28 +3562,21 @@
                     cutout: '60%',
                     plugins: {
                         legend: {
+                            display: true,
                             position: 'right',
                             labels: {
                                 color: '#FFFFFF',
-                                textAlign: 'left',
                                 padding: 16,
                                 font: { size: 12, weight: 'bold' },
-                                generateLabels: (chart) => {
-                                    const data = chart.data;
-                                    return data.labels.map((label, i) => {
-                                        const value = data.datasets[0].data[i];
-                                        const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                        const pct = ((value / total) * 100).toFixed(1);
-                                        return {
-                                            text: `${label}: $${value.toFixed(0)} (${pct}%)`,
-                                            fillStyle: data.datasets[0].backgroundColor[i],
-                                            textColor: '#FFFFFF',
-                                            hidden: false,
-                                            index: i
-                                        };
-                                    });
-                                }
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 12,
+                                textAlign: 'left'
                             }
+                        },
+                        chartLegendPlugin: {
+                            // Custom plugin to ensure text color is white
+                            id: 'chartLegendPlugin'
                         },
                         tooltip: {
                             backgroundColor: 'rgba(15,18,24,0.95)',
