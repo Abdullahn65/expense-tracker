@@ -1930,6 +1930,7 @@
             const { data: recurringData, error: recurringError } = await supabaseClient
                 .from('recurring_expenses')
                 .select('*')
+                .eq('active', true)
                 .order('next_due_date', { ascending: true });
 
             if (recurringError) {
@@ -1937,7 +1938,7 @@
                 // Table might not exist yet, which is fine
                 recurringExpenses = [];
             } else if (recurringData) {
-                recurringExpenses = recurringData.filter(r => r.active !== false);
+                recurringExpenses = recurringData;
                 console.log('Loaded recurring expenses:', recurringExpenses.length);
             } else {
                 recurringExpenses = [];
@@ -2635,6 +2636,19 @@
             document.getElementById('recurringForm').reset();
             updateRecurringFields();
             renderRecurringList();
+            
+            // Reload from database to ensure sync
+            const { data: reloadData } = await supabaseClient
+                .from('recurring_expenses')
+                .select('*')
+                .eq('active', true)
+                .order('next_due_date', { ascending: true });
+            
+            if (reloadData) {
+                recurringExpenses = reloadData;
+                renderRecurringList();
+            }
+            
             alert('Recurring subscription added successfully!');
         }
 
@@ -2693,6 +2707,18 @@
             }
 
             recurringExpenses = recurringExpenses.filter(r => r.id !== id);
+            
+            // Reload to ensure sync
+            const { data: reloadData } = await supabaseClient
+                .from('recurring_expenses')
+                .select('*')
+                .eq('active', true)
+                .order('next_due_date', { ascending: true });
+            
+            if (reloadData) {
+                recurringExpenses = reloadData;
+            }
+            
             renderRecurringList();
         }
 
