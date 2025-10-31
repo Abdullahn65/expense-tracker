@@ -1322,15 +1322,15 @@
                 
                 <!-- Net Worth Chart -->
                 <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
-                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">📊 Net Worth Tracker</h3>
-                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
-                        <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">Net Worth</h3>
+                        <div style="text-align: right;">
                             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Current Net Worth</p>
-                            <p style="font-size: 24px; font-weight: 700; color: #35E6A6;" id="netWorthValue">$16,964.20</p>
+                            <p style="font-size: 24px; font-weight: 700; color: #35E6A6; margin: 0;" id="netWorthValue">$16,964.20</p>
                         </div>
-                        <div style="flex: 1;">
-                            <canvas id="netWorthChart" style="max-height: 300px;"></canvas>
-                        </div>
+                    </div>
+                    <div style="width: 100%;">
+                        <canvas id="netWorthChart" style="max-height: 300px;"></canvas>
                     </div>
                 </div>
                 
