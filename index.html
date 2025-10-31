@@ -3365,7 +3365,7 @@
             }
         }
 
-        async function addIncomeEntry() {
+        async function addIncome() {
             const incomeEntry = {
                 id: Date.now(),
                 date: document.getElementById('incomeDate').value,
@@ -3375,16 +3375,20 @@
                 notes: document.getElementById('incomeNotes').value
             };
 
+            console.log('💰 Adding income:', incomeEntry);
+
             const { data, error } = await supabaseClient
                 .from('income')
                 .insert([incomeEntry])
                 .select();
 
             if (error) {
+                console.error('❌ Error adding income:', error);
                 alert('Error adding income: ' + error.message);
                 return;
             }
 
+            console.log('✅ Income added successfully:', data[0]);
             income.push(data[0]);
 
             // Reset form
