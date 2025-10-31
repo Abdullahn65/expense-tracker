@@ -3176,7 +3176,7 @@
             const colors = labels.map(label => shieldColors[label] || '#6366F1');
 
             // Destroy existing chart if any
-            if (window[`chart_${month}`]) {
+            if (window[`chart_${month}`] && typeof window[`chart_${month}`].destroy === 'function') {
                 window[`chart_${month}`].destroy();
             }
 
@@ -3364,7 +3364,7 @@
             const colors = labels.map(label => shieldColors[label] || '#6366F1');
 
             // Destroy existing chart if any
-            if (window[`dashboardChart_${month}`]) {
+            if (window[`dashboardChart_${month}`] && typeof window[`dashboardChart_${month}`].destroy === 'function') {
                 window[`dashboardChart_${month}`].destroy();
             }
 
@@ -3517,7 +3517,7 @@
             const data = sortedData.map(([, amount]) => amount);
             const colors = labels.map(label => shieldColors[label] || '#6366F1');
 
-            if (window.annualCategoryChart) {
+            if (window.annualCategoryChart && typeof window.annualCategoryChart.destroy === 'function') {
                 window.annualCategoryChart.destroy();
             }
 
