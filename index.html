@@ -4484,19 +4484,37 @@
             // Starting net worth
             const initialNetWorth = 16964.20;
             
-            // Get all transactions from today onwards
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            // Find the earliest transaction date
+            let earliestDate = new Date();
+            earliestDate.setHours(0, 0, 0, 0);
             
-            // Combine all transactions (expenses and income) from today onwards
-            const futureTransactions = [];
+            // Check expenses for earliest date
+            expenses.forEach(exp => {
+                const expDate = new Date(exp.date);
+                expDate.setHours(0, 0, 0, 0);
+                if (expDate < earliestDate) {
+                    earliestDate = expDate;
+                }
+            });
+            
+            // Check income for earliest date
+            income.forEach(inc => {
+                const incDate = new Date(inc.date);
+                incDate.setHours(0, 0, 0, 0);
+                if (incDate < earliestDate) {
+                    earliestDate = incDate;
+                }
+            });
+            
+            // Combine all transactions from earliest date onwards
+            const allTransactions = [];
             
             // Add expenses
             expenses.forEach(exp => {
                 const expDate = new Date(exp.date);
                 expDate.setHours(0, 0, 0, 0);
-                if (expDate >= today) {
-                    futureTransactions.push({
+                if (expDate >= earliestDate) {
+                    allTransactions.push({
                         date: expDate,
                         amount: -exp.amount, // Negative for expenses
                         type: 'expense'
@@ -4508,8 +4526,8 @@
             income.forEach(inc => {
                 const incDate = new Date(inc.date);
                 incDate.setHours(0, 0, 0, 0);
-                if (incDate >= today) {
-                    futureTransactions.push({
+                if (incDate >= earliestDate) {
+                    allTransactions.push({
                         date: incDate,
                         amount: inc.amount, // Positive for income
                         type: 'income'
@@ -4518,45 +4536,50 @@
             });
             
             // Sort by date
-            futureTransactions.sort((a, b) => a.date - b.date);
+            allTransactions.sort((a, b) => a.date - b.date);
             
             if (timeframe === 'daily') {
-                return calculateDailyNetWorth(futureTransactions, today, initialNetWorth);
+                return calculateDailyNetWorth(allTransactions, earliestDate, initialNetWorth);
             } else if (timeframe === 'monthly') {
-                return calculateMonthlyNetWorth(futureTransactions, today, initialNetWorth);
+                return calculateMonthlyNetWorth(allTransactions, earliestDate, initialNetWorth);
             } else if (timeframe === 'annual') {
-                return calculateAnnualNetWorth(futureTransactions, today, initialNetWorth);
+                return calculateAnnualNetWorth(allTransactions, earliestDate, initialNetWorth);
             }
             
-            return calculateDailyNetWorth(futureTransactions, today, initialNetWorth);
+            return calculateDailyNetWorth(allTransactions, earliestDate, initialNetWorth);
         }
 
         // Calculate daily net worth
-        function calculateDailyNetWorth(futureTransactions, today, initialNetWorth) {
+        function calculateDailyNetWorth(allTransactions, startDate, initialNetWorth) {
             const netWorthByDate = new Map();
             let runningNetWorth = initialNetWorth;
             
-            // Add today as the starting point
-            const todayKey = this.formatDate(today);
-            netWorthByDate.set(todayKey, initialNetWorth);
+            // Add start date as the starting point
+            const startDateKey = this.formatDate(startDate);
+            netWorthByDate.set(startDateKey, initialNetWorth);
             
             // Process transactions
-            futureTransactions.forEach(transaction => {
+            allTransactions.forEach(transaction => {
                 runningNetWorth += transaction.amount;
                 const dateKey = this.formatDate(transaction.date);
                 netWorthByDate.set(dateKey, runningNetWorth);
             });
             
-            // If no future transactions, just return today's data
-            if (futureTransactions.length === 0) {
+            // If no transactions, just return start date data
+            if (allTransactions.length === 0) {
                 return {
-                    labels: [todayKey],
+                    labels: [startDateKey],
                     values: [initialNetWorth]
                 };
             }
             
-            // Create sorted arrays for the chart
-            const sortedDates = Array.from(netWorthByDate.keys()).sort();
+            // Create sorted arrays - sort by actual date, not string
+            const sortedDates = Array.from(netWorthByDate.keys()).sort((a, b) => {
+                const dateA = new Date(a);
+                const dateB = new Date(b);
+                return dateA - dateB;
+            });
+            
             const labels = sortedDates;
             const values = sortedDates.map(date => netWorthByDate.get(date));
             
