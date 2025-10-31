@@ -4486,101 +4486,96 @@
             renderNetWorthChart();
         }
 
-        // Calculate net worth over time (working backwards from current net worth)
+        // Calculate net worth over time (forward from today)
         function calculateNetWorthOverTime(view) {
             const now = new Date();
-            let currentNetWorth = 16964.20; // Current net worth as baseline
+            now.setHours(0, 0, 0, 0); // Set to start of today
             let dataPoints = [];
             let labels = [];
 
             if (view === 'daily') {
-                // Generate 30 days of data, working backwards from today
-                const dailyData = {};
+                // Generate 30 days forward from today
+                let currentNetWorth = 16964.20;
+                dataPoints.push(currentNetWorth);
+                labels.push('Today');
                 
-                // Initialize all dates in the range with 0 income
-                for (let i = 29; i >= 0; i--) {
+                for (let i = 1; i < 30; i++) {
                     const date = new Date(now);
-                    date.setDate(date.getDate() - i);
-                    const dateStr = date.toDateString();
-                    dailyData[dateStr] = { income: 0, date: date };
+                    date.setDate(date.getDate() + i);
+                    
+                    // Calculate total expenses for this day
+                    const dayExpenses = expenses.filter(exp => {
+                        const expDate = new Date(exp.date);
+                        expDate.setHours(0, 0, 0, 0);
+                        return expDate.getTime() === date.getTime();
+                    }).reduce((sum, exp) => sum + exp.amount, 0);
+                    
+                    // Calculate total income for this day
+                    const dayIncome = income.filter(inc => {
+                        const incDate = new Date(inc.date);
+                        incDate.setHours(0, 0, 0, 0);
+                        return incDate.getTime() === date.getTime();
+                    }).reduce((sum, inc) => sum + inc.amount, 0);
+                    
+                    currentNetWorth = currentNetWorth + dayIncome - dayExpenses;
+                    
+                    labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    dataPoints.push(Math.round(currentNetWorth * 100) / 100);
                 }
-                
-                // Subtract income from future dates as we go back
-                income.forEach(inc => {
-                    const incDate = new Date(inc.date);
-                    const dateStr = incDate.toDateString();
-                    if (dailyData[dateStr]) {
-                        dailyData[dateStr].income += inc.amount;
-                    }
-                });
-                
-                // Build arrays working backwards, subtracting income as we go
-                const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(b) - new Date(a));
-                let tempNetWorth = currentNetWorth;
-                const reversedDates = sortedDates.reverse(); // Reverse to go from past to present
-                
-                reversedDates.forEach(dateStr => {
-                    tempNetWorth -= dailyData[dateStr].income;
-                    labels.push(new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                    dataPoints.push(Math.round(tempNetWorth * 100) / 100);
-                });
             } else if (view === 'monthly') {
-                // Generate 12 months of data, working backwards from today
-                const monthlyData = {};
+                // Generate 12 months forward from today
+                let currentNetWorth = 16964.20;
+                dataPoints.push(currentNetWorth);
+                labels.push('Today');
                 
-                // Initialize all months in the range with 0 income
-                for (let i = 11; i >= 0; i--) {
-                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const key = date.getFullYear() + '-' + date.getMonth();
-                    monthlyData[key] = { income: 0, date: date };
+                for (let i = 1; i < 12; i++) {
+                    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                    const year = date.getFullYear();
+                    const month = date.getMonth();
+                    
+                    // Calculate total expenses for this month
+                    const monthExpenses = expenses.filter(exp => {
+                        const expDate = new Date(exp.date);
+                        return expDate.getFullYear() === year && expDate.getMonth() === month;
+                    }).reduce((sum, exp) => sum + exp.amount, 0);
+                    
+                    // Calculate total income for this month
+                    const monthIncome = income.filter(inc => {
+                        const incDate = new Date(inc.date);
+                        return incDate.getFullYear() === year && incDate.getMonth() === month;
+                    }).reduce((sum, inc) => sum + inc.amount, 0);
+                    
+                    currentNetWorth = currentNetWorth + monthIncome - monthExpenses;
+                    
+                    labels.push(date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+                    dataPoints.push(Math.round(currentNetWorth * 100) / 100);
                 }
-                
-                // Subtract income from future dates as we go back
-                income.forEach(inc => {
-                    const incDate = new Date(inc.date);
-                    const key = incDate.getFullYear() + '-' + incDate.getMonth();
-                    if (monthlyData[key]) {
-                        monthlyData[key].income += inc.amount;
-                    }
-                });
-                
-                // Build arrays working backwards, subtracting income as we go
-                let tempNetWorth = currentNetWorth;
-                const sortedMonths = Object.keys(monthlyData).sort();
-                
-                sortedMonths.forEach(key => {
-                    tempNetWorth -= monthlyData[key].income;
-                    labels.push(monthlyData[key].date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-                    dataPoints.push(Math.round(tempNetWorth * 100) / 100);
-                });
             } else if (view === 'annual') {
-                // Generate data for past 5 years, working backwards from today
-                const annualData = {};
+                // Generate 5 years forward from today
+                let currentNetWorth = 16964.20;
+                dataPoints.push(currentNetWorth);
+                labels.push('Today');
                 
-                // Initialize all years in the range with 0 income
-                for (let i = 4; i >= 0; i--) {
-                    const year = now.getFullYear() - i;
-                    annualData[year] = 0;
-                }
-                
-                // Subtract income from future dates as we go back
-                income.forEach(inc => {
-                    const incDate = new Date(inc.date);
-                    const year = incDate.getFullYear();
-                    if (annualData.hasOwnProperty(year)) {
-                        annualData[year] += inc.amount;
-                    }
-                });
-                
-                // Build arrays working backwards, subtracting income as we go
-                let tempNetWorth = currentNetWorth;
-                const sortedYears = Object.keys(annualData).map(Number).sort((a, b) => a - b);
-                
-                sortedYears.forEach(year => {
-                    tempNetWorth -= annualData[year];
+                for (let i = 1; i < 5; i++) {
+                    const year = now.getFullYear() + i;
+                    
+                    // Calculate total expenses for this year
+                    const yearExpenses = expenses.filter(exp => {
+                        const expDate = new Date(exp.date);
+                        return expDate.getFullYear() === year;
+                    }).reduce((sum, exp) => sum + exp.amount, 0);
+                    
+                    // Calculate total income for this year
+                    const yearIncome = income.filter(inc => {
+                        const incDate = new Date(inc.date);
+                        return incDate.getFullYear() === year;
+                    }).reduce((sum, inc) => sum + inc.amount, 0);
+                    
+                    currentNetWorth = currentNetWorth + yearIncome - yearExpenses;
+                    
                     labels.push(year.toString());
-                    dataPoints.push(Math.round(tempNetWorth * 100) / 100);
-                });
+                    dataPoints.push(Math.round(currentNetWorth * 100) / 100);
+                }
             }
 
             return {
