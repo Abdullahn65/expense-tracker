@@ -1958,6 +1958,18 @@
                 income = [];
                 
                 console.log('✅ All income entries deleted from database');
+                
+                // Force reload from database to verify deletion
+                const { data: verifyData, error: verifyError } = await supabaseClient
+                    .from('income')
+                    .select('*');
+                
+                if (verifyError) {
+                    console.error('Error verifying deletion:', verifyError);
+                } else {
+                    console.log('✅ Verified - income table now has', verifyData.length, 'entries');
+                }
+                
                 alert('✅ All income entries have been deleted!');
                 
                 // Refresh views
