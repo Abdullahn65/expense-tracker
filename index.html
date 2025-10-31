@@ -1374,7 +1374,14 @@
                 <!-- Net Worth Tracker with Chart -->
                 <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                        <h3 style="margin: 0; color: var(--text-primary);">💎 Net Worth Tracker</h3>
+                        <div>
+                            <h3 style="margin: 0 0 12px 0; color: var(--text-primary);">💎 Net Worth Tracker</h3>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="switchNetWorthView('daily')" id="btnDaily" style="padding: 6px 12px; background: rgba(55, 224, 255, 0.2); border: 1px solid #37E0FF; border-radius: 6px; color: #37E0FF; cursor: pointer; font-size: 0.85em; font-weight: 600;">Daily</button>
+                                <button onclick="switchNetWorthView('monthly')" id="btnMonthly" style="padding: 6px 12px; background: transparent; border: 1px solid rgba(55, 224, 255, 0.3); border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 0.85em; font-weight: 600;">Monthly</button>
+                                <button onclick="switchNetWorthView('annual')" id="btnAnnual" style="padding: 6px 12px; background: transparent; border: 1px solid rgba(55, 224, 255, 0.3); border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 0.85em; font-weight: 600;">Annual</button>
+                            </div>
+                        </div>
                         <div style="text-align: right;">
                             <div style="font-size: 0.85em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Current Net Worth</div>
                             <div style="font-size: 1.8em; font-weight: 700; color: #35E6A6;" id="netWorthValue">$15,590.00</div>
@@ -4397,6 +4404,9 @@
             renderVendorAnalyticsTable();
         }
 
+        // Track current net worth view
+        let currentNetWorthView = 'monthly'; // daily, monthly, annual
+
         // Calculate current net worth dynamically from data
         function calculateCurrentNetWorth() {
             const baseAmount = 15590;
@@ -4405,8 +4415,8 @@
             return baseAmount + totalIncome - totalExpenses;
         }
 
-        // Get net worth history (daily snapshots based on expenses and income dates)
-        function getNetWorthHistory() {
+        // Get net worth history by different time periods
+        function getNetWorthHistory(viewType = 'monthly') {
             const baseAmount = 15590;
             const transactionsByDate = {};
             
@@ -4421,12 +4431,21 @@
                 transactionsByDate[exp.date].expenses += exp.amount;
             });
             
-            // Sort dates and calculate running balance
             const sortedDates = Object.keys(transactionsByDate).sort();
+            
+            if (viewType === 'daily') {
+                return getNetWorthHistoryDaily(transactionsByDate, sortedDates, baseAmount);
+            } else if (viewType === 'monthly') {
+                return getNetWorthHistoryMonthly(transactionsByDate, sortedDates, baseAmount);
+            } else if (viewType === 'annual') {
+                return getNetWorthHistoryAnnual(transactionsByDate, sortedDates, baseAmount);
+            }
+        }
+
+        function getNetWorthHistoryDaily(transactionsByDate, sortedDates, baseAmount) {
             let runningBalance = baseAmount;
             const history = [];
             
-            // Calculate starting balance before first transaction
             const firstDate = sortedDates[0];
             if (firstDate) {
                 history.push({
@@ -4434,13 +4453,11 @@
                     amount: baseAmount
                 });
             } else {
-                // No transactions, just show today's base amount
                 const today = new Date().toISOString().split('T')[0];
                 history.push({ date: today, amount: baseAmount });
                 return history;
             }
             
-            // Build history
             sortedDates.forEach(date => {
                 const transactions = transactionsByDate[date];
                 runningBalance = runningBalance + transactions.income - transactions.expenses;
@@ -4448,6 +4465,106 @@
             });
             
             return history;
+        }
+
+        function getNetWorthHistoryMonthly(transactionsByDate, sortedDates, baseAmount) {
+            const monthlyData = {};
+            let runningBalance = baseAmount;
+            
+            sortedDates.forEach(date => {
+                const transactions = transactionsByDate[date];
+                runningBalance = runningBalance + transactions.income - transactions.expenses;
+                
+                const monthKey = date.substring(0, 7); // YYYY-MM
+                if (!monthlyData[monthKey]) {
+                    monthlyData[monthKey] = runningBalance;
+                } else {
+                    monthlyData[monthKey] = runningBalance;
+                }
+            });
+            
+            // Convert to array and add starting point
+            const history = [];
+            const monthKeys = Object.keys(monthlyData).sort();
+            
+            if (monthKeys.length > 0) {
+                const firstMonth = monthKeys[0];
+                const firstMonthDate = firstMonth + '-01';
+                history.push({
+                    date: new Date(new Date(firstMonthDate).getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    amount: baseAmount,
+                    isLabel: true
+                });
+            } else {
+                const today = new Date().toISOString().split('T')[0];
+                history.push({ date: today, amount: baseAmount });
+                return history;
+            }
+            
+            monthKeys.forEach(month => {
+                history.push({
+                    date: month + '-01',
+                    amount: monthlyData[month]
+                });
+            });
+            
+            return history;
+        }
+
+        function getNetWorthHistoryAnnual(transactionsByDate, sortedDates, baseAmount) {
+            const annualData = {};
+            let runningBalance = baseAmount;
+            
+            sortedDates.forEach(date => {
+                const transactions = transactionsByDate[date];
+                runningBalance = runningBalance + transactions.income - transactions.expenses;
+                
+                const year = date.substring(0, 4);
+                annualData[year] = runningBalance;
+            });
+            
+            const history = [];
+            const years = Object.keys(annualData).sort();
+            
+            if (years.length > 0) {
+                const firstYear = years[0];
+                history.push({
+                    date: firstYear + '-01-01',
+                    amount: baseAmount
+                });
+            } else {
+                const today = new Date().toISOString().split('T')[0];
+                history.push({ date: today, amount: baseAmount });
+                return history;
+            }
+            
+            years.forEach(year => {
+                history.push({
+                    date: year + '-12-31',
+                    amount: annualData[year]
+                });
+            });
+            
+            return history;
+        }
+
+        function switchNetWorthView(viewType) {
+            currentNetWorthView = viewType;
+            
+            // Update button styles
+            document.getElementById('btnDaily').style.background = viewType === 'daily' ? 'rgba(55, 224, 255, 0.2)' : 'transparent';
+            document.getElementById('btnDaily').style.borderColor = viewType === 'daily' ? '#37E0FF' : 'rgba(55, 224, 255, 0.3)';
+            document.getElementById('btnDaily').style.color = viewType === 'daily' ? '#37E0FF' : '#94a3b8';
+            
+            document.getElementById('btnMonthly').style.background = viewType === 'monthly' ? 'rgba(55, 224, 255, 0.2)' : 'transparent';
+            document.getElementById('btnMonthly').style.borderColor = viewType === 'monthly' ? '#37E0FF' : 'rgba(55, 224, 255, 0.3)';
+            document.getElementById('btnMonthly').style.color = viewType === 'monthly' ? '#37E0FF' : '#94a3b8';
+            
+            document.getElementById('btnAnnual').style.background = viewType === 'annual' ? 'rgba(55, 224, 255, 0.2)' : 'transparent';
+            document.getElementById('btnAnnual').style.borderColor = viewType === 'annual' ? '#37E0FF' : 'rgba(55, 224, 255, 0.3)';
+            document.getElementById('btnAnnual').style.color = viewType === 'annual' ? '#37E0FF' : '#94a3b8';
+            
+            renderNetWorthChart();
         }
 
         function renderNetWorthChart() {
@@ -4462,10 +4579,16 @@
                 window.netWorthChart.destroy();
             }
 
-            const history = getNetWorthHistory();
+            const history = getNetWorthHistory(currentNetWorthView);
             const labels = history.map(entry => {
                 const date = new Date(entry.date);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (currentNetWorthView === 'annual') {
+                    return date.getFullYear().toString();
+                } else if (currentNetWorthView === 'monthly') {
+                    return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                } else {
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
             });
 
             const data = history.map(entry => entry.amount);
