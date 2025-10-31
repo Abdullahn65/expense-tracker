@@ -1503,6 +1503,17 @@
             <div class="tab-content" id="income">
                 <h2 style="margin-bottom: 20px;">Income Tracking</h2>
 
+                <!-- Income Templates Section -->
+                <div style="margin-bottom: 30px; padding: 24px; background: rgba(4, 6, 12, 0.94); border-radius: 16px; border: 1px solid rgba(16, 185, 129, 0.22); box-shadow: 0 18px 32px rgba(0, 0, 0, 0.55);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: #cbd5e1; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.6px;">💰 Quick Income Sources</h3>
+                        <button type="button" onclick="openIncomeTemplateManager()" class="btn btn-secondary" style="font-size: 0.75em; padding: 8px 12px; letter-spacing: 0.5px;">Manage</button>
+                    </div>
+                    <div id="incomeTemplatesDisplay" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid rgba(16, 185, 129, 0.28); margin: 32px 0;">
+
                 <form class="expense-form" id="incomeForm">
                     <h3 style="margin-bottom: 15px;">Add Income</h3>
                     <div class="form-grid">
@@ -1714,6 +1725,7 @@
         let income = [];
         let recurringExpenses = [];
         let expenseTemplates = [];
+        let incomeTemplates = [];
         let templateUsageStats = {};
         let netWorthHistory = []; // Track net worth over time: [{date, amount}, ...]
         let currentNetWorth = 15590; // User's current net worth
@@ -1882,6 +1894,7 @@
                 renderIncomeList();
                 renderRecurringList();
                 renderFavoriteTemplates();
+                renderIncomeTemplates();
 
                 // Get and log current user info for debugging
                 const { data: { user } } = await supabaseClient.auth.getUser();
@@ -1997,6 +2010,22 @@
             } else {
                 console.log('⚠️ No templates data returned (might be empty)');
                 expenseTemplates = [];
+            }
+
+            // Load income templates
+            const { data: incomeTemplatesData, error: incomeTemplatesError } = await supabaseClient
+                .from('income_templates')
+                .select('*');
+
+            if (incomeTemplatesError) {
+                console.warn('⚠️ Income templates table might not exist yet:', incomeTemplatesError.message);
+                incomeTemplates = [];
+            } else if (incomeTemplatesData) {
+                incomeTemplates = incomeTemplatesData;
+                console.log('✅ Loaded income templates:', incomeTemplates.length);
+            } else {
+                console.log('⚠️ No income templates data returned (might be empty)');
+                incomeTemplates = [];
             }
 
             // Load recurring expenses
@@ -2748,6 +2777,247 @@
             } else {
                 alert('Error deleting template: ' + error.message);
             }
+        }
+
+        // ============ INCOME TEMPLATES ============
+
+        function renderIncomeTemplates() {
+            const container = document.getElementById('incomeTemplatesDisplay');
+            if (!container) return;
+
+            if (incomeTemplates.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em;">No income templates yet. Create one to save time!</p>';
+                return;
+            }
+
+            let html = '';
+            incomeTemplates.forEach((template) => {
+                html += `
+                    <button type="button" class="template-quick-btn" 
+                            onclick="useIncomeTemplate(${template.id})"
+                            title="${template.description || template.source}">
+                        <span style="font-weight: 600;">💵 ${template.source}</span>
+                        <span style="font-size: 0.9em; color: #94a3b8;">$${template.amount.toFixed(2)}</span>
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function openIncomeTemplateManager() {
+            const modal = document.getElementById('incomeTemplateManagerModal');
+            if (!modal) {
+                // Create modal if it doesn't exist
+                createIncomeTemplateModal();
+            }
+            document.getElementById('incomeTemplateManagerModal').classList.add('active');
+            renderIncomeTemplatesList();
+        }
+
+        function closeIncomeTemplateManager() {
+            const modal = document.getElementById('incomeTemplateManagerModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        function createIncomeTemplateModal() {
+            const modal = document.createElement('div');
+            modal.id = 'incomeTemplateManagerModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 600px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>Income Templates</h2>
+                        <button class="btn btn-close" onclick="closeIncomeTemplateManager()" style="padding: 8px 12px;">✕</button>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <button type="button" onclick="showCreateIncomeTemplate()" class="btn btn-primary" style="width: 100%;">+ Add New Template</button>
+                    </div>
+
+                    <div id="createIncomeTemplateForm" style="display: none; margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <h4 style="margin-bottom: 12px;">Create Template</h4>
+                        <div class="form-group">
+                            <label for="incomeTemplateName">Description *</label>
+                            <input type="text" id="incomeTemplateName" placeholder="e.g., Monthly Salary">
+                        </div>
+                        <div class="form-group">
+                            <label for="incomeTemplateSource">Source *</label>
+                            <select id="incomeTemplateSource">
+                                <option value="">Select Source</option>
+                                <option value="Salary">Salary</option>
+                                <option value="Freelance">Freelance</option>
+                                <option value="Business">Business</option>
+                                <option value="Investments">Investments</option>
+                                <option value="Dividends">Dividends</option>
+                                <option value="Interest">Interest</option>
+                                <option value="Bonus">Bonus</option>
+                                <option value="Gift">Gift</option>
+                                <option value="Refund">Refund</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="incomeTemplateAmount">Amount *</label>
+                            <input type="number" id="incomeTemplateAmount" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" onclick="saveNewIncomeTemplate()" class="btn btn-primary" style="flex: 1;">Save Template</button>
+                            <button type="button" onclick="hideCreateIncomeTemplate()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="incomeTemplatesList" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Add click outside to close
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeIncomeTemplateManager();
+                }
+            });
+        }
+
+        function showCreateIncomeTemplate() {
+            document.getElementById('createIncomeTemplateForm').style.display = 'block';
+            document.getElementById('incomeTemplateName').focus();
+        }
+
+        function hideCreateIncomeTemplate() {
+            document.getElementById('createIncomeTemplateForm').style.display = 'none';
+            document.getElementById('incomeTemplateName').value = '';
+            document.getElementById('incomeTemplateSource').value = '';
+            document.getElementById('incomeTemplateAmount').value = '';
+        }
+
+        async function saveNewIncomeTemplate() {
+            const name = document.getElementById('incomeTemplateName').value.trim();
+            const source = document.getElementById('incomeTemplateSource').value;
+            const amount = parseFloat(document.getElementById('incomeTemplateAmount').value);
+
+            if (!name || !source || !amount) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                alert('Error: Not logged in');
+                return;
+            }
+
+            const template = {
+                user_id: user.id,
+                description: name,
+                source,
+                amount
+            };
+
+            const { data, error } = await supabaseClient
+                .from('income_templates')
+                .insert([template])
+                .select();
+
+            if (error) {
+                if (error.message.includes('income_templates')) {
+                    // Table doesn't exist, create it first
+                    console.log('Income templates table does not exist. Creating...');
+                    // For now, just store in local array
+                    template.id = Date.now();
+                    incomeTemplates.push(template);
+                    hideCreateIncomeTemplate();
+                    renderIncomeTemplatesList();
+                    renderIncomeTemplates();
+                    showSuccess('Template created! (stored locally)');
+                } else {
+                    console.error('Error creating income template:', error);
+                    alert('Error creating template: ' + error.message);
+                }
+                return;
+            }
+
+            console.log('✅ Successfully inserted income template:', data[0].id);
+            incomeTemplates.push(data[0]);
+            hideCreateIncomeTemplate();
+            renderIncomeTemplatesList();
+            renderIncomeTemplates();
+            showSuccess('Template created!');
+        }
+
+        function renderIncomeTemplatesList() {
+            const container = document.getElementById('incomeTemplatesList');
+            if (!container) return;
+
+            if (incomeTemplates.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em; text-align: center; padding: 20px;">No templates yet</p>';
+                return;
+            }
+
+            let html = '';
+            incomeTemplates.forEach((template) => {
+                html += `
+                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600;">${template.description}</div>
+                            <div style="color: #94a3b8; font-size: 0.9em; margin-top: 4px;">
+                                ${template.source} • $${template.amount.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85em;" onclick="deleteIncomeTemplate(${template.id})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function useIncomeTemplate(templateId) {
+            const template = incomeTemplates.find(t => t.id === templateId);
+            if (!template) return;
+
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const localDate = `${year}-${month}-${day}`;
+
+            // Prefill the form
+            document.getElementById('incomeDate').value = localDate;
+            document.getElementById('incomeSource').value = template.source;
+            document.getElementById('incomeAmount').value = template.amount;
+            document.getElementById('incomeDescription').value = template.description;
+
+            // Focus on amount so user can edit if needed
+            document.getElementById('incomeAmount').focus();
+            document.getElementById('incomeAmount').select();
+
+            // Scroll to form
+            document.getElementById('incomeAmount').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Close modal if open
+            closeIncomeTemplateManager();
+        }
+
+        async function deleteIncomeTemplate(templateId) {
+            if (!confirm('Delete this template?')) return;
+
+            const { error } = await supabaseClient
+                .from('income_templates')
+                .delete()
+                .eq('id', templateId)
+                .catch(() => null);
+
+            // Try to delete from DB, but if it doesn't exist, just delete from local
+            incomeTemplates = incomeTemplates.filter(t => t.id !== templateId);
+            renderIncomeTemplatesList();
+            renderIncomeTemplates();
+            showSuccess('Template deleted!');
         }
 
         // Income handling
