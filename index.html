@@ -3105,17 +3105,27 @@
         async function deleteIncomeTemplate(templateId) {
             if (!confirm('Delete this template?')) return;
 
-            const { error } = await supabaseClient
-                .from('income_templates')
-                .delete()
-                .eq('id', templateId)
-                .catch(() => null);
+            try {
+                const { error } = await supabaseClient
+                    .from('income_templates')
+                    .delete()
+                    .eq('id', templateId);
 
-            // Try to delete from DB, but if it doesn't exist, just delete from local
-            incomeTemplates = incomeTemplates.filter(t => t.id !== templateId);
-            renderIncomeTemplatesList();
-            renderIncomeTemplates();
-            showSuccess('Template deleted!');
+                if (error) {
+                    console.error('Error deleting income template:', error);
+                    showError('Failed to delete template: ' + error.message);
+                    return;
+                }
+
+                // Delete from local array
+                incomeTemplates = incomeTemplates.filter(t => t.id !== templateId);
+                renderIncomeTemplatesList();
+                renderIncomeTemplates();
+                showSuccess('Template deleted!');
+            } catch (err) {
+                console.error('Exception deleting income template:', err);
+                showError('Error deleting template: ' + err.message);
+            }
         }
 
         // Income handling
