@@ -1371,17 +1371,6 @@
             <div class="tab-content" id="insights">
                 <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
                 
-                <!-- Net Worth Tracker -->
-                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h3 style="margin: 0; color: var(--text-primary);">💎 Net Worth Tracker</h3>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.85em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Current Net Worth</div>
-                            <div style="font-size: 1.8em; font-weight: 700; color: #35E6A6;" id="netWorthValue">$15,590.00</div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Two column layout -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
                     <!-- Top Vendors -->
@@ -1728,7 +1717,6 @@
         let expenseTemplates = [];
         let incomeTemplates = [];
         let templateUsageStats = {};
-        let currentNetWorth = 15590; // User's current net worth
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
 
@@ -2314,10 +2302,6 @@
 
             expenses.push(data[0]);
 
-            // Update net worth (decrease by expense amount)
-            const newNetWorth = currentNetWorth - expense.amount;
-            addNetWorthEntry(newNetWorth);
-
             // Reset form
             document.getElementById('expenseForm').reset();
             const today = new Date();
@@ -2350,12 +2334,6 @@
                 }
 
                 expenses = expenses.filter(exp => exp.id !== id);
-                
-                // Update net worth (add back the deleted expense amount)
-                if (expense) {
-                    const newNetWorth = currentNetWorth + expense.amount;
-                    addNetWorthEntry(newNetWorth);
-                }
                 
                 renderAllMonths();
                 renderDashboard();
@@ -3416,10 +3394,6 @@
                 console.log('✅ Income added successfully:', data[0]);
                 income.push(data[0]);
 
-                // Update net worth (increase by income amount)
-                currentNetWorth += incomeEntry.amount;
-                document.getElementById('netWorthValue').textContent = `$${currentNetWorth.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
                 // Reset form
                 document.getElementById('incomeForm').reset();
                 const today = new Date();
@@ -3459,12 +3433,6 @@
                 }
 
                 income = income.filter(inc => inc.id !== id);
-                
-                // Update net worth (subtract deleted income amount)
-                if (incomeEntry) {
-                    currentNetWorth -= incomeEntry.amount;
-                    document.getElementById('netWorthValue').textContent = `$${currentNetWorth.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                }
                 
                 renderIncomeList();
                 renderDashboard();
