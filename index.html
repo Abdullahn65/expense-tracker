@@ -1361,6 +1361,25 @@
                 </div>
             </div>
 
+            <!-- Comparison Tab -->
+            <div class="tab-content" id="comparison">
+                <h2 style="margin-bottom: 24px;">Income vs Expenses Comparison</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; height: calc(100vh - 250px);">
+                    <!-- Monthly Comparison Table -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column;">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">Monthly Breakdown</h3>
+                        <div id="comparisonTable" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                    </div>
+
+                    <!-- Annual Pie Chart -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">Annual Breakdown</h3>
+                        <canvas id="annualCategoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- Add Expense Tab -->
             <div class="tab-content" id="add">
                 <h2 style="margin-bottom: 30px;">Add New Expense</h2>
@@ -1906,7 +1925,6 @@
                 // Refresh views
                 renderIncomeList();
                 renderInsights();
-                renderDashboard();
                 renderAllMonths();
             } catch (err) {
                 console.error('Exception:', err);
@@ -1944,9 +1962,8 @@
                 renderRecurringList();
                 renderFavoriteTemplates();
                 renderIncomeTemplates();
-                renderInsights();
 
-                // Restore user's last viewed page or default to insights
+                // Restore user's last viewed page or default to insights (no flash this way)
                 const lastTab = localStorage.getItem('lastViewedTab') || 'insights';
                 switchTab(lastTab);
 
@@ -2374,7 +2391,7 @@
 
             // Refresh views
             renderAllMonths();
-            renderDashboard();
+
         }
 
         async function deleteExpense(id) {
@@ -2395,7 +2412,7 @@
                 expenses = expenses.filter(exp => exp.id !== id);
                 
                 renderAllMonths();
-                renderDashboard();
+
                 renderInsights();
             }
         }
@@ -2458,7 +2475,7 @@
 
             closeEditModal();
             renderAllMonths();
-            renderDashboard();
+
             alert('Expense updated successfully!');
         }
 
@@ -3416,7 +3433,7 @@
                 renderRecurringList();
                 renderExpenseList();
                 renderAllMonths();
-                renderDashboard();
+
                 
                 // Show notification
                 const message = processed === 1 
@@ -3466,7 +3483,7 @@
 
                 // Refresh views
                 renderIncomeList();
-                renderDashboard();
+
                 renderAllMonths();
                 renderInsights();
                 renderIncomeTemplates(); // Refresh income templates display
@@ -3494,7 +3511,7 @@
                 income = income.filter(inc => inc.id !== id);
                 
                 renderIncomeList();
-                renderDashboard();
+
                 renderAllMonths();
                 renderInsights();
             }
@@ -3568,7 +3585,7 @@
 
             closeEditIncomeModal();
             renderIncomeList();
-            renderDashboard();
+
             renderAllMonths();
             renderInsights();
             showSuccess('Income entry updated!');
@@ -4440,7 +4457,7 @@
 
             alert('Budgets saved successfully!');
             renderAllMonths();
-            renderDashboard();
+
         }
 
         function filterTransactionsByCategory(month, category) {
