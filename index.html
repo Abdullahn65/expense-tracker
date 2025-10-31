@@ -4516,10 +4516,13 @@
                 
                 // Build arrays working backwards, subtracting income as we go
                 const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(b) - new Date(a));
-                sortedDates.forEach(dateStr => {
-                    currentNetWorth -= dailyData[dateStr].income;
-                    labels.unshift(new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                    dataPoints.unshift(Math.round(currentNetWorth * 100) / 100);
+                let tempNetWorth = currentNetWorth;
+                const reversedDates = sortedDates.reverse(); // Reverse to go from past to present
+                
+                reversedDates.forEach(dateStr => {
+                    tempNetWorth -= dailyData[dateStr].income;
+                    labels.push(new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    dataPoints.push(Math.round(tempNetWorth * 100) / 100);
                 });
             } else if (view === 'monthly') {
                 // Generate 12 months of data, working backwards from today
@@ -4542,11 +4545,13 @@
                 });
                 
                 // Build arrays working backwards, subtracting income as we go
-                const sortedMonths = Object.keys(monthlyData).sort().reverse();
+                let tempNetWorth = currentNetWorth;
+                const sortedMonths = Object.keys(monthlyData).sort();
+                
                 sortedMonths.forEach(key => {
-                    currentNetWorth -= monthlyData[key].income;
-                    labels.unshift(monthlyData[key].date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-                    dataPoints.unshift(Math.round(currentNetWorth * 100) / 100);
+                    tempNetWorth -= monthlyData[key].income;
+                    labels.push(monthlyData[key].date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+                    dataPoints.push(Math.round(tempNetWorth * 100) / 100);
                 });
             } else if (view === 'annual') {
                 // Generate data for past 5 years, working backwards from today
@@ -4568,11 +4573,13 @@
                 });
                 
                 // Build arrays working backwards, subtracting income as we go
-                const sortedYears = Object.keys(annualData).map(Number).sort((a, b) => b - a);
+                let tempNetWorth = currentNetWorth;
+                const sortedYears = Object.keys(annualData).map(Number).sort((a, b) => a - b);
+                
                 sortedYears.forEach(year => {
-                    currentNetWorth -= annualData[year];
-                    labels.unshift(year.toString());
-                    dataPoints.unshift(Math.round(currentNetWorth * 100) / 100);
+                    tempNetWorth -= annualData[year];
+                    labels.push(year.toString());
+                    dataPoints.push(Math.round(tempNetWorth * 100) / 100);
                 });
             }
 
