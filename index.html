@@ -1782,7 +1782,7 @@
         let incomeTemplates = [];
         let templateUsageStats = {};
         let baselineNetWorth = 16964.20; // Current actual net worth as of today
-        let trackingStartDate = new Date().toISOString().split('T')[0]; // Start tracking from today
+        let trackingStartDate = '2025-10-30'; // Start tracking from Oct 30 (allows today's purchases to be tracked)
         let currentNetWorthPeriod = 'daily';
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
@@ -4425,38 +4425,40 @@
             
             // Get all entries sorted by date
             const allEntries = [];
+            const todayString = new Date().toISOString().split('T')[0];
             
             expenses.forEach(exp => {
-                allEntries.push({
-                    date: new Date(exp.date),
-                    amount: -exp.amount,
-                    type: 'expense'
-                });
+                // Only include expenses from today onwards
+                if (exp.date >= todayString) {
+                    allEntries.push({
+                        date: exp.date, // Keep as string "2025-10-31"
+                        amount: -exp.amount,
+                        type: 'expense'
+                    });
+                }
             });
             
             income.forEach(inc => {
-                allEntries.push({
-                    date: new Date(inc.date),
-                    amount: inc.amount,
-                    type: 'income'
-                });
+                // Only include income from today onwards
+                if (inc.date >= todayString) {
+                    allEntries.push({
+                        date: inc.date, // Keep as string "2025-10-31"
+                        amount: inc.amount,
+                        type: 'income'
+                    });
+                }
             });
             
             // Sort by date ascending
-            allEntries.sort((a, b) => a.date - b.date);
-            
-            // Filter to only include entries from today onwards
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const futureEntries = allEntries.filter(entry => entry.date >= today);
+            allEntries.sort((a, b) => a.date.localeCompare(b.date));
             
             if (period === 'daily') {
                 // Group by day, starting from baseline
                 const dailyNetWorth = {};
                 let runningNetWorth = baselineNetWorth; // Start from $16,964.20
                 
-                futureEntries.forEach(entry => {
-                    const dateKey = entry.date.toISOString().split('T')[0];
+                allEntries.forEach(entry => {
+                    const dateKey = entry.date;
                     if (!dailyNetWorth[dateKey]) {
                         dailyNetWorth[dateKey] = runningNetWorth;
                     }
@@ -4465,13 +4467,12 @@
                 });
                 
                 // If no entries today, still add today's value at baseline
-                const todayKey = today.toISOString().split('T')[0];
-                if (!dailyNetWorth[todayKey]) {
-                    dailyNetWorth[todayKey] = baselineNetWorth;
+                if (!dailyNetWorth[todayString]) {
+                    dailyNetWorth[todayString] = baselineNetWorth;
                 }
                 
                 Object.keys(dailyNetWorth).sort().forEach(dateStr => {
-                    const dateObj = new Date(dateStr);
+                    const dateObj = new Date(dateStr + 'T00:00:00');
                     const monthDay = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     dates.push(monthDay);
                     data.push(dailyNetWorth[dateStr]);
@@ -4480,13 +4481,11 @@
                 // Group by month, starting from baseline
                 const monthlyNetWorth = {};
                 let runningNetWorth = baselineNetWorth; // Start from $16,964.20
-                const monthKey = (date) => {
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    return `${year}-${month}`;
+                const monthKey = (dateStr) => {
+                    return dateStr.substring(0, 7); // "2025-10"
                 };
                 
-                futureEntries.forEach(entry => {
+                allEntries.forEach(entry => {
                     const key = monthKey(entry.date);
                     if (!monthlyNetWorth[key]) {
                         monthlyNetWorth[key] = runningNetWorth;
@@ -4495,14 +4494,13 @@
                     monthlyNetWorth[key] = runningNetWorth;
                 });
                 
-                const currentMonth = monthKey(today);
+                const currentMonth = todayString.substring(0, 7);
                 if (!monthlyNetWorth[currentMonth]) {
                     monthlyNetWorth[currentMonth] = baselineNetWorth;
                 }
                 
                 Object.keys(monthlyNetWorth).sort().forEach(keyStr => {
-                    const [year, month] = keyStr.split('-');
-                    const monthName = new Date(year, parseInt(month) - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    const monthName = new Date(keyStr + '-01T00:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
                     dates.push(monthName);
                     data.push(monthlyNetWorth[keyStr]);
                 });
@@ -4511,8 +4509,8 @@
                 const annualNetWorth = {};
                 let runningNetWorth = baselineNetWorth; // Start from $16,964.20
                 
-                futureEntries.forEach(entry => {
-                    const year = entry.date.getFullYear();
+                allEntries.forEach(entry => {
+                    const year = entry.date.substring(0, 4); // "2025"
                     if (!annualNetWorth[year]) {
                         annualNetWorth[year] = runningNetWorth;
                     }
@@ -4520,7 +4518,7 @@
                     annualNetWorth[year] = runningNetWorth;
                 });
                 
-                const currentYear = today.getFullYear();
+                const currentYear = todayString.substring(0, 4);
                 if (!annualNetWorth[currentYear]) {
                     annualNetWorth[currentYear] = baselineNetWorth;
                 }
@@ -4544,24 +4542,32 @@
             let currentNetWorth = baselineNetWorth;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            const todayString = today.toISOString().split('T')[0]; // "2025-10-31"
             
             expenses.forEach(exp => {
-                const expDate = new Date(exp.date);
-                expDate.setHours(0, 0, 0, 0);
-                if (expDate >= today) {
+                // exp.date is a string like "2025-10-31"
+                if (exp.date === todayString || exp.date > todayString) {
                     currentNetWorth -= exp.amount;
                 }
             });
             income.forEach(inc => {
-                const incDate = new Date(inc.date);
-                incDate.setHours(0, 0, 0, 0);
-                if (incDate >= today) {
+                // inc.date is a string like "2025-10-31"
+                if (inc.date === todayString || inc.date > todayString) {
                     currentNetWorth += inc.amount;
                 }
             });
             
             // Calculate change from baseline (only from today's transactions)
             const change = currentNetWorth - baselineNetWorth;
+            
+            console.log('🎯 Net Worth Calculation:', {
+                baselineNetWorth,
+                todayString,
+                currentNetWorth,
+                change,
+                expenseCount: expenses.length,
+                incomeCount: income.length
+            });
             
             // Update display values
             document.getElementById('currentNetWorth').textContent = `$${currentNetWorth.toFixed(2)}`;
