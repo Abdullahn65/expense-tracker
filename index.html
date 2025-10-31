@@ -1324,12 +1324,9 @@
                 <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h3 style="margin: 0; color: var(--text-primary);">Net Worth</h3>
-                        <div style="text-align: right; display: flex; align-items: center; gap: 12px;">
-                            <button class="btn btn-secondary" onclick="resetNetWorth()" style="padding: 8px 12px; font-size: 12px;">Reset to $16,964.20</button>
-                            <div>
-                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Current Net Worth</p>
-                                <p style="font-size: 24px; font-weight: 700; color: #35E6A6; margin: 0;" id="netWorthValue">$16,964.20</p>
-                            </div>
+                        <div style="text-align: right;">
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Current Net Worth</p>
+                            <p style="font-size: 24px; font-weight: 700; color: #35E6A6; margin: 0;" id="netWorthValue">$0.00</p>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-bottom: 16px;">
@@ -4494,188 +4491,43 @@
 
         // Reset net worth to initial value
         function resetNetWorth() {
-            if (confirm('Reset net worth to $16,964.20?')) {
-                window.initialNetWorthValue = 16964.20;
-                localStorage.setItem('initialNetWorth', '16964.20');
-                renderNetWorthChart();
-                showSuccess('Net worth reset to $16,964.20');
-            }
+            // TODO: Implement net worth reset
         }
 
         // Calculate net worth progression
         function calculateNetWorthOverTime(timeframe = 'daily') {
-            // Use stored or default initial net worth
-            const initialNetWorth = window.initialNetWorthValue || 16964.20;
-            
-            // Get all transactions with dates
-            const allTransactions = [];
-            
-            // Add all expenses
-            expenses.forEach(exp => {
-                const expDate = new Date(exp.date);
-                expDate.setHours(0, 0, 0, 0);
-                allTransactions.push({
-                    date: expDate,
-                    amount: -exp.amount,
-                    type: 'expense'
-                });
-            });
-            
-            // Add all income
-            income.forEach(inc => {
-                const incDate = new Date(inc.date);
-                incDate.setHours(0, 0, 0, 0);
-                allTransactions.push({
-                    date: incDate,
-                    amount: inc.amount,
-                    type: 'income'
-                });
-            });
-            
-            // If no transactions, return just the initial value
-            if (allTransactions.length === 0) {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                return {
-                    labels: [this.formatDate(today)],
-                    values: [initialNetWorth]
-                };
-            }
-            
-            // Sort by date
-            allTransactions.sort((a, b) => a.date - b.date);
-            
-            // Get earliest and latest dates
-            const earliestDate = allTransactions[0].date;
-            const latestDate = allTransactions[allTransactions.length - 1].date;
-            
-            if (timeframe === 'daily') {
-                return calculateDailyNetWorth(allTransactions, earliestDate, initialNetWorth);
-            } else if (timeframe === 'monthly') {
-                return calculateMonthlyNetWorth(allTransactions, earliestDate, initialNetWorth);
-            } else if (timeframe === 'annual') {
-                return calculateAnnualNetWorth(allTransactions, earliestDate, initialNetWorth);
-            }
-            
-            return calculateDailyNetWorth(allTransactions, earliestDate, initialNetWorth);
+            // TODO: Implement net worth calculation
+            return { labels: [], values: [] };
         }
 
         // Calculate daily net worth
         function calculateDailyNetWorth(allTransactions, startDate, initialNetWorth) {
-            const netWorthByDate = new Map();
-            let runningNetWorth = initialNetWorth;
-            
-            // Add start date as the starting point
-            const startDateKey = this.formatDate(startDate);
-            netWorthByDate.set(startDateKey, initialNetWorth);
-            
-            // Process transactions
-            allTransactions.forEach(transaction => {
-                runningNetWorth += transaction.amount;
-                const dateKey = this.formatDate(transaction.date);
-                netWorthByDate.set(dateKey, runningNetWorth);
-            });
-            
-            // If no transactions, just return start date data
-            if (allTransactions.length === 0) {
-                return {
-                    labels: [startDateKey],
-                    values: [initialNetWorth]
-                };
-            }
-            
-            // Create sorted arrays - sort by actual date, not string
-            const sortedDates = Array.from(netWorthByDate.keys()).sort((a, b) => {
-                const dateA = new Date(a);
-                const dateB = new Date(b);
-                return dateA - dateB;
-            });
-            
-            const labels = sortedDates;
-            const values = sortedDates.map(date => netWorthByDate.get(date));
-            
-            return { labels, values };
+            // TODO: Implement daily net worth calculation
+            return { labels: [], values: [] };
         }
 
         // Calculate monthly net worth
         function calculateMonthlyNetWorth(allTransactions, startDate, initialNetWorth) {
-            const netWorthByMonth = new Map();
-            let runningNetWorth = initialNetWorth;
-            
-            // Get start of month for startDate
-            const monthStart = new Date(startDate);
-            monthStart.setDate(1);
-            const currentMonthKey = this.formatMonth(monthStart);
-            netWorthByMonth.set(currentMonthKey, initialNetWorth);
-            
-            // Process transactions by month
-            allTransactions.forEach(transaction => {
-                runningNetWorth += transaction.amount;
-                const monthKey = this.formatMonth(transaction.date);
-                netWorthByMonth.set(monthKey, runningNetWorth);
-            });
-            
-            // If no transactions, just return start month
-            if (allTransactions.length === 0) {
-                return {
-                    labels: [currentMonthKey],
-                    values: [initialNetWorth]
-                };
-            }
-            
-            // Create sorted arrays
-            const sortedMonths = Array.from(netWorthByMonth.keys()).sort((a, b) => {
-                const dateA = new Date(a + ' 1');
-                const dateB = new Date(b + ' 1');
-                return dateA - dateB;
-            });
-            const labels = sortedMonths;
-            const values = sortedMonths.map(month => netWorthByMonth.get(month));
-            
-            return { labels, values };
+            // TODO: Implement monthly net worth calculation
+            return { labels: [], values: [] };
         }
 
         // Calculate annual net worth
         function calculateAnnualNetWorth(allTransactions, startDate, initialNetWorth) {
-            const netWorthByYear = new Map();
-            let runningNetWorth = initialNetWorth;
-            
-            const currentYear = startDate.getFullYear();
-            netWorthByYear.set(currentYear.toString(), initialNetWorth);
-            
-            // Process transactions by year
-            allTransactions.forEach(transaction => {
-                runningNetWorth += transaction.amount;
-                const year = transaction.date.getFullYear().toString();
-                netWorthByYear.set(year, runningNetWorth);
-            });
-            
-            // If no transactions, just return current year
-            if (allTransactions.length === 0) {
-                return {
-                    labels: [currentYear.toString()],
-                    values: [initialNetWorth]
-                };
-            }
-            
-            // Create sorted arrays
-            const sortedYears = Array.from(netWorthByYear.keys()).sort();
-            const labels = sortedYears;
-            const values = sortedYears.map(year => netWorthByYear.get(year));
-            
-            return { labels, values };
+            // TODO: Implement annual net worth calculation
+            return { labels: [], values: [] };
         }
 
         // Helper function to format date
         function formatDate(date) {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            return `${months[date.getMonth()]} ${date.getDate()}`;
+            // TODO: Implement date formatting
+            return '';
         }
 
         // Helper function to format month
         function formatMonth(date) {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            return `${months[date.getMonth()]} ${date.getFullYear()}`;
+            // TODO: Implement month formatting
+            return '';
         }
 
         
