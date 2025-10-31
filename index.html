@@ -1291,6 +1291,7 @@
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="comparison">Comparison</button>
+            <button class="nav-tab" data-tab="insights">Insights</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
@@ -1363,6 +1364,50 @@
                         <h3 style="margin-bottom: 16px; color: var(--text-primary);">Annual Breakdown</h3>
                         <canvas id="annualCategoryChart"></canvas>
                     </div>
+                </div>
+            </div>
+
+            <!-- Insights Tab (Vendor Analytics & Trends) -->
+            <div class="tab-content" id="insights">
+                <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
+                
+                <!-- Two column layout -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <!-- Top Vendors -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">💰 Top Spending Vendors</h3>
+                        <div id="topVendorsContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                    </div>
+
+                    <!-- Spending Trends -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">📈 Monthly Spending Trend</h3>
+                        <canvas id="spendingTrendChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Category Trends -->
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">🏷️ Category Comparison (This Month vs Last Month)</h3>
+                    <canvas id="categoryComparisonChart" style="max-height: 400px;"></canvas>
+                </div>
+
+                <!-- All Vendors Table -->
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">📊 All Vendors - Detailed Analytics</h3>
+                    <table class="expense-table" style="font-size: 0.9em;">
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th>Total Spent</th>
+                                <th>Transactions</th>
+                                <th>Average</th>
+                                <th>Category</th>
+                                <th>Last Used</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendorAnalyticsTable"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -2028,6 +2073,16 @@
                 if (monthSelector) {
                     monthSelector.value = '';
                 }
+            } else if (tabName === 'insights') {
+                setTimeout(() => {
+                    console.log('Insights tab clicked. Rendering vendor analytics and trends.');
+                    renderInsights();
+                }, 200);
+                // Reset month dropdown when switching away from month tabs
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
             } else {
                 // Reset month dropdown when switching to non-month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2037,12 +2092,127 @@
             }
         }
 
+        // Smart category suggestion system
+        function buildVendorCategoryMap() {
+            // Build a map of vendors to their most common categories from historical data
+            const vendorMap = {};
+            
+            expenses.forEach(exp => {
+                if (exp.vendor && exp.category) {
+                    if (!vendorMap[exp.vendor.toLowerCase()]) {
+                        vendorMap[exp.vendor.toLowerCase()] = {};
+                    }
+                    vendorMap[exp.vendor.toLowerCase()][exp.category] = 
+                        (vendorMap[exp.vendor.toLowerCase()][exp.category] || 0) + 1;
+                }
+            });
+            
+            return vendorMap;
+        }
+
+        function suggestCategory(description, vendor) {
+            const vendorMap = buildVendorCategoryMap();
+            
+            // If vendor has history, suggest its most common category
+            if (vendor && vendorMap[vendor.toLowerCase()]) {
+                const categories = vendorMap[vendor.toLowerCase()];
+                const mostCommon = Object.entries(categories).sort((a, b) => b[1] - a[1])[0];
+                if (mostCommon) {
+                    return mostCommon[0];
+                }
+            }
+            
+            // Fallback: keyword-based suggestions
+            const lowerDesc = description.toLowerCase();
+            const keywordMap = {
+                'Groceries': ['grocery', 'safeway', 'trader joe', 'whole foods', 'kroger', 'walmart', 'costco', 'market'],
+                'Dining Out': ['restaurant', 'cafe', 'coffee', 'starbucks', 'mcdonalds', 'burger', 'pizza', 'food', 'lunch', 'dinner', 'breakfast', 'bar', 'grill'],
+                'Transportation': ['gas', 'uber', 'lyft', 'parking', 'transit', 'metro', 'toll', 'fuel', 'car', 'bus', 'taxi', 'metro', 'train'],
+                'Shopping': ['store', 'amazon', 'target', 'mall', 'clothes', 'shirt', 'pants', 'shoe', 'retail'],
+                'Entertainment': ['movie', 'cinema', 'theatre', 'concert', 'game', 'gaming', 'park', 'ticket', 'show'],
+                'Healthcare': ['hospital', 'doctor', 'pharmacy', 'medicine', 'medical', 'dental', 'vision', 'health'],
+                'Subscriptions': ['subscription', 'spotify', 'netflix', 'hulu', 'amazon prime', 'monthly', 'recurring'],
+                'Housing': ['rent', 'mortgage', 'utilities', 'electric', 'water', 'internet', 'phone', 'landlord'],
+                'Personal Care': ['salon', 'haircut', 'gym', 'fitness', 'barber', 'spa', 'massage'],
+            };
+            
+            for (const [category, keywords] of Object.entries(keywordMap)) {
+                if (keywords.some(keyword => lowerDesc.includes(keyword))) {
+                    return category;
+                }
+            }
+            
+            return null;
+        }
+
+        // Setup description input to auto-suggest category
+        function setupCategoryAutoSuggest() {
+            const descInput = document.getElementById('description');
+            const vendorInput = document.getElementById('vendor');
+            const categorySelect = document.getElementById('category');
+            
+            if (!descInput || !categorySelect) return;
+            
+            const updateSuggestion = () => {
+                const suggested = suggestCategory(descInput.value, vendorInput.value);
+                if (suggested && categorySelect.value === '') {
+                    // Auto-select if no category chosen yet
+                    categorySelect.value = suggested;
+                    categorySelect.style.borderColor = 'var(--success)';
+                    categorySelect.style.boxShadow = '0 0 0 3px rgba(53, 230, 166, 0.1)';
+                    
+                    // Remove highlight after 2 seconds
+                    setTimeout(() => {
+                        categorySelect.style.borderColor = '';
+                        categorySelect.style.boxShadow = '';
+                    }, 2000);
+                }
+            };
+            
+            descInput.addEventListener('input', updateSuggestion);
+            vendorInput.addEventListener('input', updateSuggestion);
+        }
+
+        // Get vendor spending analytics
+        function getVendorAnalytics() {
+            const vendorData = {};
+            
+            expenses.forEach(exp => {
+                if (exp.vendor) {
+                    if (!vendorData[exp.vendor]) {
+                        vendorData[exp.vendor] = {
+                            total: 0,
+                            count: 0,
+                            average: 0,
+                            category: exp.category,
+                            lastDate: exp.date,
+                            amounts: []
+                        };
+                    }
+                    vendorData[exp.vendor].total += exp.amount;
+                    vendorData[exp.vendor].count += 1;
+                    vendorData[exp.vendor].amounts.push(exp.amount);
+                    vendorData[exp.vendor].lastDate = exp.date > vendorData[exp.vendor].lastDate ? exp.date : vendorData[exp.vendor].lastDate;
+                }
+            });
+            
+            // Calculate averages and sort
+            Object.values(vendorData).forEach(vendor => {
+                vendor.average = vendor.total / vendor.count;
+            });
+            
+            return vendorData;
+        }
+
         // Form handling
         function setupForm() {
             document.getElementById('expenseForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 addExpense();
             });
+            
+            // Setup category auto-suggest
+            setupCategoryAutoSuggest();
         }
 
         async function addExpense() {
@@ -3848,6 +4018,216 @@
                     // Scroll to the table
                     monthContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
+            }
+        }
+
+        // Render vendor analytics and spending insights
+        function renderInsights() {
+            renderTopVendorsSection();
+            renderSpendingTrendChart();
+            renderCategoryComparisonChart();
+            renderVendorAnalyticsTable();
+        }
+
+        function renderTopVendorsSection() {
+            const vendorData = getVendorAnalytics();
+            const topVendors = Object.entries(vendorData)
+                .sort((a, b) => b[1].total - a[1].total)
+                .slice(0, 8);
+
+            const container = document.getElementById('topVendorsContainer');
+            if (!container) return;
+
+            container.innerHTML = '';
+            if (topVendors.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8;">No vendor data yet. Add expenses to see analytics.</p>';
+                return;
+            }
+
+            topVendors.forEach(([vendor, data]) => {
+                const progress = (data.average > 0) ? Math.min((data.average / 50) * 100, 100) : 0;
+                
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 12px; background: rgba(55, 224, 255, 0.05); border-radius: 8px; border: 1px solid rgba(55, 224, 255, 0.1);';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-weight: 600; color: #37E0FF; margin-bottom: 4px;">${vendor}</div>
+                            <div style="font-size: 0.85em; color: #94a3b8;">
+                                ${data.count} transaction${data.count !== 1 ? 's' : ''} • Avg: $${data.average.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style="text-align: right; font-weight: 600; color: #35E6A6;">$${data.total.toFixed(2)}</div>
+                    </div>
+                    <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                        <div style="width: ${progress}%; height: 100%; background: linear-gradient(90deg, #37E0FF, #35E6A6);"></div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderSpendingTrendChart() {
+            const canvas = document.getElementById('spendingTrendChart');
+            if (!canvas) return;
+
+            // Calculate monthly totals
+            const monthlyTotals = months.map((month, index) => {
+                return expenses.filter(exp => {
+                    const expDate = new Date(exp.date);
+                    return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
+                }).reduce((sum, exp) => sum + exp.amount, 0);
+            });
+
+            // Destroy existing chart if any
+            if (window.spendingTrendChart && typeof window.spendingTrendChart.destroy === 'function') {
+                window.spendingTrendChart.destroy();
+            }
+
+            window.spendingTrendChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: monthNames,
+                    datasets: [{
+                        label: 'Monthly Spending',
+                        data: monthlyTotals,
+                        borderColor: '#37E0FF',
+                        backgroundColor: 'rgba(55, 224, 255, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#37E0FF',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCategoryComparisonChart() {
+            const canvas = document.getElementById('categoryComparisonChart');
+            if (!canvas) return;
+
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+
+            // Get this month's categories
+            const thisMonthExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth;
+            });
+
+            // Get last month's categories
+            const lastMonthExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                return expDate.getFullYear() === lastYear && expDate.getMonth() === lastMonth;
+            });
+
+            const thisMonthTotals = calculateCategoryTotals(thisMonthExpenses);
+            const lastMonthTotals = calculateCategoryTotals(lastMonthExpenses);
+
+            // Get all categories
+            const allCategories = [...new Set([...Object.keys(thisMonthTotals), ...Object.keys(lastMonthTotals)])].sort();
+
+            // Destroy existing chart if any
+            if (window.categoryComparisonChart && typeof window.categoryComparisonChart.destroy === 'function') {
+                window.categoryComparisonChart.destroy();
+            }
+
+            window.categoryComparisonChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: allCategories,
+                    datasets: [
+                        {
+                            label: `This Month (${monthNames[currentMonth]})`,
+                            data: allCategories.map(cat => thisMonthTotals[cat] || 0),
+                            backgroundColor: 'rgba(55, 224, 255, 0.6)',
+                            borderColor: '#37E0FF',
+                            borderWidth: 1,
+                        },
+                        {
+                            label: `Last Month (${monthNames[currentMonth === 0 ? 11 : currentMonth - 1]})`,
+                            data: allCategories.map(cat => lastMonthTotals[cat] || 0),
+                            backgroundColor: 'rgba(123, 97, 255, 0.6)',
+                            borderColor: '#7B61FF',
+                            borderWidth: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#FFFFFF' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderVendorAnalyticsTable() {
+            const vendorData = getVendorAnalytics();
+            const tbody = document.getElementById('vendorAnalyticsTable');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+
+            // Sort by total spending descending
+            const sortedVendors = Object.entries(vendorData)
+                .sort((a, b) => b[1].total - a[1].total);
+
+            sortedVendors.forEach(([vendor, data]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${vendor}</td>
+                    <td style="font-weight: 600; color: #35E6A6;">$${data.total.toFixed(2)}</td>
+                    <td style="text-align: center;">${data.count}</td>
+                    <td style="color: #94a3b8;">$${data.average.toFixed(2)}</td>
+                    <td style="font-size: 0.85em; color: #cbd5e1;">${data.category}</td>
+                    <td style="font-size: 0.85em; color: #94a3b8;">${data.lastDate}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (sortedVendors.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">No vendor data yet.</td></tr>';
             }
         }
 
