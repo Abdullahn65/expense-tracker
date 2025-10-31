@@ -4606,6 +4606,15 @@
             console.log(`Calculation: $14,030.43 + $${totalInc} - $${expenses.reduce((sum, exp) => sum + exp.amount, 0)} = $${14030.43 + totalInc - expenses.reduce((sum, exp) => sum + exp.amount, 0)}`);
         }
 
+        function debugShowExpenses() {
+            console.log('=== ALL EXPENSE ENTRIES ===');
+            expenses.forEach((exp, idx) => {
+                console.log(`${idx + 1}. ID: ${exp.id} | Date: ${exp.date} | Category: ${exp.category} | Amount: $${exp.amount}`);
+            });
+            console.log(`Total expenses: ${expenses.length} entries`);
+            console.log(`Total expense amount: $${expenses.reduce((sum, exp) => sum + exp.amount, 0)}`);
+        }
+
         // Calculate current net worth dynamically from data
         function calculateCurrentNetWorth() {
             const baseAmount = 14030.43;
