@@ -6,6 +6,7 @@ CREATE TABLE expense_templates (
   category TEXT NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
   vendor TEXT,
+  description TEXT,
   payment_method TEXT NOT NULL,
   is_favorite BOOLEAN DEFAULT false,
   sort_order INTEGER DEFAULT 0,

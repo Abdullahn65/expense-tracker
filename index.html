@@ -1183,6 +1183,7 @@
                             </select>
                             <input type="number" id="templateAmount" placeholder="Amount" step="0.01" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
                             <input type="text" id="templateVendor" placeholder="Vendor/Company (optional)" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                            <input type="text" id="templateDescription" placeholder="Description (optional)" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
                             <select id="templatePaymentMethod" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
                                 <option value="">Payment Method</option>
                                 <option value="Cash">Cash</option>
@@ -2204,6 +2205,7 @@
             document.getElementById('templateCategory').value = '';
             document.getElementById('templateAmount').value = '';
             document.getElementById('templateVendor').value = '';
+            document.getElementById('templateDescription').value = '';
             document.getElementById('templatePaymentMethod').value = '';
         }
 
@@ -2212,6 +2214,7 @@
             const category = document.getElementById('templateCategory').value;
             const amount = parseFloat(document.getElementById('templateAmount').value);
             const vendor = document.getElementById('templateVendor').value.trim();
+            const description = document.getElementById('templateDescription').value.trim();
             const paymentMethod = document.getElementById('templatePaymentMethod').value;
 
             if (!name || !category || !amount || !paymentMethod) {
@@ -2232,6 +2235,7 @@
                 category,
                 amount,
                 vendor: vendor || null,
+                description: description || null,
                 payment_method: paymentMethod,
                 is_favorite: false,
                 sort_order: 0,
@@ -2382,7 +2386,7 @@
             document.getElementById('category').value = template.category;
             document.getElementById('amount').value = template.amount;
             document.getElementById('vendor').value = template.vendor || '';
-            document.getElementById('description').value = template.vendor || template.name;
+            document.getElementById('description').value = template.description || template.vendor || template.name;
             document.getElementById('paymentMethod').value = template.payment_method;
 
             // Focus on amount field so user can edit if needed
