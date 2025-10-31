@@ -1843,6 +1843,9 @@
                     console.log('Reloaded income entries after fix:', income.length);
                 }
 
+                // Auto-process due recurring expenses
+                await processOverdueRecurringExpenses();
+
                 // Render dashboard monthly charts after all data is loaded
                 setTimeout(() => {
                     console.log('Rendering monthly charts. Expenses count:', expenses.length, 'Income count:', income.length);
@@ -2735,6 +2738,83 @@
             });
 
             container.innerHTML = html;
+        }
+
+        async function processOverdueRecurringExpenses() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let processed = 0;
+
+            for (const recurring of recurringExpenses) {
+                if (!recurring.active) continue;
+
+                const nextDueDate = new Date(recurring.next_due_date);
+                nextDueDate.setHours(0, 0, 0, 0);
+
+                // If next due date is today or earlier, create the expense
+                if (nextDueDate <= today) {
+                    try {
+                        // Create an expense from this recurring subscription
+                        const expense = {
+                            id: Date.now() + Math.random(),
+                            date: recurring.next_due_date,
+                            category: recurring.category,
+                            description: recurring.name,
+                            amount: recurring.amount,
+                            payment_method: recurring.payment_method,
+                            vendor: recurring.name,
+                            notes: `Auto-created from recurring: ${recurring.name}`
+                        };
+
+                        const { error } = await supabaseClient
+                            .from('expenses')
+                            .insert([expense]);
+
+                        if (error) {
+                            console.error('Error auto-adding expense:', error);
+                            continue;
+                        }
+
+                        expenses.push(expense);
+                        processed++;
+
+                        // Calculate and update next due date
+                        const nextDate = calculateNextRecurringDate(
+                            recurring.frequency,
+                            recurring.day_of_week,
+                            recurring.day_of_month,
+                            recurring.quarter
+                        );
+
+                        const { error: updateError } = await supabaseClient
+                            .from('recurring_expenses')
+                            .update({ next_due_date: nextDate })
+                            .eq('id', recurring.id);
+
+                        if (!updateError) {
+                            recurring.next_due_date = nextDate;
+                        }
+                    } catch (error) {
+                        console.error('Error processing recurring expense:', error);
+                    }
+                }
+            }
+
+            // If any were processed, refresh the views
+            if (processed > 0) {
+                console.log(`✅ Auto-processed ${processed} recurring expense(s)`);
+                renderRecurringList();
+                renderExpenseList();
+                renderAllMonths();
+                renderDashboard();
+                
+                // Show notification
+                const message = processed === 1 
+                    ? `✅ Auto-added 1 subscription expense`
+                    : `✅ Auto-added ${processed} subscription expenses`;
+                showSuccess(message);
+            }
         }
 
         async function addIncomeEntry() {
