@@ -344,6 +344,30 @@
             box-shadow: 0 0 12px rgba(55, 224, 255, 0.2);
         }
 
+        .net-worth-toggle {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+        }
+
+        .net-worth-toggle:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(55, 224, 255, 0.3);
+            color: var(--text-primary);
+        }
+
+        .net-worth-toggle.active {
+            background: rgba(55, 224, 255, 0.2);
+            border-color: rgba(55, 224, 255, 0.5);
+            color: var(--accent);
+        }
+
         .expense-table {
             width: 100%;
             border-collapse: collapse;
@@ -1320,6 +1344,29 @@
             <div class="tab-content active" id="insights">
                 <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
                 
+                <!-- Net Worth Tracker Section -->
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">📊 Net Worth Tracking</h3>
+                        <div id="netWorthToggleButtons" style="display: flex; gap: 8px;">
+                            <button type="button" class="net-worth-toggle active" data-period="daily" style="padding: 8px 16px; background: rgba(55, 224, 255, 0.2); border: 1px solid rgba(55, 224, 255, 0.5); color: #37E0FF; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">Daily</button>
+                            <button type="button" class="net-worth-toggle" data-period="monthly" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #A6B0BF; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">Monthly</button>
+                            <button type="button" class="net-worth-toggle" data-period="annual" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #A6B0BF; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">Annual</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <div style="font-size: 0.85em; color: #94a3b8; margin-bottom: 4px;">Current Net Worth</div>
+                            <div id="currentNetWorth" style="font-size: 1.8em; font-weight: 700; color: #35E6A6;">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85em; color: #94a3b8; margin-bottom: 4px;">Change</div>
+                            <div id="netWorthChange" style="font-size: 1.8em; font-weight: 700; color: #37E0FF;">+$0.00</div>
+                        </div>
+                    </div>
+                    <canvas id="netWorthChart" style="max-height: 400px;"></canvas>
+                </div>
+
                 <!-- Two column layout -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
                     <!-- Top Vendors -->
@@ -1734,6 +1781,8 @@
         let expenseTemplates = [];
         let incomeTemplates = [];
         let templateUsageStats = {};
+        let initialNetWorth = 16964.20;
+        let currentNetWorthPeriod = 'daily';
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
 
@@ -2149,6 +2198,17 @@
                     }
                 });
             }
+
+            // Setup net worth toggle buttons
+            const netWorthToggleButtons = document.querySelectorAll('.net-worth-toggle');
+            netWorthToggleButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    netWorthToggleButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentNetWorthPeriod = this.getAttribute('data-period');
+                    renderNetWorthChart();
+                });
+            });
         }
 
         function switchTab(tabName) {
@@ -2390,6 +2450,7 @@
 
             // Refresh views
             renderAllMonths();
+            renderInsights();
 
         }
 
@@ -4356,8 +4417,200 @@
             }
         }
 
+        // Net Worth Tracking Functions
+        function calculateNetWorthData(period = 'daily') {
+            const data = [];
+            const dates = [];
+            let currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0);
+            
+            // Get all entries sorted by date
+            const allEntries = [];
+            
+            expenses.forEach(exp => {
+                allEntries.push({
+                    date: new Date(exp.date),
+                    amount: -exp.amount,
+                    type: 'expense'
+                });
+            });
+            
+            income.forEach(inc => {
+                allEntries.push({
+                    date: new Date(inc.date),
+                    amount: inc.amount,
+                    type: 'income'
+                });
+            });
+            
+            // Sort by date ascending
+            allEntries.sort((a, b) => a.date - b.date);
+            
+            // Filter to only include entries from today onwards
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const futureEntries = allEntries.filter(entry => entry.date >= today);
+            
+            if (period === 'daily') {
+                // Group by day
+                const dailyNetWorth = {};
+                let runningNetWorth = initialNetWorth;
+                
+                futureEntries.forEach(entry => {
+                    const dateKey = entry.date.toISOString().split('T')[0];
+                    if (!dailyNetWorth[dateKey]) {
+                        dailyNetWorth[dateKey] = runningNetWorth;
+                    }
+                    runningNetWorth += entry.amount;
+                    dailyNetWorth[dateKey] = runningNetWorth;
+                });
+                
+                // If no entries today, still add today's value
+                const todayKey = today.toISOString().split('T')[0];
+                if (!dailyNetWorth[todayKey]) {
+                    dailyNetWorth[todayKey] = initialNetWorth;
+                }
+                
+                Object.keys(dailyNetWorth).sort().forEach(dateStr => {
+                    const dateObj = new Date(dateStr);
+                    const monthDay = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    dates.push(monthDay);
+                    data.push(dailyNetWorth[dateStr]);
+                });
+            } else if (period === 'monthly') {
+                // Group by month
+                const monthlyNetWorth = {};
+                let runningNetWorth = initialNetWorth;
+                const monthKey = (date) => {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    return `${year}-${month}`;
+                };
+                
+                futureEntries.forEach(entry => {
+                    const key = monthKey(entry.date);
+                    if (!monthlyNetWorth[key]) {
+                        monthlyNetWorth[key] = runningNetWorth;
+                    }
+                    runningNetWorth += entry.amount;
+                    monthlyNetWorth[key] = runningNetWorth;
+                });
+                
+                const currentMonth = monthKey(today);
+                if (!monthlyNetWorth[currentMonth]) {
+                    monthlyNetWorth[currentMonth] = initialNetWorth;
+                }
+                
+                Object.keys(monthlyNetWorth).sort().forEach(keyStr => {
+                    const [year, month] = keyStr.split('-');
+                    const monthName = new Date(year, parseInt(month) - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    dates.push(monthName);
+                    data.push(monthlyNetWorth[keyStr]);
+                });
+            } else if (period === 'annual') {
+                // Group by year
+                const annualNetWorth = {};
+                let runningNetWorth = initialNetWorth;
+                
+                futureEntries.forEach(entry => {
+                    const year = entry.date.getFullYear();
+                    if (!annualNetWorth[year]) {
+                        annualNetWorth[year] = runningNetWorth;
+                    }
+                    runningNetWorth += entry.amount;
+                    annualNetWorth[year] = runningNetWorth;
+                });
+                
+                const currentYear = today.getFullYear();
+                if (!annualNetWorth[currentYear]) {
+                    annualNetWorth[currentYear] = initialNetWorth;
+                }
+                
+                Object.keys(annualNetWorth).sort().forEach(yearStr => {
+                    dates.push(yearStr);
+                    data.push(annualNetWorth[yearStr]);
+                });
+            }
+            
+            return { dates, data };
+        }
+
+        function renderNetWorthChart() {
+            const canvas = document.getElementById('netWorthChart');
+            if (!canvas) return;
+            
+            const { dates, data } = calculateNetWorthData(currentNetWorthPeriod);
+            
+            // Calculate current net worth
+            let currentNetWorth = initialNetWorth;
+            expenses.forEach(exp => currentNetWorth -= exp.amount);
+            income.forEach(inc => currentNetWorth += inc.amount);
+            
+            // Calculate change from initial
+            const change = currentNetWorth - initialNetWorth;
+            
+            // Update display values
+            document.getElementById('currentNetWorth').textContent = `$${currentNetWorth.toFixed(2)}`;
+            const changeEl = document.getElementById('netWorthChange');
+            changeEl.textContent = `${change >= 0 ? '+' : ''}$${change.toFixed(2)}`;
+            changeEl.style.color = change >= 0 ? '#35E6A6' : '#FF5C5C';
+            
+            // Destroy existing chart if any
+            if (window.netWorthChartInstance && typeof window.netWorthChartInstance.destroy === 'function') {
+                window.netWorthChartInstance.destroy();
+            }
+            
+            const chartColor = change >= 0 ? '#35E6A6' : '#FF5C5C';
+            
+            window.netWorthChartInstance = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Net Worth',
+                        data: data,
+                        borderColor: chartColor,
+                        backgroundColor: `${chartColor}20`,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: chartColor,
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
         // Render vendor analytics and spending insights
         function renderInsights() {
+            renderNetWorthChart();
             renderTopVendorsSection();
             renderSpendingTrendChart();
             renderCategoryComparisonChart();
