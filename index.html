@@ -1212,6 +1212,73 @@
             </div>
         </div>
 
+        <!-- Edit Template Form (Overlay) -->
+        <div id="editTemplateForm" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; flex-direction: column;">
+            <div style="background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+                <h2 style="margin-bottom: 20px; color: var(--text-primary); font-size: 1.3em;">Edit Template</h2>
+                
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Template Name</label>
+                        <input type="text" id="editTemplateName" placeholder="Template name" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                    </div>
+                    
+                    <div>
+                        <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Category</label>
+                        <select id="editTemplateCategory" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                            <option value="Housing">Housing</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Dining Out">Dining Out</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Personal Care">Personal Care</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Insurance">Insurance</option>
+                            <option value="Savings">Savings</option>
+                            <option value="Education">Education</option>
+                            <option value="Gifts">Gifts</option>
+                            <option value="Subscriptions">Subscriptions</option>
+                            <option value="Investment Subscription">Investment Subscription</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Amount</label>
+                        <input type="number" id="editTemplateAmount" placeholder="Amount" step="0.01" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                    </div>
+                    
+                    <div>
+                        <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Vendor (Optional)</label>
+                        <input type="text" id="editTemplateVendor" placeholder="Vendor/Company" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                    </div>
+                    
+                    <div>
+                        <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Description (Optional)</label>
+                        <input type="text" id="editTemplateDescription" placeholder="Description" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                    </div>
+                    
+                    <div>
+                        <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Payment Method</label>
+                        <select id="editTemplatePaymentMethod" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                            <option value="Cash">Cash</option>
+                            <option value="Chase Debit">Chase Debit</option>
+                            <option value="Chase Credit">Chase Credit</option>
+                            <option value="Apple Card">Apple Card</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveTemplateChanges()" style="width: 100%;">Save Changes</button>
+                    <button class="btn btn-secondary" onclick="closeEditTemplateForm()" style="width: 100%;">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="comparison">Comparison</button>
@@ -2280,12 +2347,11 @@
             let html = '';
             favorites.forEach((template, idx) => {
                 const stats = templateUsageStats[template.id] || {};
-                const displayName = template.vendor || template.name;
                 html += `
                     <button type="button" class="btn btn-secondary" style="padding: 12px 16px; font-size: 0.9em; display: flex; flex-direction: column; align-items: flex-start; line-height: 1.4;" 
                             title="Used ${stats.timesUsed || 0}x • Last: ${stats.lastUsed ? new Date(stats.lastUsed).toLocaleDateString() : 'never'}"
                             onclick="useTemplate(${template.id})">
-                        <span style="font-weight: 600; font-size: 0.95em;">${displayName}</span>
+                        <span style="font-weight: 600; font-size: 0.95em;">${template.name}</span>
                         <span style="font-size: 0.8em; color: #cbd5e1;">$${template.amount.toFixed(2)}</span>
                     </button>
                 `;
@@ -2315,7 +2381,7 @@
                 html += `
                     <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 16px 18px; border-radius: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45);">
                         <div>
-                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">⭐ ${template.vendor || template.name}</div>
+                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">⭐ ${template.name}</div>
                             <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${stats.timesUsed || 0}x</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
@@ -2351,7 +2417,7 @@
                 html += `
                     <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 16px 18px; border-radius: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45);">
                         <div>
-                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${template.vendor || template.name}</div>
+                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${template.name}</div>
                             <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${stats.timesUsed || 0}x • Avg: $${(stats.averageAmount || template.amount).toFixed(2)}</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
@@ -2441,16 +2507,81 @@
             }
         }
 
+        let currentEditingTemplateId = null;
+
         function editTemplate(templateId) {
             const template = expenseTemplates.find(t => t.id === templateId);
             if (!template) return;
 
-            const newAmount = prompt(`Edit amount for "${template.vendor || template.name}":`, template.amount);
-            
-            if (newAmount !== null && !isNaN(newAmount)) {
-                const updatedAmount = parseFloat(newAmount);
-                updateTemplateAmount(templateId, updatedAmount);
+            currentEditingTemplateId = templateId;
+
+            // Populate edit form
+            document.getElementById('editTemplateName').value = template.name;
+            document.getElementById('editTemplateCategory').value = template.category;
+            document.getElementById('editTemplateAmount').value = template.amount;
+            document.getElementById('editTemplateVendor').value = template.vendor || '';
+            document.getElementById('editTemplateDescription').value = template.description || '';
+            document.getElementById('editTemplatePaymentMethod').value = template.payment_method;
+
+            // Show edit form modal
+            const form = document.getElementById('editTemplateForm');
+            form.style.display = 'flex';
+        }
+
+        function closeEditTemplateForm() {
+            const form = document.getElementById('editTemplateForm');
+            form.style.display = 'none';
+            currentEditingTemplateId = null;
+        }
+
+        async function saveTemplateChanges() {
+            if (!currentEditingTemplateId) return;
+
+            const name = document.getElementById('editTemplateName').value.trim();
+            const category = document.getElementById('editTemplateCategory').value;
+            const amount = parseFloat(document.getElementById('editTemplateAmount').value);
+            const vendor = document.getElementById('editTemplateVendor').value.trim();
+            const description = document.getElementById('editTemplateDescription').value.trim();
+            const paymentMethod = document.getElementById('editTemplatePaymentMethod').value;
+
+            if (!name || !category || !amount || !paymentMethod) {
+                alert('Please fill in all required fields');
+                return;
             }
+
+            const { error } = await supabaseClient
+                .from('expense_templates')
+                .update({
+                    name,
+                    category,
+                    amount,
+                    vendor: vendor || null,
+                    description: description || null,
+                    payment_method: paymentMethod
+                })
+                .eq('id', currentEditingTemplateId);
+
+            if (error) {
+                alert('Error updating template: ' + error.message);
+                return;
+            }
+
+            // Update local data
+            const template = expenseTemplates.find(t => t.id === currentEditingTemplateId);
+            if (template) {
+                template.name = name;
+                template.category = category;
+                template.amount = amount;
+                template.vendor = vendor || null;
+                template.description = description || null;
+                template.payment_method = paymentMethod;
+                templateUsageStats[currentEditingTemplateId].averageAmount = amount;
+            }
+
+            closeEditTemplateForm();
+            renderAllTemplates();
+            renderFavoriteTemplates();
+            showSuccess('Template updated!');
         }
 
         async function updateTemplateAmount(templateId, newAmount) {
