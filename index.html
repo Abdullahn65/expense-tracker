@@ -1880,6 +1880,44 @@
             console.log(`Total income amount: $${income.reduce((sum, inc) => sum + inc.amount, 0)}`);
         }
 
+        async function deleteAllIncomeEntries() {
+            if (!confirm('⚠️ This will DELETE ALL income entries from the database. Are you sure?')) {
+                return;
+            }
+            if (!confirm('🚨 LAST WARNING: This cannot be undone. Delete all income entries?')) {
+                return;
+            }
+
+            try {
+                // Delete all income from database
+                const { error } = await supabaseClient
+                    .from('income')
+                    .delete()
+                    .neq('id', 0); // Delete all rows (neq always true)
+
+                if (error) {
+                    console.error('Error deleting income:', error);
+                    alert('Error: ' + error.message);
+                    return;
+                }
+
+                // Clear local income array
+                income = [];
+                
+                console.log('✅ All income entries deleted from database');
+                alert('✅ All income entries have been deleted!');
+                
+                // Refresh views
+                renderIncomeList();
+                renderInsights();
+                renderDashboard();
+                renderAllMonths();
+            } catch (err) {
+                console.error('Exception:', err);
+                alert('Error: ' + err.message);
+            }
+        }
+
         async function initializeApp() {
             try {
                 console.log('🎯 initializeApp() called');
@@ -4418,7 +4456,7 @@
 
         // Calculate current net worth dynamically from data
         function calculateCurrentNetWorth() {
-            const baseAmount = 15590;
+            const baseAmount = 14059.81;
             const totalIncome = income.reduce((sum, inc) => sum + inc.amount, 0);
             const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
             return baseAmount + totalIncome - totalExpenses;
@@ -4426,7 +4464,7 @@
 
         // Get net worth history by different time periods
         function getNetWorthHistory(viewType = 'monthly') {
-            const baseAmount = 15590;
+            const baseAmount = 14059.81;
             const transactionsByDate = {};
             
             // Collect all transactions by date
