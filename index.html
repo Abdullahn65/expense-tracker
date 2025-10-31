@@ -4584,7 +4584,7 @@
 
         // Calculate current net worth dynamically from data
         function calculateCurrentNetWorth() {
-            const baseAmount = 14059.81;
+            const baseAmount = 15590;
             const totalIncome = income.reduce((sum, inc) => sum + inc.amount, 0);
             const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
             return baseAmount + totalIncome - totalExpenses;
@@ -4592,7 +4592,7 @@
 
         // Get net worth history by different time periods
         function getNetWorthHistory(viewType = 'monthly') {
-            const baseAmount = 14059.81;
+            const baseAmount = 15590;
             const transactionsByDate = {};
             
             // Collect all transactions by date
