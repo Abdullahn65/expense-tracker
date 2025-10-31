@@ -2015,19 +2015,29 @@
             }
 
             // Load income templates
-            const { data: incomeTemplatesData, error: incomeTemplatesError } = await supabaseClient
-                .from('income_templates')
-                .select('*');
+            const { data: { user: currentUser } } = await supabaseClient.auth.getUser();
+            let incomeTemplatesData = [];
+            let incomeTemplatesError = null;
+            
+            if (currentUser) {
+                const result = await supabaseClient
+                    .from('income_templates')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+                
+                incomeTemplatesData = result.data;
+                incomeTemplatesError = result.error;
+            }
 
             if (incomeTemplatesError) {
                 console.warn('⚠️ Error loading income templates:', incomeTemplatesError.message);
                 console.warn('This could be due to: 1) RLS policies, 2) Table not existing, 3) User not authenticated');
                 incomeTemplates = [];
-            } else if (incomeTemplatesData) {
+            } else if (incomeTemplatesData && incomeTemplatesData.length > 0) {
                 incomeTemplates = incomeTemplatesData;
                 console.log('✅ Loaded income templates:', incomeTemplates.length);
             } else {
-                console.log('⚠️ No income templates data returned (might be empty)');
+                console.log('ℹ️ No income templates found for this user');
                 incomeTemplates = [];
             }
 
@@ -4412,30 +4422,12 @@
         function initializeNetWorthHistory() {
             // Initialize with current net worth if no history exists
             if (netWorthHistory.length === 0) {
-                // Add today's entry
+                // Add today's entry starting from your actual current balance
                 const today = new Date().toISOString().split('T')[0];
                 netWorthHistory.push({
                     date: today,
                     amount: currentNetWorth
                 });
-                
-                // Add historical entries for the past 11 months (for a full year view)
-                for (let i = 11; i >= 1; i--) {
-                    const pastDate = new Date();
-                    pastDate.setMonth(pastDate.getMonth() - i);
-                    const pastDateStr = pastDate.toISOString().split('T')[0];
-                    
-                    // Estimate past net worth (simplified: assume similar monthly savings)
-                    // You can replace this with actual historical data from database
-                    const estimatedAmount = currentNetWorth - (i * 500); // Assume $500/month increase
-                    netWorthHistory.push({
-                        date: pastDateStr,
-                        amount: Math.max(estimatedAmount, 0)
-                    });
-                }
-                
-                // Sort by date
-                netWorthHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
             }
         }
 
