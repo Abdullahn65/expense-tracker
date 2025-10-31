@@ -1904,12 +1904,13 @@
                 .select('*');
 
             if (templatesError) {
-                console.error('Error loading templates:', templatesError);
+                console.error('❌ Error loading templates:', templatesError);
+                console.error('RLS Policy issue? Check Supabase dashboard');
             }
 
             if (templatesData) {
                 expenseTemplates = templatesData;
-                console.log('Loaded templates:', expenseTemplates.length);
+                console.log('✅ Loaded templates:', expenseTemplates.length);
                 // Initialize usage stats for each template
                 expenseTemplates.forEach(t => {
                     if (!templateUsageStats[t.id]) {
@@ -1922,7 +1923,7 @@
                     }
                 });
             } else {
-                console.log('No templates data returned');
+                console.log('⚠️ No templates data returned (might be empty)');
                 expenseTemplates = [];
             }
 
@@ -1934,13 +1935,14 @@
                 .order('next_due_date', { ascending: true });
 
             if (recurringError) {
-                console.error('Error loading recurring expenses:', recurringError);
-                // Table might not exist yet, which is fine
+                console.error('❌ Error loading recurring expenses:', recurringError);
+                console.error('RLS Policy issue? Check Supabase dashboard');
                 recurringExpenses = [];
             } else if (recurringData) {
                 recurringExpenses = recurringData;
-                console.log('Loaded recurring expenses:', recurringExpenses.length);
+                console.log('✅ Loaded recurring expenses:', recurringExpenses.length);
             } else {
+                console.log('⚠️ No recurring expenses data returned (might be empty)');
                 recurringExpenses = [];
             }
         }
