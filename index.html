@@ -1854,6 +1854,8 @@
 
         async function initializeApp() {
             try {
+                console.log('🎯 initializeApp() called');
+                
                 // Set default date to today in local timezone
                 const today = new Date();
                 const year = today.getFullYear();
@@ -1866,10 +1868,13 @@
                 document.getElementById('incomeDate').value = localDate;
 
                 // Setup event listeners
+                console.log('Setting up event listeners...');
                 setupNavigation();
                 setupForm();
                 setupIncomeForm();
+                console.log('About to call setupRecurringForm()');
                 setupRecurringForm();
+                console.log('setupRecurringForm() completed');
                 renderAllMonths();
                 renderDashboard();
                 renderComparison();
@@ -2756,12 +2761,19 @@
         // ============ RECURRING SUBSCRIPTIONS ============
 
         function setupRecurringForm() {
+            console.log('🔧 Setting up recurring form...');
             const form = document.getElementById('recurringForm');
+            console.log('Form element:', form);
+            
             if (form) {
+                console.log('✅ Form found, attaching submit listener');
                 form.addEventListener('submit', async (e) => {
+                    console.log('📝 Recurring form submitted!');
                     e.preventDefault();
                     await addRecurringExpense();
                 });
+            } else {
+                console.error('❌ Recurring form not found in DOM');
             }
         }
 
@@ -2795,10 +2807,17 @@
         }
 
         async function addRecurringExpense() {
+            console.log('🚀 addRecurringExpense() called');
+            
             const frequency = document.getElementById('recurringFrequency').value;
             const dayOfWeek = document.getElementById('recurringDayOfWeek').value;
             const dayOfMonth = document.getElementById('recurringDayOfMonth').value;
             const quarter = document.getElementById('recurringQuarter').value;
+            
+            console.log('Frequency:', frequency);
+            console.log('Day of week:', dayOfWeek);
+            console.log('Day of month:', dayOfMonth);
+            console.log('Quarter:', quarter);
             
             // Validate required dynamic fields
             if ((frequency === 'weekly' || frequency === 'biweekly') && !dayOfWeek) {
@@ -2821,6 +2840,7 @@
             }
 
             const nextDueDate = calculateNextRecurringDate(frequency, dayOfWeek, dayOfMonth, quarter);
+            console.log('Next due date calculated:', nextDueDate);
 
             const recurring = {
                 id: Date.now(),
@@ -2838,6 +2858,8 @@
                 next_due_date: nextDueDate,
                 created_at: new Date().toISOString()
             };
+
+            console.log('📋 Recurring object being saved:', recurring);
 
             const { error } = await supabaseClient
                 .from('recurring_expenses')
