@@ -2020,7 +2020,8 @@
                 .select('*');
 
             if (incomeTemplatesError) {
-                console.warn('⚠️ Income templates table might not exist yet:', incomeTemplatesError.message);
+                console.warn('⚠️ Error loading income templates:', incomeTemplatesError.message);
+                console.warn('This could be due to: 1) RLS policies, 2) Table not existing, 3) User not authenticated');
                 incomeTemplates = [];
             } else if (incomeTemplatesData) {
                 incomeTemplates = incomeTemplatesData;
@@ -3087,9 +3088,6 @@
             } else if (frequency === 'monthly' || frequency === 'yearly') {
                 dayOfMonthField.style.display = 'block';
                 document.getElementById('recurringDayOfMonth').required = true;
-                // Pre-fill with today's day
-                const today = new Date();
-                document.getElementById('recurringDayOfMonth').value = today.getDate();
             } else if (frequency === 'quarterly') {
                 quarterField.style.display = 'block';
                 document.getElementById('recurringQuarter').required = true;
@@ -3430,6 +3428,7 @@
                 renderDashboard();
                 renderAllMonths();
                 renderInsights(); // Refresh net worth chart
+                renderIncomeTemplates(); // Refresh income templates display
             } catch (err) {
                 console.error('❌ Exception in addIncome:', err);
                 alert('Error: ' + err.message);
