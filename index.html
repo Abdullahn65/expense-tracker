@@ -1371,6 +1371,16 @@
             <div class="tab-content" id="insights">
                 <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
                 
+                <!-- Net Worth Tracker -->
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px; position: relative;">
+                    <div style="position: absolute; top: 24px; left: 24px;">
+                        <div style="font-size: 0.85em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Net Worth</div>
+                        <div style="font-size: 2em; font-weight: 700; color: #35E6A6;" id="netWorthValue">$15,590.00</div>
+                    </div>
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">💎 Net Worth Tracker</h3>
+                    <canvas id="netWorthChart" style="max-height: 300px;"></canvas>
+                </div>
+                
                 <!-- Two column layout -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
                     <!-- Top Vendors -->
@@ -1705,6 +1715,8 @@
         let recurringExpenses = [];
         let expenseTemplates = [];
         let templateUsageStats = {};
+        let netWorthHistory = []; // Track net worth over time: [{date, amount}, ...]
+        let currentNetWorth = 15590; // User's current net worth
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
 
@@ -4041,10 +4053,131 @@
 
         // Render vendor analytics and spending insights
         function renderInsights() {
+            renderNetWorthChart();
             renderTopVendorsSection();
             renderSpendingTrendChart();
             renderCategoryComparisonChart();
             renderVendorAnalyticsTable();
+        }
+
+        function initializeNetWorthHistory() {
+            // Initialize with current net worth if no history exists
+            if (netWorthHistory.length === 0) {
+                // Add today's entry
+                const today = new Date().toISOString().split('T')[0];
+                netWorthHistory.push({
+                    date: today,
+                    amount: currentNetWorth
+                });
+                
+                // Add historical entries for the past 11 months (for a full year view)
+                for (let i = 11; i >= 1; i--) {
+                    const pastDate = new Date();
+                    pastDate.setMonth(pastDate.getMonth() - i);
+                    const pastDateStr = pastDate.toISOString().split('T')[0];
+                    
+                    // Estimate past net worth (simplified: assume similar monthly savings)
+                    // You can replace this with actual historical data from database
+                    const estimatedAmount = currentNetWorth - (i * 500); // Assume $500/month increase
+                    netWorthHistory.push({
+                        date: pastDateStr,
+                        amount: Math.max(estimatedAmount, 0)
+                    });
+                }
+                
+                // Sort by date
+                netWorthHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+        }
+
+        function addNetWorthEntry(amount, date = null) {
+            const entryDate = date || new Date().toISOString().split('T')[0];
+            
+            // Check if entry for this date already exists
+            const existingIndex = netWorthHistory.findIndex(entry => entry.date === entryDate);
+            
+            if (existingIndex !== -1) {
+                // Update existing entry
+                netWorthHistory[existingIndex].amount = amount;
+            } else {
+                // Add new entry and sort
+                netWorthHistory.push({ date: entryDate, amount });
+                netWorthHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+            
+            // Keep only last 12 months
+            const twelveMonthsAgo = new Date();
+            twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+            netWorthHistory = netWorthHistory.filter(entry => new Date(entry.date) >= twelveMonthsAgo);
+            
+            currentNetWorth = amount;
+            document.getElementById('netWorthValue').textContent = `$${amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function renderNetWorthChart() {
+            const canvas = document.getElementById('netWorthChart');
+            if (!canvas) return;
+
+            // Initialize history if not already done
+            initializeNetWorthHistory();
+
+            // Destroy existing chart if any
+            if (window.netWorthChart && typeof window.netWorthChart.destroy === 'function') {
+                window.netWorthChart.destroy();
+            }
+
+            const labels = netWorthHistory.map(entry => {
+                const date = new Date(entry.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+
+            const data = netWorthHistory.map(entry => entry.amount);
+
+            window.netWorthChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Net Worth',
+                        data: data,
+                        borderColor: '#35E6A6',
+                        backgroundColor: 'rgba(53, 230, 166, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#35E6A6',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
         }
 
         function renderTopVendorsSection() {
