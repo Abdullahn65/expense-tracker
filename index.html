@@ -1289,9 +1289,8 @@
         </div>
 
         <div class="nav-tabs" id="navTabs">
-            <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-tab active" data-tab="insights">Insights</button>
             <button class="nav-tab" data-tab="comparison">Comparison</button>
-            <button class="nav-tab" data-tab="insights">Insights</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
@@ -1317,58 +1316,8 @@
         </div>
 
         <div class="content">
-            <!-- Dashboard Tab -->
-            <div class="tab-content active" id="dashboard">
-                <h2 style="margin-bottom: 12px;">Annual Summary <span id="dashboardYear"></span></h2>
-
-                <div class="summary-cards">
-                    <div class="summary-card">
-                        <h3>Total Spent</h3>
-                        <div class="value" id="totalYearSpent">$0.00</div>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Average Monthly</h3>
-                        <div class="value" id="avgMonthlySpent">$0.00</div>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Highest Month</h3>
-                        <div class="value" id="highestMonth">-</div>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Total Budget</h3>
-                        <div class="value" id="totalYearBudget">$0.00</div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 24px; margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 16px;">Monthly Breakdown</h3>
-                    <div id="monthlyChartsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
-                </div>
-
-                <button class="btn btn-secondary export-btn" onclick="exportToCSV()">Export All Data to CSV</button>
-            </div>
-
-            <!-- Comparison Tab -->
-            <div class="tab-content" id="comparison">
-                <h2 style="margin-bottom: 24px;">Income vs Expenses Comparison</h2>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; height: calc(100vh - 250px);">
-                    <!-- Monthly Comparison Table -->
-                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column;">
-                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">Monthly Breakdown</h3>
-                        <div id="comparisonTable" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
-                    </div>
-
-                    <!-- Annual Pie Chart -->
-                    <div style="background: rgba(15,18,24,0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">Annual Breakdown</h3>
-                        <canvas id="annualCategoryChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
             <!-- Insights Tab (Vendor Analytics & Trends) -->
-            <div class="tab-content" id="insights">
+            <div class="tab-content active" id="insights">
                 <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
                 
                 <!-- Net Worth Tracker with Chart -->
@@ -1989,13 +1938,17 @@
                 setupRecurringForm();
                 console.log('setupRecurringForm() completed');
                 renderAllMonths();
-                renderDashboard();
                 renderComparison();
                 renderBudgetSettings();
                 renderIncomeList();
                 renderRecurringList();
                 renderFavoriteTemplates();
                 renderIncomeTemplates();
+                renderInsights();
+
+                // Restore user's last viewed page or default to insights
+                const lastTab = localStorage.getItem('lastViewedTab') || 'insights';
+                switchTab(lastTab);
 
                 // Get and log current user info for debugging
                 const { data: { user } } = await supabaseClient.auth.getUser();
@@ -2183,6 +2136,9 @@
         }
 
         function switchTab(tabName) {
+            // Save the current tab to localStorage
+            localStorage.setItem('lastViewedTab', tabName);
+
             // Update nav tabs (only for nav-tabs that exist)
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.classList.remove('active');
@@ -2211,16 +2167,6 @@
                     renderMonth(tabName, monthIndex);
                     renderMonthChart(tabName);
                 }, 100);
-            } else if (tabName === 'dashboard') {
-                setTimeout(() => {
-                    console.log('Dashboard tab clicked. Rendering monthly charts. Expenses count:', expenses.length);
-                    renderDashboardMonthlyCharts();
-                }, 200);
-                // Reset month dropdown when switching away from month tabs
-                const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
             } else if (tabName === 'comparison') {
                 setTimeout(() => {
                     console.log('Comparison tab clicked. Rendering comparison data.');
