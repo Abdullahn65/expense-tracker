@@ -4598,25 +4598,25 @@
         }
 
         // Calculate monthly net worth
-        function calculateMonthlyNetWorth(futureTransactions, today, initialNetWorth) {
+        function calculateMonthlyNetWorth(allTransactions, startDate, initialNetWorth) {
             const netWorthByMonth = new Map();
             let runningNetWorth = initialNetWorth;
             
-            // Get start of current month
-            const monthStart = new Date(today);
+            // Get start of month for startDate
+            const monthStart = new Date(startDate);
             monthStart.setDate(1);
             const currentMonthKey = this.formatMonth(monthStart);
             netWorthByMonth.set(currentMonthKey, initialNetWorth);
             
             // Process transactions by month
-            futureTransactions.forEach(transaction => {
+            allTransactions.forEach(transaction => {
                 runningNetWorth += transaction.amount;
                 const monthKey = this.formatMonth(transaction.date);
                 netWorthByMonth.set(monthKey, runningNetWorth);
             });
             
-            // If no future transactions, just return current month
-            if (futureTransactions.length === 0) {
+            // If no transactions, just return start month
+            if (allTransactions.length === 0) {
                 return {
                     labels: [currentMonthKey],
                     values: [initialNetWorth]
@@ -4636,22 +4636,22 @@
         }
 
         // Calculate annual net worth
-        function calculateAnnualNetWorth(futureTransactions, today, initialNetWorth) {
+        function calculateAnnualNetWorth(allTransactions, startDate, initialNetWorth) {
             const netWorthByYear = new Map();
             let runningNetWorth = initialNetWorth;
             
-            const currentYear = today.getFullYear();
+            const currentYear = startDate.getFullYear();
             netWorthByYear.set(currentYear.toString(), initialNetWorth);
             
             // Process transactions by year
-            futureTransactions.forEach(transaction => {
+            allTransactions.forEach(transaction => {
                 runningNetWorth += transaction.amount;
                 const year = transaction.date.getFullYear().toString();
                 netWorthByYear.set(year, runningNetWorth);
             });
             
-            // If no future transactions, just return current year
-            if (futureTransactions.length === 0) {
+            // If no transactions, just return current year
+            if (allTransactions.length === 0) {
                 return {
                     labels: [currentYear.toString()],
                     values: [initialNetWorth]
