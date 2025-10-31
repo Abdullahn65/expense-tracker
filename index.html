@@ -2153,11 +2153,21 @@
             
             if (!descInput || !categorySelect) return;
             
+            // Track if category was manually set by user or auto-suggested
+            let isAutoSuggested = false;
+            
             const updateSuggestion = () => {
                 const suggested = suggestCategory(descInput.value, vendorInput.value);
-                if (suggested && categorySelect.value === '') {
-                    // Auto-select if no category chosen yet
+                
+                // Allow re-suggestion if:
+                // 1. There's a suggestion AND
+                // 2. (Category is empty OR was previously auto-suggested)
+                if (suggested && (categorySelect.value === '' || isAutoSuggested)) {
+                    // Auto-select category
                     categorySelect.value = suggested;
+                    isAutoSuggested = true;
+                    
+                    // Green highlight for auto-suggested
                     categorySelect.style.borderColor = 'var(--success)';
                     categorySelect.style.boxShadow = '0 0 0 3px rgba(53, 230, 166, 0.1)';
                     
@@ -2169,8 +2179,16 @@
                 }
             };
             
+            // Listen to description and vendor changes
             descInput.addEventListener('input', updateSuggestion);
             vendorInput.addEventListener('input', updateSuggestion);
+            
+            // If user manually changes category dropdown, mark it as manually set
+            categorySelect.addEventListener('change', function() {
+                if (this.value !== '') {
+                    isAutoSuggested = false;
+                }
+            });
         }
 
         // Get vendor spending analytics
