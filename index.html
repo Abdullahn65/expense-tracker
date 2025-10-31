@@ -3543,7 +3543,8 @@
                         legend: {
                             position: 'right',
                             labels: {
-                                color: '#A6B0BF',
+                                color: '#FFFFFF',
+                                textAlign: 'left',
                                 padding: 16,
                                 font: { size: 12, weight: 'bold' },
                                 generateLabels: (chart) => {
@@ -3555,6 +3556,7 @@
                                         return {
                                             text: `${label}: $${value.toFixed(0)} (${pct}%)`,
                                             fillStyle: data.datasets[0].backgroundColor[i],
+                                            textColor: '#FFFFFF',
                                             hidden: false,
                                             index: i
                                         };
