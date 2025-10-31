@@ -1320,7 +1320,20 @@
             <div class="tab-content active" id="insights">
                 <h2 style="margin-bottom: 24px;">Spending Insights & Vendor Analytics</h2>
                 
-                <!-- Net Worth Tracker with Chart -->
+                <!-- Net Worth Chart -->
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">📊 Net Worth Tracker</h3>
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Current Net Worth</p>
+                            <p style="font-size: 24px; font-weight: 700; color: #35E6A6;" id="netWorthValue">$16,964.20</p>
+                        </div>
+                        <div style="flex: 1;">
+                            <canvas id="netWorthChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Two column layout -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
                     <!-- Top Vendors -->
@@ -4349,10 +4362,173 @@
 
         // Render vendor analytics and spending insights
         function renderInsights() {
+            renderNetWorthChart();
             renderTopVendorsSection();
             renderSpendingTrendChart();
             renderCategoryComparisonChart();
             renderVendorAnalyticsTable();
+        }
+
+        // Calculate and render net worth over time
+        function renderNetWorthChart() {
+            const canvas = document.getElementById('netWorthChart');
+            if (!canvas) return;
+
+            const netWorthData = calculateNetWorthOverTime();
+            const valueElement = document.getElementById('netWorthValue');
+            
+            if (valueElement && netWorthData.values.length > 0) {
+                const currentNetWorth = netWorthData.values[netWorthData.values.length - 1];
+                valueElement.textContent = '$' + currentNetWorth.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+
+            // Destroy existing chart if any
+            if (window.netWorthChart && typeof window.netWorthChart.destroy === 'function') {
+                window.netWorthChart.destroy();
+            }
+
+            // Determine color based on trend
+            const isPositive = netWorthData.values.length > 1 && 
+                              netWorthData.values[netWorthData.values.length - 1] >= netWorthData.values[0];
+            const lineColor = isPositive ? '#35E6A6' : '#FF5C5C';
+            const fillColor = isPositive ? 'rgba(53, 230, 166, 0.1)' : 'rgba(255, 92, 92, 0.1)';
+
+            window.netWorthChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: netWorthData.labels,
+                    datasets: [{
+                        label: 'Net Worth',
+                        data: netWorthData.values,
+                        borderColor: lineColor,
+                        backgroundColor: fillColor,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: lineColor,
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#FFFFFF',
+                            bodyColor: '#FFFFFF',
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return '$' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Calculate net worth progression from today onwards
+        function calculateNetWorthOverTime() {
+            // Starting net worth
+            const initialNetWorth = 16964.20;
+            
+            // Get all transactions from today onwards
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Combine all transactions (expenses and income) from today onwards
+            const futureTransactions = [];
+            
+            // Add expenses
+            expenses.forEach(exp => {
+                const expDate = new Date(exp.date);
+                expDate.setHours(0, 0, 0, 0);
+                if (expDate >= today) {
+                    futureTransactions.push({
+                        date: expDate,
+                        amount: -exp.amount, // Negative for expenses
+                        type: 'expense'
+                    });
+                }
+            });
+            
+            // Add income
+            income.forEach(inc => {
+                const incDate = new Date(inc.date);
+                incDate.setHours(0, 0, 0, 0);
+                if (incDate >= today) {
+                    futureTransactions.push({
+                        date: incDate,
+                        amount: inc.amount, // Positive for income
+                        type: 'income'
+                    });
+                }
+            });
+            
+            // Sort by date
+            futureTransactions.sort((a, b) => a.date - b.date);
+            
+            // Calculate net worth for each day
+            const netWorthByDate = new Map();
+            let runningNetWorth = initialNetWorth;
+            
+            // Add today as the starting point
+            const todayKey = this.formatDate(today);
+            netWorthByDate.set(todayKey, initialNetWorth);
+            
+            // Process transactions
+            futureTransactions.forEach(transaction => {
+                runningNetWorth += transaction.amount;
+                const dateKey = this.formatDate(transaction.date);
+                
+                // Keep the latest value for each date
+                netWorthByDate.set(dateKey, runningNetWorth);
+            });
+            
+            // If no future transactions, just return today's data
+            if (futureTransactions.length === 0) {
+                return {
+                    labels: [todayKey],
+                    values: [initialNetWorth]
+                };
+            }
+            
+            // Create sorted arrays for the chart
+            const sortedDates = Array.from(netWorthByDate.keys()).sort();
+            const labels = sortedDates;
+            const values = sortedDates.map(date => netWorthByDate.get(date));
+            
+            return { labels, values };
+        }
+
+        // Helper function to format date
+        function formatDate(date) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${months[date.getMonth()]} ${date.getDate()}`;
         }
 
         
