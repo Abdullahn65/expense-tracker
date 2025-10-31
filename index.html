@@ -1329,6 +1329,11 @@
                             <p style="font-size: 24px; font-weight: 700; color: #35E6A6; margin: 0;" id="netWorthValue">$16,964.20</p>
                         </div>
                     </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button class="btn btn-secondary" onclick="switchNetWorthView('daily')" id="netWorthBtnDaily" style="padding: 8px 16px; font-size: 13px; flex: 1;">Daily</button>
+                        <button class="btn btn-secondary" onclick="switchNetWorthView('monthly')" id="netWorthBtnMonthly" style="padding: 8px 16px; font-size: 13px; flex: 1;">Monthly</button>
+                        <button class="btn btn-secondary" onclick="switchNetWorthView('annual')" id="netWorthBtnAnnual" style="padding: 8px 16px; font-size: 13px; flex: 1;">Annual</button>
+                    </div>
                     <div style="width: 100%;">
                         <canvas id="netWorthChart" style="max-height: 300px;"></canvas>
                     </div>
@@ -4371,10 +4376,19 @@
 
         // Calculate and render net worth over time
         function renderNetWorthChart() {
+            const netWorthView = window.currentNetWorthView || 'daily';
             const canvas = document.getElementById('netWorthChart');
             if (!canvas) return;
 
-            const netWorthData = calculateNetWorthOverTime();
+            let netWorthData;
+            if (netWorthView === 'daily') {
+                netWorthData = calculateNetWorthOverTime('daily');
+            } else if (netWorthView === 'monthly') {
+                netWorthData = calculateNetWorthOverTime('monthly');
+            } else if (netWorthView === 'annual') {
+                netWorthData = calculateNetWorthOverTime('annual');
+            }
+            
             const valueElement = document.getElementById('netWorthValue');
             
             if (valueElement && netWorthData.values.length > 0) {
@@ -4449,10 +4463,24 @@
                     }
                 }
             });
+
+            // Update button active states
+            document.getElementById('netWorthBtnDaily').classList.toggle('btn-primary', netWorthView === 'daily');
+            document.getElementById('netWorthBtnDaily').classList.toggle('btn-secondary', netWorthView !== 'daily');
+            document.getElementById('netWorthBtnMonthly').classList.toggle('btn-primary', netWorthView === 'monthly');
+            document.getElementById('netWorthBtnMonthly').classList.toggle('btn-secondary', netWorthView !== 'monthly');
+            document.getElementById('netWorthBtnAnnual').classList.toggle('btn-primary', netWorthView === 'annual');
+            document.getElementById('netWorthBtnAnnual').classList.toggle('btn-secondary', netWorthView !== 'annual');
+        }
+
+        // Switch net worth view
+        function switchNetWorthView(view) {
+            window.currentNetWorthView = view;
+            renderNetWorthChart();
         }
 
         // Calculate net worth progression from today onwards
-        function calculateNetWorthOverTime() {
+        function calculateNetWorthOverTime(timeframe = 'daily') {
             // Starting net worth
             const initialNetWorth = 16964.20;
             
@@ -4492,7 +4520,19 @@
             // Sort by date
             futureTransactions.sort((a, b) => a.date - b.date);
             
-            // Calculate net worth for each day
+            if (timeframe === 'daily') {
+                return calculateDailyNetWorth(futureTransactions, today, initialNetWorth);
+            } else if (timeframe === 'monthly') {
+                return calculateMonthlyNetWorth(futureTransactions, today, initialNetWorth);
+            } else if (timeframe === 'annual') {
+                return calculateAnnualNetWorth(futureTransactions, today, initialNetWorth);
+            }
+            
+            return calculateDailyNetWorth(futureTransactions, today, initialNetWorth);
+        }
+
+        // Calculate daily net worth
+        function calculateDailyNetWorth(futureTransactions, today, initialNetWorth) {
             const netWorthByDate = new Map();
             let runningNetWorth = initialNetWorth;
             
@@ -4504,8 +4544,6 @@
             futureTransactions.forEach(transaction => {
                 runningNetWorth += transaction.amount;
                 const dateKey = this.formatDate(transaction.date);
-                
-                // Keep the latest value for each date
                 netWorthByDate.set(dateKey, runningNetWorth);
             });
             
@@ -4525,10 +4563,85 @@
             return { labels, values };
         }
 
+        // Calculate monthly net worth
+        function calculateMonthlyNetWorth(futureTransactions, today, initialNetWorth) {
+            const netWorthByMonth = new Map();
+            let runningNetWorth = initialNetWorth;
+            
+            // Get start of current month
+            const monthStart = new Date(today);
+            monthStart.setDate(1);
+            const currentMonthKey = this.formatMonth(monthStart);
+            netWorthByMonth.set(currentMonthKey, initialNetWorth);
+            
+            // Process transactions by month
+            futureTransactions.forEach(transaction => {
+                runningNetWorth += transaction.amount;
+                const monthKey = this.formatMonth(transaction.date);
+                netWorthByMonth.set(monthKey, runningNetWorth);
+            });
+            
+            // If no future transactions, just return current month
+            if (futureTransactions.length === 0) {
+                return {
+                    labels: [currentMonthKey],
+                    values: [initialNetWorth]
+                };
+            }
+            
+            // Create sorted arrays
+            const sortedMonths = Array.from(netWorthByMonth.keys()).sort((a, b) => {
+                const dateA = new Date(a + ' 1');
+                const dateB = new Date(b + ' 1');
+                return dateA - dateB;
+            });
+            const labels = sortedMonths;
+            const values = sortedMonths.map(month => netWorthByMonth.get(month));
+            
+            return { labels, values };
+        }
+
+        // Calculate annual net worth
+        function calculateAnnualNetWorth(futureTransactions, today, initialNetWorth) {
+            const netWorthByYear = new Map();
+            let runningNetWorth = initialNetWorth;
+            
+            const currentYear = today.getFullYear();
+            netWorthByYear.set(currentYear.toString(), initialNetWorth);
+            
+            // Process transactions by year
+            futureTransactions.forEach(transaction => {
+                runningNetWorth += transaction.amount;
+                const year = transaction.date.getFullYear().toString();
+                netWorthByYear.set(year, runningNetWorth);
+            });
+            
+            // If no future transactions, just return current year
+            if (futureTransactions.length === 0) {
+                return {
+                    labels: [currentYear.toString()],
+                    values: [initialNetWorth]
+                };
+            }
+            
+            // Create sorted arrays
+            const sortedYears = Array.from(netWorthByYear.keys()).sort();
+            const labels = sortedYears;
+            const values = sortedYears.map(year => netWorthByYear.get(year));
+            
+            return { labels, values };
+        }
+
         // Helper function to format date
         function formatDate(date) {
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             return `${months[date.getMonth()]} ${date.getDate()}`;
+        }
+
+        // Helper function to format month
+        function formatMonth(date) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${months[date.getMonth()]} ${date.getFullYear()}`;
         }
 
         
