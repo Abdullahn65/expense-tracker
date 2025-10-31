@@ -2998,6 +2998,128 @@
             incomeList.innerHTML = html;
         }
 
+        // Smart search and filter for monthly expenses
+        function filterExpensesInMonth(month, query) {
+            query = query.toLowerCase().trim();
+            
+            // Get the expense table in this month's container
+            const monthContainer = document.getElementById(`month-${month}`);
+            if (!monthContainer) return;
+            
+            const table = monthContainer.querySelector('.expense-table');
+            if (!table) return;
+            
+            const rows = table.querySelectorAll('tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                if (!row.dataset.expenseId) {
+                    // Add data-expenseId if not already present (for first filter run)
+                    row.dataset.expenseId = row.textContent;
+                }
+                
+                // Get cell data
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 6) return; // Skip if malformed
+                
+                const date = cells[0].textContent.toLowerCase();
+                const category = cells[1].textContent.toLowerCase();
+                const description = cells[2].textContent.toLowerCase();
+                const vendor = cells[3].textContent.toLowerCase();
+                const amountText = cells[4].textContent.toLowerCase();
+                const paymentMethod = cells[5].textContent.toLowerCase();
+                
+                // Parse amount from "$XX.XX" format
+                const amountMatch = amountText.match(/\$?([\d.]+)/);
+                const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+                
+                let matches = false;
+                
+                if (query === '') {
+                    // Empty query shows all
+                    matches = true;
+                } else {
+                    // Parse query for different filter types
+                    const queryLower = query.toLowerCase();
+                    
+                    // Check for amount filters (over/under/more than/less than)
+                    const overMatch = queryLower.match(/(?:over|more than|>)\s*[\$]?([\d.]+)/);
+                    const underMatch = queryLower.match(/(?:under|less than|<)\s*[\$]?([\d.]+)/);
+                    
+                    let amountFilterMatches = true;
+                    if (overMatch) {
+                        const threshold = parseFloat(overMatch[1]);
+                        amountFilterMatches = amount > threshold;
+                    }
+                    if (underMatch) {
+                        const threshold = parseFloat(underMatch[1]);
+                        amountFilterMatches = amountFilterMatches && amount < threshold;
+                    }
+                    
+                    // If amount filters were used, only check amount filters (unless other terms present)
+                    if (overMatch || underMatch) {
+                        if (amountFilterMatches) {
+                            // Check if there are other keywords to match
+                            const otherTerms = queryLower
+                                .replace(/(?:over|under|more than|less than|>|<)/g, '')
+                                .replace(/[\$\d.]/g, '')
+                                .split(/\s+/)
+                                .filter(term => term.length > 0);
+                            
+                            if (otherTerms.length === 0) {
+                                matches = true;
+                            } else {
+                                // Match other terms with any field
+                                matches = otherTerms.some(term => 
+                                    description.includes(term) || 
+                                    vendor.includes(term) || 
+                                    category.includes(term) ||
+                                    paymentMethod.includes(term)
+                                );
+                            }
+                        }
+                    } else {
+                        // No amount filters - do keyword matching
+                        const searchTerms = query.split(/\s+/).filter(term => term.length > 0);
+                        
+                        matches = searchTerms.every(term => {
+                            // Check if term matches any field
+                            return description.includes(term) || 
+                                   vendor.includes(term) || 
+                                   category.includes(term) ||
+                                   paymentMethod.includes(term) ||
+                                   date.includes(term);
+                        });
+                    }
+                }
+                
+                row.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+            
+            // Update or create result counter
+            let resultCounter = monthContainer.querySelector('.search-result-counter');
+            if (!resultCounter) {
+                resultCounter = document.createElement('div');
+                resultCounter.className = 'search-result-counter';
+                const searchBar = monthContainer.querySelector('input[id^="searchExpenses_"]');
+                if (searchBar) {
+                    searchBar.parentElement.appendChild(resultCounter);
+                }
+            }
+            
+            if (query.length > 0) {
+                const totalRows = rows.length;
+                resultCounter.textContent = `Found ${visibleCount} of ${totalRows} expenses`;
+                resultCounter.style.fontSize = '0.85em';
+                resultCounter.style.color = '#94a3b8';
+                resultCounter.style.marginTop = '8px';
+                resultCounter.style.marginLeft = '2px';
+            } else {
+                resultCounter.textContent = '';
+            }
+        }
+
         // Render monthly views
         function renderAllMonths() {
             months.forEach((month, index) => {
@@ -3025,6 +3147,15 @@
             }
 
             let html = `<h2 style="margin-bottom: 20px;">${monthNames[monthIndex]} ${currentYear}</h2>`;
+
+            // Add search bar
+            html += `
+                <div style="background: rgba(15,18,24,0.85); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
+                    <input type="text" id="searchExpenses_${month}" placeholder="🔍 Search: 'tolls', 'over 50', 'parking', 'chase', or vendor name..." 
+                           style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #FFFFFF; font-size: 14px;"
+                           oninput="filterExpensesInMonth('${month}', this.value)">
+                </div>
+            `;
 
             // Summary cards
             const totalSpent = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
