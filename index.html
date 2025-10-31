@@ -1285,6 +1285,7 @@
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
+            <button class="nav-tab" data-tab="recurring">Recurring</button>
             <div class="month-dropdown-container">
                 <label for="monthSelector" style="color: #cbd5e1; font-size: 0.85em; margin: 0; text-transform: uppercase; letter-spacing: 0.6px;">View Month:</label>
                 <select id="monthSelector" class="month-dropdown">
@@ -1502,6 +1503,119 @@
                 <div class="budget-form" id="budgetForm"></div>
                 <button class="btn btn-primary" onclick="saveBudgets()" style="margin-top: 20px;">Save Budgets</button>
             </div>
+
+            <!-- Recurring Tab -->
+            <div class="tab-content" id="recurring">
+                <h2 style="margin-bottom: 24px;">Recurring Subscriptions & Expenses</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px;">
+                    <!-- Form Section -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600;">Add Recurring Expense</h3>
+                        <form id="recurringForm" class="expense-form" style="display: flex; flex-direction: column; gap: 12px;">
+                            <div class="form-group">
+                                <label for="recurringName">Name/Description *</label>
+                                <input type="text" id="recurringName" placeholder="e.g., Netflix, Gym Membership" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="recurringCategory">Category *</label>
+                                <select id="recurringCategory" required>
+                                    <option value="">Select Category</option>
+                                    <option value="Subscriptions">Subscriptions</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Personal Care">Personal Care</option>
+                                    <option value="Insurance">Insurance</option>
+                                    <option value="Savings">Savings</option>
+                                    <option value="Housing">Housing</option>
+                                    <option value="Transportation">Transportation</option>
+                                    <option value="Groceries">Groceries</option>
+                                    <option value="Shopping">Shopping</option>
+                                    <option value="Education">Education</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="recurringAmount">Amount *</label>
+                                <input type="number" id="recurringAmount" placeholder="0.00" step="0.01" min="0" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="recurringFrequency">Frequency *</label>
+                                <select id="recurringFrequency" onchange="updateRecurringFields()" required>
+                                    <option value="">Select Frequency</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="biweekly">Bi-weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Dynamic Fields -->
+                            <div id="dayOfWeekField" class="form-group" style="display: none;">
+                                <label for="recurringDayOfWeek">Day of Week *</label>
+                                <select id="recurringDayOfWeek">
+                                    <option value="">Select Day</option>
+                                    <option value="0">Sunday</option>
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                </select>
+                            </div>
+                            
+                            <div id="dayOfMonthField" class="form-group" style="display: none;">
+                                <label for="recurringDayOfMonth">Day of Month *</label>
+                                <input type="number" id="recurringDayOfMonth" min="1" max="31" placeholder="1-31">
+                            </div>
+                            
+                            <div id="quarterField" class="form-group" style="display: none;">
+                                <label for="recurringQuarter">Starting Quarter *</label>
+                                <select id="recurringQuarter">
+                                    <option value="">Select Quarter</option>
+                                    <option value="Q1">Q1 (Jan-Mar)</option>
+                                    <option value="Q2">Q2 (Apr-Jun)</option>
+                                    <option value="Q3">Q3 (Jul-Sep)</option>
+                                    <option value="Q4">Q4 (Oct-Dec)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="recurringPaymentMethod">Payment Method *</label>
+                                <select id="recurringPaymentMethod" required>
+                                    <option value="">Select Method</option>
+                                    <option value="Chase Debit">Chase Debit</option>
+                                    <option value="Chase Credit">Chase Credit</option>
+                                    <option value="PNC Debit">PNC Debit</option>
+                                    <option value="PNC Credit">PNC Credit</option>
+                                    <option value="Cash">Cash</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="PayPal">PayPal</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="recurringNotes">Notes (optional)</label>
+                                <textarea id="recurringNotes" placeholder="Add any notes..." style="min-height: 60px; resize: vertical;"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">Add Subscription</button>
+                        </form>
+                    </div>
+                    
+                    <!-- List Section -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column;">
+                        <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Your Subscriptions</h3>
+                        <div id="recurringList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1533,6 +1647,7 @@
         let expenses = [];
         let budgets = {};
         let income = [];
+        let recurringExpenses = [];
         let expenseTemplates = [];
         let templateUsageStats = {};
 
@@ -1687,11 +1802,13 @@
                 setupNavigation();
                 setupForm();
                 setupIncomeForm();
+                setupRecurringForm();
                 renderAllMonths();
                 renderDashboard();
                 renderComparison();
                 renderBudgetSettings();
                 renderIncomeList();
+                renderRecurringList();
                 renderFavoriteTemplates();
 
                 // Get and log current user info for debugging
@@ -1804,6 +1921,23 @@
             } else {
                 console.log('No templates data returned');
                 expenseTemplates = [];
+            }
+
+            // Load recurring expenses
+            const { data: recurringData, error: recurringError } = await supabaseClient
+                .from('recurring_expenses')
+                .select('*')
+                .order('next_due_date', { ascending: true });
+
+            if (recurringError) {
+                console.error('Error loading recurring expenses:', recurringError);
+                // Table might not exist yet, which is fine
+                recurringExpenses = [];
+            } else if (recurringData) {
+                recurringExpenses = recurringData.filter(r => r.active !== false);
+                console.log('Loaded recurring expenses:', recurringExpenses.length);
+            } else {
+                recurringExpenses = [];
             }
         }
 
@@ -2399,8 +2533,211 @@
             });
         }
 
+        // ============ RECURRING SUBSCRIPTIONS ============
 
-        async function addIncome() {
+        function setupRecurringForm() {
+            const form = document.getElementById('recurringForm');
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await addRecurringExpense();
+                });
+            }
+        }
+
+        function updateRecurringFields() {
+            const frequency = document.getElementById('recurringFrequency').value;
+            const dayOfWeekField = document.getElementById('dayOfWeekField');
+            const dayOfMonthField = document.getElementById('dayOfMonthField');
+            const quarterField = document.getElementById('quarterField');
+            
+            // Hide all optional fields
+            dayOfWeekField.style.display = 'none';
+            dayOfMonthField.style.display = 'none';
+            quarterField.style.display = 'none';
+            
+            // Clear previous selections
+            document.getElementById('recurringDayOfWeek').value = '';
+            document.getElementById('recurringDayOfMonth').value = '';
+            document.getElementById('recurringQuarter').value = '';
+            
+            // Show relevant fields
+            if (frequency === 'weekly' || frequency === 'biweekly') {
+                dayOfWeekField.style.display = 'block';
+                document.getElementById('recurringDayOfWeek').required = true;
+            } else if (frequency === 'monthly' || frequency === 'yearly') {
+                dayOfMonthField.style.display = 'block';
+                document.getElementById('recurringDayOfMonth').required = true;
+            } else if (frequency === 'quarterly') {
+                quarterField.style.display = 'block';
+                document.getElementById('recurringQuarter').required = true;
+            }
+        }
+
+        async function addRecurringExpense() {
+            const frequency = document.getElementById('recurringFrequency').value;
+            const dayOfWeek = document.getElementById('recurringDayOfWeek').value;
+            const dayOfMonth = document.getElementById('recurringDayOfMonth').value;
+            const quarter = document.getElementById('recurringQuarter').value;
+            
+            // Validate required dynamic fields
+            if ((frequency === 'weekly' || frequency === 'biweekly') && !dayOfWeek) {
+                alert('Please select a day of the week');
+                return;
+            }
+            if ((frequency === 'monthly' || frequency === 'yearly') && !dayOfMonth) {
+                alert('Please select a day of the month');
+                return;
+            }
+            if (frequency === 'quarterly' && !quarter) {
+                alert('Please select a quarter');
+                return;
+            }
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                alert('You must be logged in');
+                return;
+            }
+
+            const nextDueDate = calculateNextRecurringDate(frequency, dayOfWeek, dayOfMonth, quarter);
+
+            const recurring = {
+                id: Date.now(),
+                user_id: user.id,
+                name: document.getElementById('recurringName').value,
+                category: document.getElementById('recurringCategory').value,
+                amount: parseFloat(document.getElementById('recurringAmount').value),
+                frequency: frequency,
+                day_of_week: dayOfWeek || null,
+                day_of_month: dayOfMonth || null,
+                quarter: quarter || null,
+                payment_method: document.getElementById('recurringPaymentMethod').value,
+                notes: document.getElementById('recurringNotes').value,
+                active: true,
+                next_due_date: nextDueDate,
+                created_at: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from('recurring_expenses')
+                .insert([recurring]);
+
+            if (error) {
+                alert('Error adding recurring expense: ' + error.message);
+                return;
+            }
+
+            recurringExpenses.push(recurring);
+            document.getElementById('recurringForm').reset();
+            updateRecurringFields();
+            renderRecurringList();
+            alert('Recurring subscription added successfully!');
+        }
+
+        function calculateNextRecurringDate(frequency, dayOfWeek, dayOfMonth, quarter) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let nextDate = new Date(today);
+
+            switch (frequency) {
+                case 'weekly':
+                case 'biweekly':
+                    const targetDay = parseInt(dayOfWeek);
+                    const currentDay = nextDate.getDay();
+                    let daysAhead = targetDay - currentDay;
+                    if (daysAhead <= 0) daysAhead += (frequency === 'weekly' ? 7 : 14);
+                    nextDate.setDate(nextDate.getDate() + daysAhead);
+                    break;
+
+                case 'monthly':
+                    const day = parseInt(dayOfMonth) || today.getDate();
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                    nextDate.setDate(Math.min(day, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate()));
+                    break;
+
+                case 'quarterly':
+                    const quarters = { 'Q1': 0, 'Q2': 3, 'Q3': 6, 'Q4': 9 };
+                    const startMonth = quarters[quarter];
+                    nextDate.setMonth(startMonth);
+                    nextDate.setDate(1);
+                    if (nextDate < today) {
+                        nextDate.setFullYear(nextDate.getFullYear() + 1);
+                    }
+                    break;
+
+                case 'yearly':
+                    const day_y = parseInt(dayOfMonth) || today.getDate();
+                    nextDate.setFullYear(nextDate.getFullYear() + 1);
+                    nextDate.setDate(day_y);
+                    break;
+            }
+
+            return nextDate.toISOString().split('T')[0];
+        }
+
+        async function deleteRecurringExpense(id) {
+            if (!confirm('Delete this recurring subscription?')) return;
+
+            const { error } = await supabaseClient
+                .from('recurring_expenses')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                alert('Error deleting: ' + error.message);
+                return;
+            }
+
+            recurringExpenses = recurringExpenses.filter(r => r.id !== id);
+            renderRecurringList();
+        }
+
+        function renderRecurringList() {
+            const container = document.getElementById('recurringList');
+
+            if (recurringExpenses.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No recurring subscriptions yet</p>';
+                return;
+            }
+
+            // Sort by next due date
+            const sorted = [...recurringExpenses].sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
+
+            let html = '';
+            sorted.forEach(rec => {
+                const nextDate = new Date(rec.next_due_date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const isDue = nextDate <= today;
+                const daysUntilDue = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+                
+                const statusText = isDue ? '🔴 Due Today' : daysUntilDue === 1 ? '⚠️ Due Tomorrow' : `📅 In ${daysUntilDue} days`;
+                const statusColor = isDue ? '#ef4444' : daysUntilDue <= 2 ? '#f59e0b' : '#37E0FF';
+
+                html += `
+                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">${rec.name}</div>
+                            <div style="color: #94a3b8; font-size: 0.85em; display: flex; gap: 12px;">
+                                <span>💰 $${rec.amount.toFixed(2)}</span>
+                                <span>📊 ${rec.frequency}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right; margin-right: 12px;">
+                            <div style="font-size: 0.9em; color: ${statusColor}; font-weight: 500; margin-bottom: 4px;">${statusText}</div>
+                            <div style="color: #cbd5e1; font-size: 0.8em;">Next: ${rec.next_due_date}</div>
+                        </div>
+                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;" onclick="deleteRecurringExpense(${rec.id})">Remove</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function addIncomeEntry() {
             const incomeEntry = {
                 id: Date.now(),
                 date: document.getElementById('incomeDate').value,
