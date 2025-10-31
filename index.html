@@ -4494,12 +4494,10 @@
             let labels = [];
 
             if (view === 'daily') {
-                // Generate 30 days forward from today
+                // Generate 30 days starting from today
                 let currentNetWorth = 16964.20;
-                dataPoints.push(currentNetWorth);
-                labels.push('Today');
                 
-                for (let i = 1; i < 30; i++) {
+                for (let i = 0; i < 30; i++) {
                     const date = new Date(now);
                     date.setDate(date.getDate() + i);
                     
@@ -4519,16 +4517,14 @@
                     
                     currentNetWorth = currentNetWorth + dayIncome - dayExpenses;
                     
-                    labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    labels.push(i === 0 ? 'Today' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                     dataPoints.push(Math.round(currentNetWorth * 100) / 100);
                 }
             } else if (view === 'monthly') {
-                // Generate 12 months forward from today
+                // Generate 12 months starting from today
                 let currentNetWorth = 16964.20;
-                dataPoints.push(currentNetWorth);
-                labels.push('Today');
                 
-                for (let i = 1; i < 12; i++) {
+                for (let i = 0; i < 12; i++) {
                     const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
                     const year = date.getFullYear();
                     const month = date.getMonth();
@@ -4547,16 +4543,14 @@
                     
                     currentNetWorth = currentNetWorth + monthIncome - monthExpenses;
                     
-                    labels.push(date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+                    labels.push(i === 0 ? 'Today' : date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
                     dataPoints.push(Math.round(currentNetWorth * 100) / 100);
                 }
             } else if (view === 'annual') {
-                // Generate 5 years forward from today
+                // Generate 5 years starting from today
                 let currentNetWorth = 16964.20;
-                dataPoints.push(currentNetWorth);
-                labels.push('Today');
                 
-                for (let i = 1; i < 5; i++) {
+                for (let i = 0; i < 5; i++) {
                     const year = now.getFullYear() + i;
                     
                     // Calculate total expenses for this year
@@ -4573,7 +4567,7 @@
                     
                     currentNetWorth = currentNetWorth + yearIncome - yearExpenses;
                     
-                    labels.push(year.toString());
+                    labels.push(i === 0 ? 'Today' : year.toString());
                     dataPoints.push(Math.round(currentNetWorth * 100) / 100);
                 }
             }
