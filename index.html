@@ -1566,6 +1566,55 @@
                 <div id="incomeList"></div>
             </div>
 
+            <!-- Edit Income Modal -->
+            <div id="editIncomeModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 style="margin: 0;">Edit Income Entry</h2>
+                        <button type="button" onclick="closeEditIncomeModal()" class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="editIncomeDate">Date</label>
+                                <input type="date" id="editIncomeDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editIncomeSource">Source</label>
+                                <select id="editIncomeSource" required>
+                                    <option value="Salary">Salary</option>
+                                    <option value="Freelance">Freelance</option>
+                                    <option value="Business">Business</option>
+                                    <option value="Investments">Investments</option>
+                                    <option value="Dividends">Dividends</option>
+                                    <option value="Interest">Interest</option>
+                                    <option value="Bonus">Bonus</option>
+                                    <option value="Gift">Gift</option>
+                                    <option value="Refund">Refund</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editIncomeAmount">Amount</label>
+                                <input type="number" id="editIncomeAmount" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editIncomeDescription">Description</label>
+                                <input type="text" id="editIncomeDescription" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editIncomeNotes">Notes</label>
+                            <textarea id="editIncomeNotes"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" onclick="saveEditedIncome()" class="btn btn-primary">Save Changes</button>
+                        <button type="button" onclick="closeEditIncomeModal()" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Monthly Tabs -->
             <div class="tab-content" id="jan"></div>
             <div class="tab-content" id="feb"></div>
@@ -1771,11 +1820,15 @@
             window.addEventListener('click', function(event) {
                 const editModal = document.getElementById('editModal');
                 const templateManagerModal = document.getElementById('templateManagerModal');
+                const editIncomeModal = document.getElementById('editIncomeModal');
                 if (event.target === editModal) {
                     closeEditModal();
                 }
                 if (event.target === templateManagerModal) {
                     closeTemplateManager();
+                }
+                if (event.target === editIncomeModal) {
+                    closeEditIncomeModal();
                 }
             });
         });
@@ -3507,6 +3560,80 @@
             }
         }
 
+        let currentEditingIncomeId = null;
+
+        function openEditIncomeModal(id) {
+            const incomeEntry = income.find(inc => inc.id === id);
+            if (!incomeEntry) return;
+
+            currentEditingIncomeId = id;
+
+            // Populate edit form
+            document.getElementById('editIncomeDate').value = incomeEntry.date;
+            document.getElementById('editIncomeSource').value = incomeEntry.source;
+            document.getElementById('editIncomeAmount').value = incomeEntry.amount;
+            document.getElementById('editIncomeDescription').value = incomeEntry.description;
+            document.getElementById('editIncomeNotes').value = incomeEntry.notes || '';
+
+            // Show modal
+            const modal = document.getElementById('editIncomeModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeEditIncomeModal() {
+            const modal = document.getElementById('editIncomeModal');
+            modal.style.display = 'none';
+            currentEditingIncomeId = null;
+        }
+
+        async function saveEditedIncome() {
+            if (!currentEditingIncomeId) return;
+
+            const date = document.getElementById('editIncomeDate').value;
+            const source = document.getElementById('editIncomeSource').value;
+            const amount = parseFloat(document.getElementById('editIncomeAmount').value);
+            const description = document.getElementById('editIncomeDescription').value;
+            const notes = document.getElementById('editIncomeNotes').value;
+
+            if (!date || !source || !amount || !description) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('income')
+                .update({
+                    date,
+                    source,
+                    amount,
+                    description,
+                    notes
+                })
+                .eq('id', currentEditingIncomeId);
+
+            if (error) {
+                alert('Error updating income: ' + error.message);
+                return;
+            }
+
+            // Update local data
+            const incomeEntry = income.find(inc => inc.id === currentEditingIncomeId);
+            if (incomeEntry) {
+                incomeEntry.date = date;
+                incomeEntry.source = source;
+                incomeEntry.amount = amount;
+                incomeEntry.description = description;
+                incomeEntry.notes = notes;
+            }
+
+            closeEditIncomeModal();
+            renderIncomeList();
+            renderDashboard();
+            renderAllMonths();
+            renderInsights();
+            showSuccess('Income entry updated!');
+        }
+
         function highlightIncomeEntry(incomeId) {
             // Remove previous highlights
             document.querySelectorAll('tr').forEach(row => {
@@ -3561,8 +3688,9 @@
                         <td>${inc.source}</td>
                         <td>${inc.description}</td>
                         <td style="font-weight: 600; color: #28a745;">$${inc.amount.toFixed(2)}</td>
-                        <td>
-                            <button class="btn btn-danger" onclick="deleteIncome(${inc.id}); event.stopPropagation();">Delete</button>
+                        <td style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.85em;" onclick="openEditIncomeModal(${inc.id}); event.stopPropagation();">Edit</button>
+                            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.85em;" onclick="deleteIncome(${inc.id}); event.stopPropagation();">Delete</button>
                         </td>
                     </tr>
                 `;
