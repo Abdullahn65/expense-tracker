@@ -4594,6 +4594,18 @@
         // Track current net worth view
         let currentNetWorthView = 'monthly'; // daily, monthly, annual
 
+        function debugShowIncome() {
+            console.log('=== ALL INCOME ENTRIES ===');
+            income.forEach((inc, idx) => {
+                console.log(`${idx + 1}. ID: ${inc.id} | Date: ${inc.date} | Source: ${inc.source} | Amount: $${inc.amount}`);
+            });
+            console.log(`Total income entries: ${income.length}`);
+            const totalInc = income.reduce((sum, inc) => sum + inc.amount, 0);
+            console.log(`Total income amount: $${totalInc}`);
+            console.log(`Total expenses: $${expenses.reduce((sum, exp) => sum + exp.amount, 0)}`);
+            console.log(`Calculation: $14,030.43 + $${totalInc} - $${expenses.reduce((sum, exp) => sum + exp.amount, 0)} = $${14030.43 + totalInc - expenses.reduce((sum, exp) => sum + exp.amount, 0)}`);
+        }
+
         // Calculate current net worth dynamically from data
         function calculateCurrentNetWorth() {
             const baseAmount = 14030.43;
