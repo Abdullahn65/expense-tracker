@@ -1324,9 +1324,12 @@
                 <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h3 style="margin: 0; color: var(--text-primary);">Net Worth</h3>
-                        <div style="text-align: right;">
-                            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Current Net Worth</p>
-                            <p style="font-size: 24px; font-weight: 700; color: #35E6A6; margin: 0;" id="netWorthValue">$16,964.20</p>
+                        <div style="text-align: right; display: flex; align-items: center; gap: 12px;">
+                            <button class="btn btn-secondary" onclick="resetNetWorth()" style="padding: 8px 12px; font-size: 12px;">Reset to $16,964.20</button>
+                            <div>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Current Net Worth</p>
+                                <p style="font-size: 24px; font-weight: 700; color: #35E6A6; margin: 0;" id="netWorthValue">$16,964.20</p>
+                            </div>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-bottom: 16px;">
@@ -4489,64 +4492,62 @@
             renderNetWorthChart();
         }
 
-        // Calculate net worth progression from today onwards
+        // Reset net worth to initial value
+        function resetNetWorth() {
+            if (confirm('Reset net worth to $16,964.20?')) {
+                window.initialNetWorthValue = 16964.20;
+                localStorage.setItem('initialNetWorth', '16964.20');
+                renderNetWorthChart();
+                showSuccess('Net worth reset to $16,964.20');
+            }
+        }
+
+        // Calculate net worth progression
         function calculateNetWorthOverTime(timeframe = 'daily') {
-            // Starting net worth
-            const initialNetWorth = 16964.20;
+            // Use stored or default initial net worth
+            const initialNetWorth = window.initialNetWorthValue || 16964.20;
             
-            // Find the earliest transaction date
-            let earliestDate = new Date();
-            earliestDate.setHours(0, 0, 0, 0);
-            
-            // Check expenses for earliest date
-            expenses.forEach(exp => {
-                const expDate = new Date(exp.date);
-                expDate.setHours(0, 0, 0, 0);
-                if (expDate < earliestDate) {
-                    earliestDate = expDate;
-                }
-            });
-            
-            // Check income for earliest date
-            income.forEach(inc => {
-                const incDate = new Date(inc.date);
-                incDate.setHours(0, 0, 0, 0);
-                if (incDate < earliestDate) {
-                    earliestDate = incDate;
-                }
-            });
-            
-            // Combine all transactions from earliest date onwards
+            // Get all transactions with dates
             const allTransactions = [];
             
-            // Add expenses
+            // Add all expenses
             expenses.forEach(exp => {
                 const expDate = new Date(exp.date);
                 expDate.setHours(0, 0, 0, 0);
-                if (expDate >= earliestDate) {
-                    allTransactions.push({
-                        date: expDate,
-                        amount: -exp.amount, // Negative for expenses
-                        type: 'expense'
-                    });
-                }
+                allTransactions.push({
+                    date: expDate,
+                    amount: -exp.amount,
+                    type: 'expense'
+                });
             });
             
-            // Add income
+            // Add all income
             income.forEach(inc => {
                 const incDate = new Date(inc.date);
                 incDate.setHours(0, 0, 0, 0);
-                if (incDate >= earliestDate) {
-                    allTransactions.push({
-                        date: incDate,
-                        amount: inc.amount, // Positive for income
-                        type: 'income'
-                    });
-                }
+                allTransactions.push({
+                    date: incDate,
+                    amount: inc.amount,
+                    type: 'income'
+                });
             });
+            
+            // If no transactions, return just the initial value
+            if (allTransactions.length === 0) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return {
+                    labels: [this.formatDate(today)],
+                    values: [initialNetWorth]
+                };
+            }
             
             // Sort by date
             allTransactions.sort((a, b) => a.date - b.date);
+            
+            // Get earliest and latest dates
+            const earliestDate = allTransactions[0].date;
+            const latestDate = allTransactions[allTransactions.length - 1].date;
             
             if (timeframe === 'daily') {
                 return calculateDailyNetWorth(allTransactions, earliestDate, initialNetWorth);
