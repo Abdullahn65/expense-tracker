@@ -1146,6 +1146,71 @@
             </div>
         </div>
 
+        <!-- Expense Templates Manager Modal -->
+        <div id="templateManagerModal" class="modal">
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h2 class="modal-title">Expense Templates</h2>
+                    <button class="close-modal" onclick="closeTemplateManager()">×</button>
+                </div>
+                <div style="padding: 26px; max-height: 600px; overflow-y: auto; background: rgba(4, 6, 12, 0.94); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);">
+                    <div style="margin-bottom: 24px; display: flex; gap: 10px;">
+                        <input type="text" id="templateSearch" placeholder="Search templates..." style="flex: 1; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary); font-size: 14px;" onkeyup="filterTemplates()">
+                        <button class="btn btn-primary" onclick="showCreateTemplate()" style="padding: 12px 24px;">+ New Template</button>
+                    </div>
+                    
+                    <div id="templateCreateForm" style="display: none; margin-bottom: 24px; padding: 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px;">
+                        <h3 style="margin-bottom: 16px; color: #f8fafc; font-size: 0.95em;">Create New Template</h3>
+                        <div style="display: grid; gap: 12px;">
+                            <input type="text" id="templateName" placeholder="Template name (e.g., Coffee)" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                            <select id="templateCategory" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                                <option value="">Select Category</option>
+                                <option value="Housing">Housing</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Groceries">Groceries</option>
+                                <option value="Dining Out">Dining Out</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Personal Care">Personal Care</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Insurance">Insurance</option>
+                                <option value="Savings">Savings</option>
+                                <option value="Education">Education</option>
+                                <option value="Gifts">Gifts</option>
+                                <option value="Subscriptions">Subscriptions</option>  
+                                <option value="Investment Subscription">Investment Subscription</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <input type="number" id="templateAmount" placeholder="Amount" step="0.01" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                            <input type="text" id="templateVendor" placeholder="Vendor/Company (optional)" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                            <select id="templatePaymentMethod" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                                <option value="">Payment Method</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Chase Debit">Chase Debit</option>
+                                <option value="Chase Credit">Chase Credit</option>
+                                <option value="Apple Card">Apple Card</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button class="btn btn-primary" onclick="saveNewTemplate()">Create</button>
+                                <button class="btn btn-secondary" onclick="hideCreateTemplate()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-bottom: 16px; color: #cbd5e1; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">⭐ Favorites (Pinned)</h3>
+                    <div id="favoriteTemplatesList" style="margin-bottom: 32px;"></div>
+
+                    <h3 style="margin-bottom: 16px; color: #cbd5e1; font-size: 0.95em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">All Templates</h3>
+                    <div id="allTemplatesList"></div>
+                </div>
+                <div style="padding: 20px; display: flex; gap: 10px; border-top: 1px solid rgba(59, 130, 246, 0.25);">
+                    <button class="btn btn-primary" onclick="closeTemplateManager()" style="flex: 1;">Done</button>
+                </div>
+            </div>
+        </div>
+
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="comparison">Comparison</button>
@@ -1226,8 +1291,17 @@
 
             <!-- Add Expense Tab -->
             <div class="tab-content" id="add">
-                <h2 style="margin-bottom: 20px;">Add New Expense</h2>
+                <h2 style="margin-bottom: 30px;">Add New Expense</h2>
                 
+                <!-- Expense Templates Section -->
+                <div style="margin-bottom: 30px; padding: 24px; background: rgba(4, 6, 12, 0.94); border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.22); box-shadow: 0 18px 32px rgba(0, 0, 0, 0.55);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: #cbd5e1; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.6px;">⭐ Quick Templates</h3>
+                        <button type="button" onclick="openTemplateManager()" class="btn btn-secondary" style="font-size: 0.75em; padding: 8px 12px; letter-spacing: 0.5px;">Manage</button>
+                    </div>
+                    <div id="favoriteTemplatesDisplay" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+                </div>
+
                 <hr style="border: none; border-top: 1px solid rgba(59, 130, 246, 0.28); margin: 32px 0;">
 
                 <form class="expense-form" id="expenseForm">
@@ -1580,6 +1654,8 @@
         let budgets = {};
         let income = [];
         let recurringTransactions = [];
+        let expenseTemplates = [];
+        let templateUsageStats = {};
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
 
@@ -1614,8 +1690,12 @@
             // Close modal when clicking outside of it
             window.addEventListener('click', function(event) {
                 const editModal = document.getElementById('editModal');
+                const templateManagerModal = document.getElementById('templateManagerModal');
                 if (event.target === editModal) {
                     closeEditModal();
+                }
+                if (event.target === templateManagerModal) {
+                    closeTemplateManager();
                 }
             });
         });
@@ -1736,6 +1816,7 @@
                 renderBudgetSettings();
                 renderIncomeList();
                 renderRecurringList();
+                renderFavoriteTemplates();
 
                 // Get and log current user info for debugging
                 const { data: { user } } = await supabaseClient.auth.getUser();
@@ -1859,6 +1940,34 @@
             } else {
                 console.log('No recurring transactions data returned');
                 recurringTransactions = [];
+            }
+
+            // Load expense templates
+            const { data: templatesData, error: templatesError } = await supabaseClient
+                .from('expense_templates')
+                .select('*');
+
+            if (templatesError) {
+                console.error('Error loading templates:', templatesError);
+            }
+
+            if (templatesData) {
+                expenseTemplates = templatesData;
+                console.log('Loaded templates:', expenseTemplates.length);
+                // Initialize usage stats for each template
+                expenseTemplates.forEach(t => {
+                    if (!templateUsageStats[t.id]) {
+                        templateUsageStats[t.id] = {
+                            timesUsed: t.times_used || 0,
+                            lastUsed: t.last_used || null,
+                            totalSpent: t.total_spent || 0,
+                            averageAmount: t.average_amount || t.amount
+                        };
+                    }
+                });
+            } else {
+                console.log('No templates data returned');
+                expenseTemplates = [];
             }
         }
 
@@ -2068,6 +2177,306 @@
             renderAllMonths();
             renderDashboard();
             alert('Expense updated successfully!');
+        }
+
+        // ============================================
+        // EXPENSE TEMPLATES SYSTEM
+        // ============================================
+
+        function openTemplateManager() {
+            document.getElementById('templateManagerModal').classList.add('active');
+            renderAllTemplates();
+        }
+
+        function closeTemplateManager() {
+            document.getElementById('templateManagerModal').classList.remove('active');
+            document.getElementById('templateSearch').value = '';
+        }
+
+        function showCreateTemplate() {
+            document.getElementById('templateCreateForm').style.display = 'block';
+            document.getElementById('templateName').focus();
+        }
+
+        function hideCreateTemplate() {
+            document.getElementById('templateCreateForm').style.display = 'none';
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateCategory').value = '';
+            document.getElementById('templateAmount').value = '';
+            document.getElementById('templateVendor').value = '';
+            document.getElementById('templatePaymentMethod').value = '';
+        }
+
+        async function saveNewTemplate() {
+            const name = document.getElementById('templateName').value.trim();
+            const category = document.getElementById('templateCategory').value;
+            const amount = parseFloat(document.getElementById('templateAmount').value);
+            const vendor = document.getElementById('templateVendor').value.trim();
+            const paymentMethod = document.getElementById('templatePaymentMethod').value;
+
+            if (!name || !category || !amount || !paymentMethod) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const template = {
+                name,
+                category,
+                amount,
+                vendor: vendor || null,
+                payment_method: paymentMethod,
+                is_favorite: false,
+                times_used: 0,
+                last_used: null,
+                total_spent: 0,
+                average_amount: amount
+            };
+
+            const { data, error } = await supabaseClient
+                .from('expense_templates')
+                .insert([template])
+                .select();
+
+            if (error) {
+                alert('Error creating template: ' + error.message);
+                return;
+            }
+
+            expenseTemplates.push(data[0]);
+            templateUsageStats[data[0].id] = {
+                timesUsed: 0,
+                lastUsed: null,
+                totalSpent: 0,
+                averageAmount: amount
+            };
+
+            hideCreateTemplate();
+            renderAllTemplates();
+            showSuccess('Template created successfully!');
+        }
+
+        function renderFavoriteTemplates() {
+            const container = document.getElementById('favoriteTemplatesDisplay');
+            const favorites = expenseTemplates.filter(t => t.is_favorite).sort((a, b) => a.sort_order - b.sort_order);
+
+            if (favorites.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em;">No favorite templates yet. Manage to pin your frequently used templates!</p>';
+                return;
+            }
+
+            let html = '';
+            favorites.forEach((template, idx) => {
+                const stats = templateUsageStats[template.id] || {};
+                const displayName = template.vendor || template.name;
+                html += `
+                    <button type="button" class="btn btn-secondary" style="padding: 12px 16px; font-size: 0.9em; display: flex; flex-direction: column; align-items: flex-start; line-height: 1.4;" 
+                            title="Used ${stats.timesUsed || 0}x • Last: ${stats.lastUsed ? new Date(stats.lastUsed).toLocaleDateString() : 'never'}"
+                            onclick="useTemplate(${template.id})">
+                        <span style="font-weight: 600; font-size: 0.95em;">${displayName}</span>
+                        <span style="font-size: 0.8em; color: #cbd5e1;">$${template.amount.toFixed(2)}</span>
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderAllTemplates() {
+            renderFavoriteTemplatesList();
+            renderAllTemplatesList();
+        }
+
+        function renderFavoriteTemplatesList() {
+            const container = document.getElementById('favoriteTemplatesList');
+            const favorites = expenseTemplates.filter(t => t.is_favorite).sort((a, b) => a.sort_order - b.sort_order);
+
+            if (favorites.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em; margin-bottom: 20px;">No pinned templates yet. Pin some from the list below!</p>';
+                return;
+            }
+
+            let html = '';
+            favorites.forEach((template, idx) => {
+                const stats = templateUsageStats[template.id] || {};
+                const lastUsedStr = stats.lastUsed ? new Date(stats.lastUsed).toLocaleDateString() : 'never';
+                html += `
+                    <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 16px 18px; border-radius: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45);">
+                        <div>
+                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">⭐ ${template.vendor || template.name}</div>
+                            <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${stats.timesUsed || 0}x</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="useTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Use</button>
+                            <button class="btn btn-secondary" onclick="editTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Edit</button>
+                            <button class="btn btn-danger" onclick="toggleFavoriteTemplate(${template.id}, false)" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Unpin</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderAllTemplatesList() {
+            const container = document.getElementById('allTemplatesList');
+            const searchTerm = document.getElementById('templateSearch').value.toLowerCase();
+            const nonFavorites = expenseTemplates.filter(t => !t.is_favorite);
+            const filtered = nonFavorites.filter(t => 
+                t.name.toLowerCase().includes(searchTerm) || 
+                t.vendor?.toLowerCase().includes(searchTerm) ||
+                t.category.toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.9em;">No templates found</p>';
+                return;
+            }
+
+            let html = '';
+            filtered.forEach((template) => {
+                const stats = templateUsageStats[template.id] || {};
+                html += `
+                    <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 16px 18px; border-radius: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45);">
+                        <div>
+                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${template.vendor || template.name}</div>
+                            <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${stats.timesUsed || 0}x • Avg: $${(stats.averageAmount || template.amount).toFixed(2)}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="useTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Use</button>
+                            <button class="btn btn-secondary" onclick="editTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Edit</button>
+                            <button class="btn btn-primary" onclick="toggleFavoriteTemplate(${template.id}, true)" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">📌 Pin</button>
+                            <button class="btn btn-danger" onclick="deleteTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function filterTemplates() {
+            renderAllTemplatesList();
+        }
+
+        async function useTemplate(templateId) {
+            const template = expenseTemplates.find(t => t.id === templateId);
+            if (!template) return;
+
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const localDate = `${year}-${month}-${day}`;
+
+            // Prefill the form
+            document.getElementById('date').value = localDate;
+            document.getElementById('category').value = template.category;
+            document.getElementById('amount').value = template.amount;
+            document.getElementById('vendor').value = template.vendor || '';
+            document.getElementById('description').value = template.vendor || template.name;
+            document.getElementById('paymentMethod').value = template.payment_method;
+
+            // Focus on amount field so user can edit if needed
+            document.getElementById('amount').focus();
+            document.getElementById('amount').select();
+
+            // Scroll to form
+            document.getElementById('amount').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Close modal if open
+            closeTemplateManager();
+
+            // Update usage stats
+            await updateTemplateUsageStats(templateId);
+        }
+
+        async function updateTemplateUsageStats(templateId) {
+            const today = new Date().toISOString().split('T')[0];
+            const stats = templateUsageStats[templateId] || {};
+
+            const { error } = await supabaseClient
+                .from('expense_templates')
+                .update({
+                    times_used: (stats.timesUsed || 0) + 1,
+                    last_used: today,
+                    total_spent: (stats.totalSpent || 0) + (stats.averageAmount || 0)
+                })
+                .eq('id', templateId);
+
+            if (!error) {
+                stats.timesUsed = (stats.timesUsed || 0) + 1;
+                stats.lastUsed = today;
+                templateUsageStats[templateId] = stats;
+                renderFavoriteTemplates();
+            }
+        }
+
+        async function toggleFavoriteTemplate(templateId, setFavorite) {
+            const { error } = await supabaseClient
+                .from('expense_templates')
+                .update({ is_favorite: setFavorite })
+                .eq('id', templateId);
+
+            if (!error) {
+                const template = expenseTemplates.find(t => t.id === templateId);
+                if (template) {
+                    template.is_favorite = setFavorite;
+                }
+                renderAllTemplates();
+                renderFavoriteTemplates();
+                showSuccess(setFavorite ? 'Template pinned!' : 'Template unpinned!');
+            }
+        }
+
+        function editTemplate(templateId) {
+            const template = expenseTemplates.find(t => t.id === templateId);
+            if (!template) return;
+
+            const newAmount = prompt(`Edit amount for "${template.vendor || template.name}":`, template.amount);
+            
+            if (newAmount !== null && !isNaN(newAmount)) {
+                const updatedAmount = parseFloat(newAmount);
+                updateTemplateAmount(templateId, updatedAmount);
+            }
+        }
+
+        async function updateTemplateAmount(templateId, newAmount) {
+            const { error } = await supabaseClient
+                .from('expense_templates')
+                .update({ amount: newAmount })
+                .eq('id', templateId);
+
+            if (!error) {
+                const template = expenseTemplates.find(t => t.id === templateId);
+                if (template) {
+                    template.amount = newAmount;
+                    templateUsageStats[templateId].averageAmount = newAmount;
+                }
+                renderAllTemplates();
+                renderFavoriteTemplates();
+                showSuccess('Template updated!');
+            } else {
+                alert('Error updating template: ' + error.message);
+            }
+        }
+
+        async function deleteTemplate(templateId) {
+            if (!confirm('Delete this template?')) return;
+
+            const { error } = await supabaseClient
+                .from('expense_templates')
+                .delete()
+                .eq('id', templateId);
+
+            if (!error) {
+                expenseTemplates = expenseTemplates.filter(t => t.id !== templateId);
+                delete templateUsageStats[templateId];
+                renderAllTemplates();
+                renderFavoriteTemplates();
+                showSuccess('Template deleted!');
+            } else {
+                alert('Error deleting template: ' + error.message);
+            }
         }
 
         // Recurring Transactions
