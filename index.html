@@ -2795,11 +2795,11 @@
             let html = '';
             incomeTemplates.forEach((template) => {
                 html += `
-                    <button type="button" class="template-quick-btn" 
-                            onclick="useIncomeTemplate(${template.id})"
-                            title="${template.description || template.source}">
-                        <span style="font-weight: 600;">💵 ${template.source}</span>
-                        <span style="font-size: 0.9em; color: #94a3b8;">$${template.amount.toFixed(2)}</span>
+                    <button type="button" class="btn btn-secondary" style="padding: 12px 16px; font-size: 0.9em; display: flex; flex-direction: column; align-items: flex-start; line-height: 1.4;" 
+                            title="${template.source}"
+                            onclick="useIncomeTemplate(${template.id})">
+                        <span style="font-weight: 600; font-size: 0.95em;">${template.source}</span>
+                        <span style="font-size: 0.8em; color: #cbd5e1;">$${template.amount.toFixed(2)}</span>
                     </button>
                 `;
             });
@@ -3495,16 +3495,26 @@
         // Smart search and filter for monthly expenses
         function filterExpensesInMonth(month, query) {
             query = query.toLowerCase().trim();
+            console.log('🔍 Search triggered:', { month, query });
             
             // Get the expense table in this month's container
-            const monthContainer = document.getElementById(`month-${month}`);
-            if (!monthContainer) return;
+            const monthContainer = document.getElementById(month);
+            console.log('Month container:', monthContainer);
+            if (!monthContainer) {
+                console.error('❌ Month container not found for:', month);
+                return;
+            }
             
             const table = monthContainer.querySelector('.expense-table');
-            if (!table) return;
+            console.log('Table found:', !!table);
+            if (!table) {
+                console.error('❌ Expense table not found in container');
+                return;
+            }
             
             const rows = table.querySelectorAll('tbody tr');
             let visibleCount = 0;
+            console.log('Total rows to search:', rows.length);
             
             rows.forEach(row => {
                 if (!row.dataset.expenseId) {
@@ -3591,6 +3601,8 @@
                 if (matches) visibleCount++;
             });
             
+            console.log('✅ Search complete. Visible:', visibleCount, 'Total:', rows.length);
+            
             // Update or create result counter
             let resultCounter = monthContainer.querySelector('.search-result-counter');
             if (!resultCounter) {
@@ -3609,6 +3621,7 @@
                 resultCounter.style.color = '#94a3b8';
                 resultCounter.style.marginTop = '8px';
                 resultCounter.style.marginLeft = '2px';
+                console.log('Result counter updated:', resultCounter.textContent);
             } else {
                 resultCounter.textContent = '';
             }
