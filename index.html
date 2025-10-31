@@ -1871,6 +1871,15 @@
             setTimeout(() => successDiv.style.display = 'none', 5000);
         }
 
+        function debugShowIncome() {
+            console.log('=== ALL INCOME ENTRIES ===');
+            income.forEach((inc, idx) => {
+                console.log(`${idx + 1}. ID: ${inc.id} | Date: ${inc.date} | Source: ${inc.source} | Amount: $${inc.amount}`);
+            });
+            console.log(`Total income entries: ${income.length}`);
+            console.log(`Total income amount: $${income.reduce((sum, inc) => sum + inc.amount, 0)}`);
+        }
+
         async function initializeApp() {
             try {
                 console.log('🎯 initializeApp() called');
