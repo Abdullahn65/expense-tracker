@@ -2226,9 +2226,13 @@
                 .select();
 
             if (error) {
+                console.error('❌ Template insert error:', error);
                 alert('Error creating template: ' + error.message);
                 return;
             }
+
+            console.log('✅ Successfully inserted template:', data[0].id);
+            console.log('Data saved:', data[0]);
 
             expenseTemplates.push(data[0]);
             templateUsageStats[data[0].id] = {
@@ -2630,9 +2634,13 @@
                 .insert([recurring]);
 
             if (error) {
+                console.error('❌ Insert error:', error);
                 alert('Error adding recurring expense: ' + error.message);
                 return;
             }
+
+            console.log('✅ Successfully inserted recurring expense:', recurring.id);
+            console.log('Data saved:', recurring);
 
             recurringExpenses.push(recurring);
             document.getElementById('recurringForm').reset();
@@ -2640,15 +2648,23 @@
             renderRecurringList();
             
             // Reload from database to ensure sync
-            const { data: reloadData } = await supabaseClient
+            console.log('🔄 Reloading from database...');
+            const { data: reloadData, error: reloadError } = await supabaseClient
                 .from('recurring_expenses')
                 .select('*')
                 .eq('active', true)
                 .order('next_due_date', { ascending: true });
             
+            if (reloadError) {
+                console.error('❌ Reload error:', reloadError);
+            }
+            
             if (reloadData) {
+                console.log('✅ Reloaded from DB. Count:', reloadData.length);
                 recurringExpenses = reloadData;
                 renderRecurringList();
+            } else {
+                console.warn('⚠️ Reload returned null/empty');
             }
             
             alert('Recurring subscription added successfully!');
