@@ -1793,6 +1793,13 @@
         // Get current year dynamically
         const currentYear = new Date().getFullYear();
 
+        // Helper function to parse date strings correctly (avoids timezone issues)
+        // Converts "2025-11-01" to local date, not UTC
+        function parseLocalDate(dateString) {
+            const [year, month, day] = dateString.split('-');
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             // Check if user is already logged in
@@ -3876,12 +3883,12 @@
 
         function renderMonth(month, monthIndex) {
             const monthExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
+                const expDate = parseLocalDate(exp.date);
                 return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
-            }).sort((a, b) => new Date(b.date) - new Date(a.date));
+            }).sort((a, b) => parseLocalDate(b.date) - parseLocalDate(a.date));
 
             const monthIncome = income.filter(inc => {
-                const incDate = new Date(inc.date);
+                const incDate = parseLocalDate(inc.date);
                 return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
             });
 
@@ -4040,7 +4047,7 @@
             if (!canvas) return;
 
             const monthExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
+                const expDate = parseLocalDate(exp.date);
                 return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
             });
 
@@ -4134,12 +4141,12 @@
 
             months.forEach((month, index) => {
                 const monthIncome = (income || []).filter(inc => {
-                    const incDate = new Date(inc.date);
+                    const incDate = parseLocalDate(inc.date);
                     return incDate.getFullYear() === currentYear && incDate.getMonth() === index;
                 }).reduce((sum, inc) => sum + inc.amount, 0);
 
                 const monthExpenses = (expenses || []).filter(exp => {
-                    const expDate = new Date(exp.date);
+                    const expDate = parseLocalDate(exp.date);
                     return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
                 }).reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -4200,7 +4207,7 @@
             if (!canvas) return;
 
             const yearExpenses = expenses.filter(exp => {
-                return new Date(exp.date).getFullYear() === currentYear;
+                return parseLocalDate(exp.date).getFullYear() === currentYear;
             });
 
             const categoryTotals = calculateCategoryTotals(yearExpenses);
@@ -4358,7 +4365,7 @@
             
             // Filter expenses for this month and category
             const filteredExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
+                const expDate = parseLocalDate(exp.date);
                 return expDate.getFullYear() === currentYear && 
                        expDate.getMonth() === monthIndex && 
                        exp.category === category;
@@ -4682,7 +4689,7 @@
             // Calculate monthly totals
             const monthlyTotals = months.map((month, index) => {
                 return expenses.filter(exp => {
-                    const expDate = new Date(exp.date);
+                    const expDate = parseLocalDate(exp.date);
                     return expDate.getFullYear() === currentYear && expDate.getMonth() === index;
                 }).reduce((sum, exp) => sum + exp.amount, 0);
             });
@@ -4743,13 +4750,13 @@
 
             // Get this month's categories
             const thisMonthExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
+                const expDate = parseLocalDate(exp.date);
                 return expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth;
             });
 
             // Get last month's categories
             const lastMonthExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
+                const expDate = parseLocalDate(exp.date);
                 const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
                 const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
                 return expDate.getFullYear() === lastYear && expDate.getMonth() === lastMonth;
