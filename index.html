@@ -4435,15 +4435,15 @@
             const data = [];
             const dates = [];
             
-            // Get all entries sorted by date, filter by timestamp
+            // Get all entries sorted by transaction date (not by when they were added)
             const allEntries = [];
+            const trackingStartDate = trackingStartTime.split('T')[0]; // "2025-10-31"
             
             expenses.forEach(exp => {
-                // Only include expenses added after tracking start time
-                if (exp.date && exp.created_at && exp.created_at >= trackingStartTime) {
+                // Include expenses with dates on or after the tracking start date
+                if (exp.date && exp.date >= trackingStartDate) {
                     allEntries.push({
-                        date: exp.date, // Keep as string "2025-10-31"
-                        created_at: exp.created_at, // ISO timestamp
+                        date: exp.date, // Transaction date as string "2025-10-31"
                         amount: -exp.amount,
                         type: 'expense'
                     });
@@ -4451,19 +4451,18 @@
             });
             
             income.forEach(inc => {
-                // Only include income added after tracking start time
-                if (inc.date && inc.created_at && inc.created_at >= trackingStartTime) {
+                // Include income with dates on or after the tracking start date
+                if (inc.date && inc.date >= trackingStartDate) {
                     allEntries.push({
-                        date: inc.date, // Keep as string "2025-10-31"
-                        created_at: inc.created_at, // ISO timestamp
+                        date: inc.date, // Transaction date as string "2025-10-31"
                         amount: inc.amount,
                         type: 'income'
                     });
                 }
             });
             
-            // Sort by creation timestamp ascending
-            allEntries.sort((a, b) => a.created_at.localeCompare(b.created_at));
+            // Sort by transaction date (not by created_at)
+            allEntries.sort((a, b) => a.date.localeCompare(b.date));
             
             if (period === 'daily') {
                 // Group by day, starting from baseline
@@ -4552,28 +4551,29 @@
             
             const { dates, data } = calculateNetWorthData(currentNetWorthPeriod);
             
-            // Calculate current net worth: baseline + transactions added after tracking start time
+            // Calculate current net worth: baseline + all transactions with dates on/after tracking start date
             let currentNetWorth = baselineNetWorth;
+            const trackingStartDate = trackingStartTime.split('T')[0]; // "2025-10-31"
             
             expenses.forEach(exp => {
-                // Only include expenses added after tracking started
-                if (exp.created_at && exp.created_at >= trackingStartTime) {
+                // Include expenses with dates on or after the tracking start date
+                if (exp.date && exp.date >= trackingStartDate) {
                     currentNetWorth -= exp.amount;
                 }
             });
             income.forEach(inc => {
-                // Only include income added after tracking started
-                if (inc.created_at && inc.created_at >= trackingStartTime) {
+                // Include income with dates on or after the tracking start date
+                if (inc.date && inc.date >= trackingStartDate) {
                     currentNetWorth += inc.amount;
                 }
             });
             
-            // Calculate change from baseline (only from transactions added after tracking start)
+            // Calculate change from baseline
             const change = currentNetWorth - baselineNetWorth;
             
             console.log('🎯 Net Worth Calculation:', {
                 baselineNetWorth,
-                trackingStartTime,
+                trackingStartDate,
                 currentNetWorth,
                 change,
                 expenseCount: expenses.length,
