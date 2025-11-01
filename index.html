@@ -1782,7 +1782,12 @@
         let incomeTemplates = [];
         let templateUsageStats = {};
         let baselineNetWorth = 16964.20; // Current actual net worth as of today
-        let trackingStartTime = new Date().toISOString(); // Start tracking from this exact moment (includes time)
+        // Initialize trackingStartTime from localStorage, or create new one if first time
+        let trackingStartTime = localStorage.getItem('netWorthTrackingStartTime') || new Date().toISOString();
+        // Save it to localStorage so it persists across page refreshes
+        if (!localStorage.getItem('netWorthTrackingStartTime')) {
+            localStorage.setItem('netWorthTrackingStartTime', trackingStartTime);
+        }
         let currentNetWorthPeriod = 'daily';
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
