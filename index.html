@@ -1735,7 +1735,10 @@
                                 <textarea id="recurringNotes" placeholder="Add any notes..." style="min-height: 60px; resize: vertical;"></textarea>
                             </div>
                             
-                            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">Add Subscription</button>
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Add Subscription</button>
+                                <button type="button" class="btn btn-secondary" style="flex: 1; background: #4B5563; color: #fff; border: none; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: 600; font-size: 14px;" id="cancelRecurringBtn" onclick="cancelEditRecurring()" style="display: none;">Cancel</button>
+                            </div>
                         </form>
                     </div>
                     
@@ -2063,6 +2066,9 @@
                 // Auto-process due recurring expenses
                 await processOverdueRecurringExpenses();
 
+                // Setup periodic check for recurring expenses every minute
+                startRecurringExpenseScheduler();
+
                 // Render dashboard monthly charts after all data is loaded
                 setTimeout(() => {
                     console.log('Rendering monthly charts. Expenses count:', expenses.length, 'Income count:', income.length);
@@ -2072,6 +2078,23 @@
                 console.error('Error in initializeApp:', err);
                 showError('Error initializing app: ' + err.message);
             }
+        }
+
+        let recurringSchedulerId = null;
+
+        function startRecurringExpenseScheduler() {
+            // Clear any existing scheduler
+            if (recurringSchedulerId) {
+                clearInterval(recurringSchedulerId);
+            }
+
+            // Check for due recurring expenses every minute
+            recurringSchedulerId = setInterval(async () => {
+                console.log('🔄 Checking for due recurring expenses...');
+                await processOverdueRecurringExpenses();
+            }, 60000); // Check every 60 seconds (1 minute)
+
+            console.log('✅ Recurring expense scheduler started');
         }
 
         async function loadData() {
@@ -3239,101 +3262,7 @@
             }
         }
 
-        async function addRecurringExpense() {
-            console.log('🚀 addRecurringExpense() called');
-            
-            const frequency = document.getElementById('recurringFrequency').value;
-            const dayOfWeek = document.getElementById('recurringDayOfWeek').value;
-            const dayOfMonth = document.getElementById('recurringDayOfMonth').value;
-            const quarter = document.getElementById('recurringQuarter').value;
-            
-            console.log('Frequency:', frequency);
-            console.log('Day of week:', dayOfWeek);
-            console.log('Day of month:', dayOfMonth);
-            console.log('Quarter:', quarter);
-            
-            // Validate required dynamic fields
-            if ((frequency === 'weekly' || frequency === 'biweekly') && !dayOfWeek) {
-                alert('Please select a day of the week');
-                return;
-            }
-            if ((frequency === 'monthly' || frequency === 'yearly') && !dayOfMonth) {
-                alert('Please select a day of the month');
-                return;
-            }
-            if (frequency === 'quarterly' && !quarter) {
-                alert('Please select a quarter');
-                return;
-            }
 
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) {
-                alert('You must be logged in');
-                return;
-            }
-
-            const nextDueDate = calculateNextRecurringDate(frequency, dayOfWeek, dayOfMonth, quarter);
-            console.log('Next due date calculated:', nextDueDate);
-
-            const recurring = {
-                id: Date.now(),
-                user_id: user.id,
-                name: document.getElementById('recurringName').value,
-                category: document.getElementById('recurringCategory').value,
-                amount: parseFloat(document.getElementById('recurringAmount').value),
-                frequency: frequency,
-                day_of_week: dayOfWeek || null,
-                day_of_month: dayOfMonth || null,
-                quarter: quarter || null,
-                payment_method: document.getElementById('recurringPaymentMethod').value,
-                notes: document.getElementById('recurringNotes').value,
-                active: true,
-                next_due_date: nextDueDate,
-                created_at: new Date().toISOString()
-            };
-
-            console.log('📋 Recurring object being saved:', recurring);
-
-            const { error } = await supabaseClient
-                .from('recurring_expenses')
-                .insert([recurring]);
-
-            if (error) {
-                console.error('❌ Insert error:', error);
-                alert('Error adding recurring expense: ' + error.message);
-                return;
-            }
-
-            console.log('✅ Successfully inserted recurring expense:', recurring.id);
-            console.log('Data saved:', recurring);
-
-            recurringExpenses.push(recurring);
-            document.getElementById('recurringForm').reset();
-            updateRecurringFields();
-            renderRecurringList();
-            
-            // Reload from database to ensure sync
-            console.log('🔄 Reloading from database...');
-            const { data: reloadData, error: reloadError } = await supabaseClient
-                .from('recurring_expenses')
-                .select('*')
-                .eq('active', true)
-                .order('next_due_date', { ascending: true });
-            
-            if (reloadError) {
-                console.error('❌ Reload error:', reloadError);
-            }
-            
-            if (reloadData) {
-                console.log('✅ Reloaded from DB. Count:', reloadData.length);
-                recurringExpenses = reloadData;
-                renderRecurringList();
-            } else {
-                console.warn('⚠️ Reload returned null/empty');
-            }
-            
-            alert('Recurring subscription added successfully!');
-        }
 
         function calculateNextRecurringDate(frequency, dayOfWeek, dayOfMonth, quarter) {
             const today = new Date();
@@ -3405,6 +3334,195 @@
             renderRecurringList();
         }
 
+        let currentEditingRecurringId = null;
+
+        function openEditRecurringModal(id) {
+            const recurring = recurringExpenses.find(r => r.id === id);
+            if (!recurring) return;
+
+            currentEditingRecurringId = id;
+
+            // Populate form with existing values
+            document.getElementById('recurringName').value = recurring.name;
+            document.getElementById('recurringCategory').value = recurring.category;
+            document.getElementById('recurringAmount').value = recurring.amount;
+            document.getElementById('recurringFrequency').value = recurring.frequency;
+            document.getElementById('recurringPaymentMethod').value = recurring.payment_method;
+            document.getElementById('recurringNotes').value = recurring.notes || '';
+
+            // Update fields based on frequency
+            updateRecurringFields();
+
+            // Set the frequency-specific values
+            if (recurring.day_of_week) {
+                document.getElementById('recurringDayOfWeek').value = recurring.day_of_week;
+            }
+            if (recurring.day_of_month) {
+                document.getElementById('recurringDayOfMonth').value = recurring.day_of_month;
+            }
+            if (recurring.quarter) {
+                document.getElementById('recurringQuarter').value = recurring.quarter;
+            }
+
+            // Change submit button text
+            const submitBtn = document.getElementById('recurringForm').querySelector('button[type="submit"]');
+            const cancelBtn = document.getElementById('cancelRecurringBtn');
+            submitBtn.textContent = 'Update Subscription';
+            submitBtn.style.backgroundColor = '#7B61FF';
+            cancelBtn.style.display = 'block';
+
+            // Scroll to form
+            document.querySelector('[data-tab="recurring"]').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEditRecurring() {
+            currentEditingRecurringId = null;
+            document.getElementById('recurringForm').reset();
+            updateRecurringFields();
+            const submitBtn = document.getElementById('recurringForm').querySelector('button[type="submit"]');
+            const cancelBtn = document.getElementById('cancelRecurringBtn');
+            submitBtn.textContent = 'Add Subscription';
+            submitBtn.style.backgroundColor = '';
+            cancelBtn.style.display = 'none';
+        }
+
+        async function addRecurringExpense() {
+            console.log('🚀 addRecurringExpense() called');
+            
+            const frequency = document.getElementById('recurringFrequency').value;
+            const dayOfWeek = document.getElementById('recurringDayOfWeek').value;
+            const dayOfMonth = document.getElementById('recurringDayOfMonth').value;
+            const quarter = document.getElementById('recurringQuarter').value;
+            
+            console.log('Frequency:', frequency);
+            console.log('Day of week:', dayOfWeek);
+            console.log('Day of month:', dayOfMonth);
+            console.log('Quarter:', quarter);
+            
+            // Validate required dynamic fields
+            if ((frequency === 'weekly' || frequency === 'biweekly') && !dayOfWeek) {
+                alert('Please select a day of the week');
+                return;
+            }
+            if ((frequency === 'monthly' || frequency === 'yearly') && !dayOfMonth) {
+                alert('Please select a day of the month');
+                return;
+            }
+            if (frequency === 'quarterly' && !quarter) {
+                alert('Please select a quarter');
+                return;
+            }
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                alert('You must be logged in');
+                return;
+            }
+
+            // If editing, use existing next_due_date; if new, calculate it
+            let nextDueDate;
+            if (currentEditingRecurringId) {
+                const existing = recurringExpenses.find(r => r.id === currentEditingRecurringId);
+                nextDueDate = existing.next_due_date;
+            } else {
+                nextDueDate = calculateNextRecurringDate(frequency, dayOfWeek, dayOfMonth, quarter);
+            }
+            
+            console.log('Next due date:', nextDueDate);
+
+            const recurringData = {
+                name: document.getElementById('recurringName').value,
+                category: document.getElementById('recurringCategory').value,
+                amount: parseFloat(document.getElementById('recurringAmount').value),
+                frequency: frequency,
+                day_of_week: dayOfWeek || null,
+                day_of_month: dayOfMonth || null,
+                quarter: quarter || null,
+                payment_method: document.getElementById('recurringPaymentMethod').value,
+                notes: document.getElementById('recurringNotes').value,
+                active: true,
+                next_due_date: nextDueDate
+            };
+
+            console.log('📋 Recurring object being saved:', recurringData);
+
+            if (currentEditingRecurringId) {
+                // Update existing
+                const { error } = await supabaseClient
+                    .from('recurring_expenses')
+                    .update(recurringData)
+                    .eq('id', currentEditingRecurringId);
+
+                if (error) {
+                    console.error('❌ Update error:', error);
+                    alert('Error updating recurring expense: ' + error.message);
+                    return;
+                }
+
+                console.log('✅ Successfully updated recurring expense:', currentEditingRecurringId);
+
+                // Update in local array
+                const index = recurringExpenses.findIndex(r => r.id === currentEditingRecurringId);
+                if (index !== -1) {
+                    recurringExpenses[index] = { ...recurringExpenses[index], ...recurringData };
+                }
+
+                currentEditingRecurringId = null;
+                showSuccess('Subscription updated successfully!');
+            } else {
+                // Add new
+                const newRecurring = {
+                    id: Date.now(),
+                    user_id: user.id,
+                    ...recurringData,
+                    created_at: new Date().toISOString()
+                };
+
+                const { error } = await supabaseClient
+                    .from('recurring_expenses')
+                    .insert([newRecurring]);
+
+                if (error) {
+                    console.error('❌ Insert error:', error);
+                    alert('Error adding recurring expense: ' + error.message);
+                    return;
+                }
+
+                console.log('✅ Successfully inserted recurring expense:', newRecurring.id);
+
+                recurringExpenses.push(newRecurring);
+                showSuccess('Subscription added successfully!');
+            }
+
+            document.getElementById('recurringForm').reset();
+            updateRecurringFields();
+            const submitBtn = document.getElementById('recurringForm').querySelector('button[type="submit"]');
+            submitBtn.textContent = 'Add Subscription';
+            submitBtn.style.backgroundColor = '';
+            
+            renderRecurringList();
+            
+            // Reload from database to ensure sync
+            console.log('🔄 Reloading from database...');
+            const { data: reloadData, error: reloadError } = await supabaseClient
+                .from('recurring_expenses')
+                .select('*')
+                .eq('active', true)
+                .order('next_due_date', { ascending: true });
+            
+            if (reloadError) {
+                console.error('❌ Reload error:', reloadError);
+            }
+            
+            if (reloadData) {
+                console.log('✅ Reloaded from DB. Count:', reloadData.length);
+                recurringExpenses = reloadData;
+                renderRecurringList();
+            } else {
+                console.warn('⚠️ Reload returned null/empty');
+            }
+        }
+
         function renderRecurringList() {
             const container = document.getElementById('recurringList');
 
@@ -3441,7 +3559,10 @@
                             <div style="font-size: 0.9em; color: ${statusColor}; font-weight: 500; margin-bottom: 4px;">${statusText}</div>
                             <div style="color: #cbd5e1; font-size: 0.8em;">Next: ${rec.next_due_date}</div>
                         </div>
-                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;" onclick="deleteRecurringExpense(${rec.id})">Remove</button>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em;" onclick="openEditRecurringModal(${rec.id})">Edit</button>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;" onclick="deleteRecurringExpense(${rec.id})">Remove</button>
+                        </div>
                     </div>
                 `;
             });
