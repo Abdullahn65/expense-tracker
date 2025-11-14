@@ -2208,6 +2208,83 @@
             } else if (recurringData) {
                 recurringExpenses = recurringData;
                 console.log('✅ Loaded recurring expenses:', recurringExpenses.length);
+                
+                // 🔧 Auto-fix: Correct any stuck recurring items with past due dates
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                let fixedCount = 0;
+                
+                for (const recurring of recurringExpenses) {
+                    const nextDueDate = new Date(recurring.next_due_date);
+                    nextDueDate.setHours(0, 0, 0, 0);
+                    
+                    // If next due date is in the past, fix it
+                    if (nextDueDate < today) {
+                        console.warn(`⚠️ Found stuck recurring item: ${recurring.name} (Next due: ${recurring.next_due_date})`);
+                        
+                        // Calculate the correct next due date
+                        let correctedDate = calculateNextRecurringDate(
+                            recurring.frequency,
+                            recurring.day_of_week,
+                            recurring.day_of_month,
+                            recurring.quarter
+                        );
+                        
+                        // Ensure it's in the future
+                        let calculatedDate = new Date(correctedDate);
+                        calculatedDate.setHours(0, 0, 0, 0);
+                        
+                        while (calculatedDate <= today) {
+                            const tempDate = new Date(calculatedDate);
+                            switch (recurring.frequency) {
+                                case 'weekly':
+                                    tempDate.setDate(tempDate.getDate() + 7);
+                                    break;
+                                case 'biweekly':
+                                    tempDate.setDate(tempDate.getDate() + 14);
+                                    break;
+                                case 'monthly':
+                                    tempDate.setMonth(tempDate.getMonth() + 1);
+                                    break;
+                                case 'quarterly':
+                                    tempDate.setMonth(tempDate.getMonth() + 3);
+                                    break;
+                                case 'yearly':
+                                    tempDate.setFullYear(tempDate.getFullYear() + 1);
+                                    break;
+                            }
+                            correctedDate = tempDate.toISOString().split('T')[0];
+                            calculatedDate = new Date(correctedDate);
+                            calculatedDate.setHours(0, 0, 0, 0);
+                        }
+                        
+                        // Update the recurring item in the database
+                        (async () => {
+                            const { error: updateError } = await supabaseClient
+                                .from('recurring_expenses')
+                                .update({ next_due_date: correctedDate })
+                                .eq('id', recurring.id);
+                            
+                            if (!updateError) {
+                                recurring.next_due_date = correctedDate;
+                                console.log(`✅ Fixed: ${recurring.name} → Next due: ${correctedDate}`);
+                            } else {
+                                console.error(`❌ Error fixing ${recurring.name}:`, updateError);
+                            }
+                        })();
+                        
+                        fixedCount++;
+                    }
+                }
+                
+                if (fixedCount > 0) {
+                    console.log(`🔧 Auto-fixed ${fixedCount} stuck recurring item(s)`);
+                    // Refresh the display after updates
+                    setTimeout(() => {
+                        renderRecurringList();
+                        console.log('🔄 Refreshed recurring list display');
+                    }, 500);
+                }
             } else {
                 console.log('⚠️ No recurring expenses data returned (might be empty)');
                 recurringExpenses = [];
