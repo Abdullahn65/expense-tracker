@@ -1793,7 +1793,7 @@
         }
         let currentNetWorthPeriod = 'daily';
 
-        const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Other'];
+        const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Investments', 'Other'];
 
         const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -3275,7 +3275,8 @@
                     const targetDay = parseInt(dayOfWeek);
                     const currentDay = nextDate.getDay();
                     let daysAhead = targetDay - currentDay;
-                    if (daysAhead <= 0) daysAhead += (frequency === 'weekly' ? 7 : 14);
+                    if (daysAhead < 0) daysAhead += (frequency === 'weekly' ? 7 : 14);
+                    if (daysAhead === 0) daysAhead = (frequency === 'weekly' ? 7 : 14);
                     nextDate.setDate(nextDate.getDate() + daysAhead);
                     break;
 
@@ -3608,14 +3609,44 @@
 
                         expenses.push(expense);
                         processed++;
+                        console.log(`✅ Created expense for: ${recurring.name} on ${recurring.next_due_date}`);
 
-                        // Calculate and update next due date
-                        const nextDate = calculateNextRecurringDate(
+                        // Calculate next due date - ensure it's always in the future
+                        let nextDate = calculateNextRecurringDate(
                             recurring.frequency,
                             recurring.day_of_week,
                             recurring.day_of_month,
                             recurring.quarter
                         );
+                        
+                        // Safeguard: if calculated date is not in the future, add another cycle
+                        let calculatedDate = new Date(nextDate);
+                        calculatedDate.setHours(0, 0, 0, 0);
+                        while (calculatedDate <= today) {
+                            console.warn(`⚠️ Calculated date ${nextDate} is not in the future, adding another cycle...`);
+                            // Add a cycle based on frequency
+                            const tempDate = new Date(calculatedDate);
+                            switch (recurring.frequency) {
+                                case 'weekly':
+                                    tempDate.setDate(tempDate.getDate() + 7);
+                                    break;
+                                case 'biweekly':
+                                    tempDate.setDate(tempDate.getDate() + 14);
+                                    break;
+                                case 'monthly':
+                                    tempDate.setMonth(tempDate.getMonth() + 1);
+                                    break;
+                                case 'quarterly':
+                                    tempDate.setMonth(tempDate.getMonth() + 3);
+                                    break;
+                                case 'yearly':
+                                    tempDate.setFullYear(tempDate.getFullYear() + 1);
+                                    break;
+                            }
+                            nextDate = tempDate.toISOString().split('T')[0];
+                            calculatedDate = new Date(nextDate);
+                            calculatedDate.setHours(0, 0, 0, 0);
+                        }
 
                         const { error: updateError } = await supabaseClient
                             .from('recurring_expenses')
@@ -3624,6 +3655,9 @@
 
                         if (!updateError) {
                             recurring.next_due_date = nextDate;
+                            console.log(`✅ Updated next due date to: ${nextDate}`);
+                        } else {
+                            console.error('Error updating next due date:', updateError);
                         }
                     } catch (error) {
                         console.error('Error processing recurring expense:', error);
