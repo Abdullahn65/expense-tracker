@@ -2659,11 +2659,11 @@
                 return { isDuplicate: false };
             }
 
-            // Use Claude for intelligent duplicate detection
+            // Use Claude for intelligent duplicate detection with matching
             if (OPENAI_API_KEY) {
                 try {
-                    const recentList = recentExpenses.map(e => 
-                        `${e.vendor || e.description} - $${e.amount.toFixed(2)} on ${e.date}`
+                    const recentList = recentExpenses.map((e, idx) => 
+                        `[${idx}] ${e.vendor || e.description} - $${e.amount.toFixed(2)} on ${e.date}`
                     ).join('\n');
 
                     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -2676,10 +2676,10 @@
                             model: 'gpt-3.5-turbo',
                             messages: [{
                                 role: 'system',
-                                content: 'You are a duplicate expense detector. Respond with ONLY "YES" or "NO".'
+                                content: 'You are a duplicate expense detector. If the new expense matches any recent one, respond with ONLY the index number (0, 1, 2, etc). Otherwise respond NO.'
                             }, {
                                 role: 'user',
-                                content: `Is this a duplicate?\n\nNew expense: ${vendor || description} - $${amount}\n\nRecent expenses:\n${recentList}\n\nIf the new expense matches any recent one by vendor, description, or similar amount, respond YES. Otherwise NO.`
+                                content: `Is this a duplicate?\n\nNew expense: ${vendor || description} - $${amount}\n\nRecent expenses:\n${recentList}\n\nIf a match exists, respond with ONLY its index number. Otherwise respond NO.`
                             }],
                             temperature: 0.2,
                             max_tokens: 10
@@ -2688,15 +2688,17 @@
 
                     if (response.ok) {
                         const data = await response.json();
-                        const isDuplicate = data.choices[0].message.content.trim().toUpperCase() === 'YES';
+                        const result = data.choices[0].message.content.trim();
                         
-                        if (isDuplicate) {
-                            const match = recentExpenses[0]; // Return first match
-                            return {
-                                isDuplicate: true,
-                                existingExpense: match,
-                                confidence: 'high'
-                            };
+                        if (result !== 'NO') {
+                            const matchIndex = parseInt(result);
+                            if (!isNaN(matchIndex) && matchIndex >= 0 && matchIndex < recentExpenses.length) {
+                                return {
+                                    isDuplicate: true,
+                                    existingExpense: recentExpenses[matchIndex],
+                                    confidence: 'high'
+                                };
+                            }
                         }
                     }
                 } catch (error) {
@@ -2704,21 +2706,54 @@
                 }
             }
 
-            // Fallback to basic detection
-            for (const exp of recentExpenses) {
-                const similarAmount = Math.abs(exp.amount - parseFloat(amount)) < 0.50;
-                const similarDesc = exp.description.toLowerCase().includes(description.toLowerCase()) ||
-                                   description.toLowerCase().includes(exp.description.toLowerCase());
-                const similarVendor = vendor && exp.vendor && 
-                                     exp.vendor.toLowerCase().includes(vendor.toLowerCase());
+            // Fallback to basic detection - find best match by scoring
+            let bestMatch = null;
+            let bestScore = 0;
 
-                if ((similarAmount && (similarDesc || similarVendor)) || (similarDesc && similarVendor)) {
-                    return {
-                        isDuplicate: true,
-                        existingExpense: exp,
-                        confidence: 'high'
-                    };
+            for (const exp of recentExpenses) {
+                let score = 0;
+                
+                // Check vendor match
+                if (vendor && exp.vendor) {
+                    const vendorLower1 = vendor.toLowerCase();
+                    const vendorLower2 = exp.vendor.toLowerCase();
+                    if (vendorLower1 === vendorLower2) {
+                        score += 50; // Exact vendor match
+                    } else if (vendorLower1.includes(vendorLower2) || vendorLower2.includes(vendorLower1)) {
+                        score += 25; // Partial vendor match
+                    }
                 }
+                
+                // Check description match
+                const descLower1 = description.toLowerCase();
+                const descLower2 = exp.description.toLowerCase();
+                if (descLower1 === descLower2) {
+                    score += 40; // Exact description match
+                } else if (descLower1.includes(descLower2) || descLower2.includes(descLower1)) {
+                    score += 20; // Partial description match
+                }
+                
+                // Check amount match
+                const amountDiff = Math.abs(exp.amount - parseFloat(amount));
+                if (amountDiff < 0.01) {
+                    score += 30; // Exact amount match
+                } else if (amountDiff < 0.50) {
+                    score += 15; // Close amount match
+                }
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = exp;
+                }
+            }
+
+            // Return match if score is significant
+            if (bestScore >= 30) {
+                return {
+                    isDuplicate: true,
+                    existingExpense: bestMatch,
+                    confidence: 'high'
+                };
             }
 
             return { isDuplicate: false };
