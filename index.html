@@ -2575,6 +2575,18 @@
                 notes: document.getElementById('notes').value
             };
 
+            // 🔍 Check for duplicates
+            const duplicate = detectDuplicateExpense(expense.description, expense.amount, expense.vendor);
+            if (duplicate.isDuplicate) {
+                const existingExp = duplicate.existingExpense;
+                const confirmAdd = confirm(
+                    `⚠️ DUPLICATE DETECTED!\n\nSimilar expense found:\n` +
+                    `${existingExp.vendor || existingExp.description} - $${existingExp.amount.toFixed(2)} on ${existingExp.date}\n\n` +
+                    `Continue adding this expense anyway?`
+                );
+                if (!confirmAdd) return;
+            }
+
             const { data, error } = await supabaseClient
                 .from('expenses')
                 .insert([expense])
@@ -2625,6 +2637,272 @@
 
                 renderInsights();
             }
+        }
+
+        // 🤖 AI HELPER FUNCTIONS
+
+        // 1️⃣ Duplicate Detection
+        function detectDuplicateExpense(description, amount, vendor) {
+            const threshold = 2; // days
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const recentExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                expDate.setHours(0, 0, 0, 0);
+                const daysDiff = Math.abs((today - expDate) / (1000 * 60 * 60 * 24));
+                return daysDiff <= threshold;
+            });
+
+            for (const exp of recentExpenses) {
+                const similarAmount = Math.abs(exp.amount - parseFloat(amount)) < 0.50; // within 50 cents
+                const similarDesc = exp.description.toLowerCase().includes(description.toLowerCase()) ||
+                                   description.toLowerCase().includes(exp.description.toLowerCase());
+                const similarVendor = vendor && exp.vendor && 
+                                     exp.vendor.toLowerCase().includes(vendor.toLowerCase());
+
+                if ((similarAmount && (similarDesc || similarVendor)) || (similarDesc && similarVendor)) {
+                    return {
+                        isDuplicate: true,
+                        existingExpense: exp,
+                        confidence: 'high'
+                    };
+                }
+            }
+
+            return { isDuplicate: false };
+        }
+
+        // 2️⃣ Smart Tags Generation
+        function generateSmartTags(description, category, vendor, amount) {
+            const tags = [];
+            const desc = description.toLowerCase();
+
+            // Category-based tags
+            const categoryTags = {
+                'Dining Out': ['food', 'restaurant', 'meal'],
+                'Groceries': ['food', 'shopping', 'groceries'],
+                'Transportation': ['travel', 'commute', 'fuel'],
+                'Entertainment': ['entertainment', 'fun', 'leisure'],
+                'Healthcare': ['health', 'medical', 'wellness'],
+                'Shopping': ['shopping', 'retail'],
+                'Subscriptions': ['subscription', 'recurring'],
+                'Investments': ['investment', 'financial'],
+                'Investment Subscription': ['investment', 'financial', 'subscription']
+            };
+
+            if (categoryTags[category]) {
+                tags.push(...categoryTags[category]);
+            }
+
+            // Vendor-based tags
+            const vendorLower = vendor.toLowerCase();
+            if (vendorLower.includes('coffee') || vendorLower.includes('starbucks') || vendorLower.includes('cafe')) {
+                tags.push('coffee', 'caffeine');
+            }
+            if (vendorLower.includes('amazon')) tags.push('online', 'shopping');
+            if (vendorLower.includes('walmart') || vendorLower.includes('target')) tags.push('retail', 'shopping');
+            if (vendorLower.includes('gas') || vendorLower.includes('shell') || vendorLower.includes('exxon')) {
+                tags.push('fuel', 'car');
+            }
+            if (vendorLower.includes('gym') || vendorLower.includes('fitness')) tags.push('fitness', 'health');
+
+            // Time-based tags
+            const expDate = new Date();
+            if (expDate.getDay() === 5 || expDate.getDay() === 6 || expDate.getDay() === 0) {
+                tags.push('weekend');
+            } else {
+                tags.push('weekday');
+            }
+
+            // Amount-based tags
+            if (amount > 100) tags.push('expensive');
+            if (amount < 10) tags.push('small');
+
+            // Remove duplicates
+            return [...new Set(tags)];
+        }
+
+        // 3️⃣ Smart Recurring Prediction
+        function predictRecurringExpenses() {
+            const recurring = [];
+            const categoryExpenses = {};
+
+            // Group expenses by category and vendor
+            expenses.forEach(exp => {
+                const key = `${exp.category}|${exp.vendor || exp.description}`;
+                if (!categoryExpenses[key]) {
+                    categoryExpenses[key] = [];
+                }
+                categoryExpenses[key].push(exp);
+            });
+
+            // Check for patterns
+            for (const [key, exps] of Object.entries(categoryExpenses)) {
+                if (exps.length < 2) continue;
+
+                // Sort by date
+                exps.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                // Calculate average days between expenses
+                const daysBetween = [];
+                for (let i = 1; i < exps.length; i++) {
+                    const dateA = new Date(exps[i].date);
+                    const dateB = new Date(exps[i - 1].date);
+                    const days = Math.round((dateA - dateB) / (1000 * 60 * 60 * 24));
+                    daysBetween.push(days);
+                }
+
+                const avgDays = Math.round(daysBetween.reduce((a, b) => a + b) / daysBetween.length);
+                const isConsistent = daysBetween.every(d => Math.abs(d - avgDays) <= 3);
+
+                // If consistent pattern, suggest recurring
+                if (isConsistent) {
+                    let frequency = 'monthly';
+                    if (avgDays <= 7) frequency = 'weekly';
+                    else if (avgDays <= 14) frequency = 'biweekly';
+                    else if (avgDays <= 31) frequency = 'monthly';
+                    else if (avgDays <= 90) frequency = 'quarterly';
+
+                    recurring.push({
+                        name: exps[0].vendor || exps[0].description,
+                        category: exps[0].category,
+                        amount: exps[0].amount,
+                        frequency,
+                        avgDays,
+                        confidence: isConsistent ? 'high' : 'medium'
+                    });
+                }
+            }
+
+            return recurring;
+        }
+
+        // 4️⃣ Spending Forecast
+        function forecastSpending() {
+            const now = new Date();
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+            const daysInMonth = new Date(thisYear, thisMonth + 1, 0).getDate();
+            const currentDay = now.getDate();
+            const daysRemaining = daysInMonth - currentDay;
+
+            const thisMonthExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear;
+            });
+
+            const thisMonthTotal = thisMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+            const avgPerDay = thisMonthTotal / currentDay;
+            const projectedTotal = thisMonthTotal + (avgPerDay * daysRemaining);
+
+            // Also calculate category forecasts
+            const categoryForecasts = {};
+            const categorySpent = {};
+
+            thisMonthExpenses.forEach(exp => {
+                if (!categorySpent[exp.category]) categorySpent[exp.category] = 0;
+                categorySpent[exp.category] += exp.amount;
+            });
+
+            for (const [category, spent] of Object.entries(categorySpent)) {
+                const avgCategoryPerDay = spent / currentDay;
+                categoryForecasts[category] = spent + (avgCategoryPerDay * daysRemaining);
+            }
+
+            return {
+                projectedTotal: Math.round(projectedTotal * 100) / 100,
+                currentSpent: Math.round(thisMonthTotal * 100) / 100,
+                avgPerDay: Math.round(avgPerDay * 100) / 100,
+                categoryForecasts
+            };
+        }
+
+        // 5️⃣ Spending Insights & Trends
+        function generateSpendingInsights() {
+            const insights = [];
+            const now = new Date();
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+            const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+            const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+            // This month spending by category
+            const thisMonthByCategory = {};
+            expenses.forEach(exp => {
+                const expDate = new Date(exp.date);
+                if (expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear) {
+                    thisMonthByCategory[exp.category] = (thisMonthByCategory[exp.category] || 0) + exp.amount;
+                }
+            });
+
+            // Last month spending by category
+            const lastMonthByCategory = {};
+            expenses.forEach(exp => {
+                const expDate = new Date(exp.date);
+                if (expDate.getMonth() === lastMonth && expDate.getFullYear() === lastMonthYear) {
+                    lastMonthByCategory[exp.category] = (lastMonthByCategory[exp.category] || 0) + exp.amount;
+                }
+            });
+
+            // Compare categories
+            for (const [category, amount] of Object.entries(thisMonthByCategory)) {
+                const lastAmount = lastMonthByCategory[category] || 0;
+                const percentChange = lastAmount > 0 ? ((amount - lastAmount) / lastAmount * 100) : 0;
+
+                if (Math.abs(percentChange) > 10) {
+                    const direction = percentChange > 0 ? '📈 increased' : '📉 decreased';
+                    insights.push({
+                        type: 'category_change',
+                        text: `${category}: ${direction} by ${Math.abs(Math.round(percentChange))}% (${lastAmount > 0 ? `was $${lastAmount.toFixed(2)}, now $${amount.toFixed(2)}` : `new this month: $${amount.toFixed(2)}`})`,
+                        category,
+                        percentChange
+                    });
+                }
+            }
+
+            // Top spending category
+            const topCategory = Object.entries(thisMonthByCategory).sort((a, b) => b[1] - a[1])[0];
+            if (topCategory) {
+                insights.push({
+                    type: 'top_category',
+                    text: `💰 Top spending: ${topCategory[0]} ($${topCategory[1].toFixed(2)})`,
+                    category: topCategory[0],
+                    amount: topCategory[1]
+                });
+            }
+
+            // Biggest single expense
+            const biggestExpense = [...expenses]
+                .filter(exp => {
+                    const expDate = new Date(exp.date);
+                    return expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear;
+                })
+                .sort((a, b) => b.amount - a.amount)[0];
+            
+            if (biggestExpense) {
+                insights.push({
+                    type: 'biggest_expense',
+                    text: `🏆 Biggest expense: ${biggestExpense.vendor || biggestExpense.description} ($${biggestExpense.amount.toFixed(2)})`,
+                    amount: biggestExpense.amount
+                });
+            }
+
+            // Total this month vs last month
+            const thisMonthTotal = Object.values(thisMonthByCategory).reduce((a, b) => a + b, 0);
+            const lastMonthTotal = Object.values(lastMonthByCategory).reduce((a, b) => a + b, 0);
+            const monthChange = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal * 100) : 0;
+
+            if (Math.abs(monthChange) > 5) {
+                const direction = monthChange > 0 ? 'increased' : 'decreased';
+                insights.push({
+                    type: 'month_comparison',
+                    text: `📊 Total spending ${direction} by ${Math.abs(Math.round(monthChange))}% compared to last month`,
+                    percentChange: monthChange
+                });
+            }
+
+            return insights;
         }
 
         // 🤖 AI Category Suggestion Function
@@ -5007,6 +5285,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             renderSpendingTrendChart();
             renderCategoryComparisonChart();
             renderVendorAnalyticsTable();
+            renderAIInsightsSection();
         }
 
         // Render vendor analytics and spending insights
@@ -5247,6 +5526,105 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
+        }
+
+        // 🤖 AI INSIGHTS RENDERING
+
+        function renderAIInsightsSection() {
+            // Get the analytics tab or create a container
+            const container = document.getElementById('insightsContainer');
+            if (!container) return;
+
+            let html = '<div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08);">';
+            html += '<h2 style="margin-bottom: 24px; font-size: 20px;">🤖 AI Insights & Trends</h2>';
+
+            // Get all insights
+            const insights = generateSpendingInsights();
+            const forecast = forecastSpending();
+            const recurringPredictions = predictRecurringExpenses();
+
+            // Render insights
+            if (insights.length > 0) {
+                html += '<div style="margin-bottom: 24px;">';
+                html += '<h3 style="margin-bottom: 12px; font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Spending Insights</h3>';
+                html += '<div style="display: grid; gap: 10px;">';
+                
+                insights.forEach(insight => {
+                    html += `
+                        <div style="padding: 12px; background: rgba(55, 224, 255, 0.05); border-left: 3px solid #37E0FF; border-radius: 6px;">
+                            <div style="color: #cbd5e1; font-size: 0.95em;">${insight.text}</div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            }
+
+            // Forecast section
+            if (forecast) {
+                html += '<div style="margin-bottom: 24px;">';
+                html += '<h3 style="margin-bottom: 12px; font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Monthly Forecast</h3>';
+                html += `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="padding: 16px; background: rgba(55, 224, 255, 0.05); border-radius: 8px; border: 1px solid rgba(55, 224, 255, 0.1);">
+                            <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 4px;">Projected Total</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #35E6A6;">$${forecast.projectedTotal.toFixed(2)}</div>
+                            <div style="color: #cbd5e1; font-size: 0.8em; margin-top: 4px;">Already spent: $${forecast.currentSpent.toFixed(2)}</div>
+                        </div>
+                        <div style="padding: 16px; background: rgba(55, 224, 255, 0.05); border-radius: 8px; border: 1px solid rgba(55, 224, 255, 0.1);">
+                            <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 4px;">Daily Average</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #37E0FF;">$${forecast.avgPerDay.toFixed(2)}</div>
+                            <div style="color: #cbd5e1; font-size: 0.8em; margin-top: 4px;">Per day</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: rgba(123, 97, 255, 0.05); border-radius: 8px; border: 1px solid rgba(123, 97, 255, 0.1);">
+                        <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 8px;">Category Forecasts</div>
+                        <div style="display: grid; gap: 6px;">
+                `;
+                
+                Object.entries(forecast.categoryForecasts).forEach(([category, forecast]) => {
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                            <span style="color: #cbd5e1; font-size: 0.9em;">${category}</span>
+                            <span style="color: #37E0FF; font-weight: 600;">$${forecast.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div></div>';
+            }
+
+            // Recurring predictions
+            if (recurringPredictions.length > 0) {
+                html += '<div style="margin-bottom: 24px;">';
+                html += '<h3 style="margin-bottom: 12px; font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">💡 Recurring Patterns Detected</h3>';
+                html += '<div style="display: grid; gap: 10px;">';
+                
+                recurringPredictions.slice(0, 5).forEach(recurring => {
+                    html += `
+                        <div style="padding: 12px; background: rgba(123, 97, 255, 0.05); border-left: 3px solid #7B61FF; border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="color: #cbd5e1; font-weight: 600;">${recurring.name}</span>
+                                <span style="background: rgba(123, 97, 255, 0.2); color: #7B61FF; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600;">${recurring.frequency}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #94a3b8;">
+                                <span>${recurring.category} • Every ${recurring.avgDays} days</span>
+                                <span>$${recurring.amount.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            }
+
+            html += '</div>';
+
+            // Insert after vendor analytics or at the end
+            const vendorContainer = document.getElementById('vendorAnalyticsContainer');
+            if (vendorContainer && vendorContainer.parentElement) {
+                vendorContainer.insertAdjacentHTML('afterend', html);
+            }
         }
     </script>
 </body>
