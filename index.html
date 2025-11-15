@@ -1448,25 +1448,31 @@
                             <input type="date" id="date" required>
                         </div>
                         <div class="form-group">
-                            <label for="category">Category *</label>
-                            <select id="category" required>
-                                <option value="">Select Category</option>
-                                <option value="Housing">Housing</option>
-                                <option value="Transportation">Transportation</option>
-                                <option value="Groceries">Groceries</option>
-                                <option value="Dining Out">Dining Out</option>
-                                <option value="Entertainment">Entertainment</option>
-                                <option value="Healthcare">Healthcare</option>
-                                <option value="Personal Care">Personal Care</option>
-                                <option value="Shopping">Shopping</option>
-                                <option value="Insurance">Insurance</option>
-                                <option value="Savings">Savings</option>
-                                <option value="Education">Education</option>
-                                <option value="Gifts">Gifts</option>
-                                <option value="Subscriptions">Subscriptions</option>
-                                <option value="Investment Subscription">Investment Subscription</option>
-                                <option value="Other">Other</option>
-                            </select>
+                            <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;">
+                                <div style="flex: 1;">
+                                    <label for="category">Category *</label>
+                                    <select id="category" required>
+                                        <option value="">Select Category</option>
+                                        <option value="Housing">Housing</option>
+                                        <option value="Transportation">Transportation</option>
+                                        <option value="Groceries">Groceries</option>
+                                        <option value="Dining Out">Dining Out</option>
+                                        <option value="Entertainment">Entertainment</option>
+                                        <option value="Healthcare">Healthcare</option>
+                                        <option value="Personal Care">Personal Care</option>
+                                        <option value="Shopping">Shopping</option>
+                                        <option value="Insurance">Insurance</option>
+                                        <option value="Savings">Savings</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Gifts">Gifts</option>
+                                        <option value="Subscriptions">Subscriptions</option>
+                                        <option value="Investment Subscription">Investment Subscription</option>
+                                        <option value="Investments">Investments</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <button type="button" id="aiSuggestBtn" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85em; white-space: nowrap; margin-bottom: 0;" onclick="suggestCategory()">✨ AI Suggest</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="amount">Amount *</label>
@@ -1794,6 +1800,37 @@
         let currentNetWorthPeriod = 'daily';
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Investments', 'Other'];
+
+        // 🤖 AI Configuration
+        // ⚠️ IMPORTANT: Store your OpenAI API key in an environment variable or backend!
+        // For now, we'll use a prompt - you'll enter it when first loading the app
+        let OPENAI_API_KEY = localStorage.getItem('openai_api_key') || '';
+
+        // Function to set API key
+        function setOpenAIKey(key) {
+            OPENAI_API_KEY = key;
+            localStorage.setItem('openai_api_key', key);
+            console.log('✅ OpenAI API key configured');
+        }
+
+        // Prompt for API key on first load if not set
+        if (!OPENAI_API_KEY && !localStorage.getItem('ai_setup_skipped')) {
+            setTimeout(() => {
+                const userKey = prompt(
+                    '🤖 Smart Categories: Enter your OpenAI API key (or click Cancel to skip)\n\n' +
+                    'Get one at: https://platform.openai.com/account/api-keys\n\n' +
+                    '⚠️ This will be stored locally in your browser (not sent anywhere except to OpenAI)',
+                    ''
+                );
+                
+                if (userKey && userKey.trim()) {
+                    setOpenAIKey(userKey.trim());
+                } else {
+                    localStorage.setItem('ai_setup_skipped', 'true');
+                    console.log('⏭️ Smart Categories skipped');
+                }
+            }, 1500);
+        }
 
         const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -2587,6 +2624,98 @@
                 renderAllMonths();
 
                 renderInsights();
+            }
+        }
+
+        // 🤖 AI Category Suggestion Function
+        async function suggestCategory() {
+            const description = document.getElementById('description').value.trim();
+            const amount = document.getElementById('amount').value;
+            const vendor = document.getElementById('vendor').value.trim();
+
+            if (!description) {
+                alert('Please enter a description first');
+                return;
+            }
+
+            if (!OPENAI_API_KEY) {
+                alert('⚠️ OpenAI API key not configured.\n\nClick the gear icon in top-right to set it up, or enter it when prompted.');
+                return;
+            }
+
+            const btn = document.getElementById('aiSuggestBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Thinking...';
+
+            try {
+                // Create prompt for category suggestion
+                const prompt = `You are an expense categorization expert. Categorize this expense into ONE of these categories: ${categories.join(', ')}.
+
+Expense Details:
+- Description: "${description}"
+- Vendor: "${vendor || 'Not specified'}"
+- Amount: $${amount || '0'}
+
+Return ONLY the category name, nothing else. No explanation, no quotes, just the category name.`;
+
+                // Call OpenAI API
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'You are an expense categorization assistant. Respond with ONLY the category name from the provided list.'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.3,
+                        max_tokens: 20
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    if (error.error?.message?.includes('API key')) {
+                        alert('❌ Invalid OpenAI API key.\n\nPlease check your key and try again.');
+                        localStorage.removeItem('openai_api_key');
+                        OPENAI_API_KEY = '';
+                    } else {
+                        alert(`❌ API Error: ${error.error?.message || 'Unknown error'}`);
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                const suggestedCategory = data.choices[0].message.content.trim();
+
+                // Validate the category
+                if (categories.includes(suggestedCategory)) {
+                    document.getElementById('category').value = suggestedCategory;
+                    console.log(`✅ AI suggested: ${suggestedCategory}`);
+                } else {
+                    console.warn(`⚠️ AI suggested invalid category: ${suggestedCategory}`);
+                    // Try to find a close match
+                    const fallback = categories[0];
+                    document.getElementById('category').value = fallback;
+                    alert(`Suggestion: "${suggestedCategory}" → Using fallback: "${fallback}"`);
+                }
+
+            } catch (error) {
+                console.error('❌ Error getting AI suggestion:', error);
+                alert(`❌ Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
             }
         }
 
