@@ -1471,7 +1471,7 @@
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
-                                <button type="button" id="aiSuggestBtn" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85em; white-space: nowrap; margin-bottom: 0;" onclick="suggestCategory()">✨ AI Suggest</button>
+                                <button type="button" id="aiSuggestBtn" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8em; white-space: nowrap; height: 36px; margin-bottom: 0;" onclick="suggestCategory()">✨ AI</button>
                             </div>
                         </div>
                         <div class="form-group">
@@ -2634,12 +2634,12 @@
             const vendor = document.getElementById('vendor').value.trim();
 
             if (!description) {
-                alert('Please enter a description first');
+                // Silently return if no description - don't show error
                 return;
             }
 
             if (!OPENAI_API_KEY) {
-                alert('⚠️ OpenAI API key not configured.\n\nClick the gear icon in top-right to set it up, or enter it when prompted.');
+                alert('⚠️ OpenAI API key not configured.\n\nYou will be prompted to enter it, or paste your key from: https://platform.openai.com/account/api-keys');
                 return;
             }
 
