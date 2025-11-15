@@ -2025,7 +2025,7 @@
                 
                 // Refresh views
                 renderIncomeList();
-                renderInsights();
+                await renderInsights();
                 renderAllMonths();
             } catch (err) {
                 console.error('Exception:', err);
@@ -2404,9 +2404,9 @@
                     monthSelector.value = '';
                 }
             } else if (tabName === 'insights') {
-                setTimeout(() => {
+                setTimeout(async () => {
                     console.log('Insights tab clicked. Rendering vendor analytics and trends.');
-                    renderInsights();
+                    await renderInsights();
                 }, 200);
                 // Reset month dropdown when switching away from month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2576,7 +2576,7 @@
             };
 
             // 🔍 Check for duplicates
-            const duplicate = detectDuplicateExpense(expense.description, expense.amount, expense.vendor);
+            const duplicate = await detectDuplicateExpense(expense.description, expense.amount, expense.vendor);
             if (duplicate.isDuplicate) {
                 const existingExp = duplicate.existingExpense;
                 const confirmAdd = confirm(
@@ -2612,7 +2612,7 @@
 
             // Refresh views
             renderAllMonths();
-            renderInsights();
+            await renderInsights();
 
         }
 
@@ -2635,14 +2635,15 @@
                 
                 renderAllMonths();
 
-                renderInsights();
+                await renderInsights();
             }
         }
 
-        // 🤖 AI HELPER FUNCTIONS
+        // 🤖 AI HELPER FUNCTIONS (Claude-Powered)
 
-        // 1️⃣ Duplicate Detection
-        function detectDuplicateExpense(description, amount, vendor) {
+        // 1️⃣ Duplicate Detection with Claude
+        async function detectDuplicateExpense(description, amount, vendor) {
+            // First do quick local check
             const threshold = 2; // days
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -2654,8 +2655,58 @@
                 return daysDiff <= threshold;
             });
 
+            if (recentExpenses.length === 0) {
+                return { isDuplicate: false };
+            }
+
+            // Use Claude for intelligent duplicate detection
+            if (OPENAI_API_KEY) {
+                try {
+                    const recentList = recentExpenses.map(e => 
+                        `${e.vendor || e.description} - $${e.amount.toFixed(2)} on ${e.date}`
+                    ).join('\n');
+
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OPENAI_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-3.5-turbo',
+                            messages: [{
+                                role: 'system',
+                                content: 'You are a duplicate expense detector. Respond with ONLY "YES" or "NO".'
+                            }, {
+                                role: 'user',
+                                content: `Is this a duplicate?\n\nNew expense: ${vendor || description} - $${amount}\n\nRecent expenses:\n${recentList}\n\nIf the new expense matches any recent one by vendor, description, or similar amount, respond YES. Otherwise NO.`
+                            }],
+                            temperature: 0.2,
+                            max_tokens: 10
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const isDuplicate = data.choices[0].message.content.trim().toUpperCase() === 'YES';
+                        
+                        if (isDuplicate) {
+                            const match = recentExpenses[0]; // Return first match
+                            return {
+                                isDuplicate: true,
+                                existingExpense: match,
+                                confidence: 'high'
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.log('Claude duplicate check failed, using basic detection');
+                }
+            }
+
+            // Fallback to basic detection
             for (const exp of recentExpenses) {
-                const similarAmount = Math.abs(exp.amount - parseFloat(amount)) < 0.50; // within 50 cents
+                const similarAmount = Math.abs(exp.amount - parseFloat(amount)) < 0.50;
                 const similarDesc = exp.description.toLowerCase().includes(description.toLowerCase()) ||
                                    description.toLowerCase().includes(exp.description.toLowerCase());
                 const similarVendor = vendor && exp.vendor && 
@@ -2673,62 +2724,52 @@
             return { isDuplicate: false };
         }
 
-        // 2️⃣ Smart Tags Generation
-        function generateSmartTags(description, category, vendor, amount) {
-            const tags = [];
-            const desc = description.toLowerCase();
-
-            // Category-based tags
-            const categoryTags = {
-                'Dining Out': ['food', 'restaurant', 'meal'],
-                'Groceries': ['food', 'shopping', 'groceries'],
-                'Transportation': ['travel', 'commute', 'fuel'],
-                'Entertainment': ['entertainment', 'fun', 'leisure'],
-                'Healthcare': ['health', 'medical', 'wellness'],
-                'Shopping': ['shopping', 'retail'],
-                'Subscriptions': ['subscription', 'recurring'],
-                'Investments': ['investment', 'financial'],
-                'Investment Subscription': ['investment', 'financial', 'subscription']
-            };
-
-            if (categoryTags[category]) {
-                tags.push(...categoryTags[category]);
+        // 2️⃣ Smart Tags Generation with Claude
+        async function generateSmartTags(description, category, vendor, amount) {
+            if (!OPENAI_API_KEY) {
+                // Fallback to basic tags
+                return ['expense', category.toLowerCase()];
             }
 
-            // Vendor-based tags
-            const vendorLower = vendor.toLowerCase();
-            if (vendorLower.includes('coffee') || vendorLower.includes('starbucks') || vendorLower.includes('cafe')) {
-                tags.push('coffee', 'caffeine');
-            }
-            if (vendorLower.includes('amazon')) tags.push('online', 'shopping');
-            if (vendorLower.includes('walmart') || vendorLower.includes('target')) tags.push('retail', 'shopping');
-            if (vendorLower.includes('gas') || vendorLower.includes('shell') || vendorLower.includes('exxon')) {
-                tags.push('fuel', 'car');
-            }
-            if (vendorLower.includes('gym') || vendorLower.includes('fitness')) tags.push('fitness', 'health');
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [{
+                            role: 'system',
+                            content: 'Generate 3-5 relevant tags for an expense. Return ONLY comma-separated tags, no explanations.'
+                        }, {
+                            role: 'user',
+                            content: `Description: ${description}\nVendor: ${vendor || 'N/A'}\nCategory: ${category}\nAmount: $${amount}\n\nGenerate relevant tags:`
+                        }],
+                        temperature: 0.7,
+                        max_tokens: 50
+                    })
+                });
 
-            // Time-based tags
-            const expDate = new Date();
-            if (expDate.getDay() === 5 || expDate.getDay() === 6 || expDate.getDay() === 0) {
-                tags.push('weekend');
-            } else {
-                tags.push('weekday');
+                if (response.ok) {
+                    const data = await response.json();
+                    const tagsText = data.choices[0].message.content.trim();
+                    const tags = tagsText.split(',').map(t => t.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+                    return [...new Set(tags.filter(t => t.length > 0))];
+                }
+            } catch (error) {
+                console.log('Claude tags failed, using basic tags');
             }
 
-            // Amount-based tags
-            if (amount > 100) tags.push('expensive');
-            if (amount < 10) tags.push('small');
-
-            // Remove duplicates
-            return [...new Set(tags)];
+            return ['expense', category.toLowerCase()];
         }
 
-        // 3️⃣ Smart Recurring Prediction
-        function predictRecurringExpenses() {
+        // 3️⃣ Smart Recurring Prediction with Claude
+        async function predictRecurringExpenses() {
             const recurring = [];
             const categoryExpenses = {};
 
-            // Group expenses by category and vendor
             expenses.forEach(exp => {
                 const key = `${exp.category}|${exp.vendor || exp.description}`;
                 if (!categoryExpenses[key]) {
@@ -2737,49 +2778,56 @@
                 categoryExpenses[key].push(exp);
             });
 
-            // Check for patterns
-            for (const [key, exps] of Object.entries(categoryExpenses)) {
-                if (exps.length < 2) continue;
+            // Build expense summary for Claude
+            const expenseSummary = Object.entries(categoryExpenses)
+                .filter(([_, exps]) => exps.length >= 2)
+                .map(([key, exps]) => {
+                    exps.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const dates = exps.map(e => e.date).join(', ');
+                    return `${key}: [${dates}]`;
+                })
+                .join('\n');
 
-                // Sort by date
-                exps.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                // Calculate average days between expenses
-                const daysBetween = [];
-                for (let i = 1; i < exps.length; i++) {
-                    const dateA = new Date(exps[i].date);
-                    const dateB = new Date(exps[i - 1].date);
-                    const days = Math.round((dateA - dateB) / (1000 * 60 * 60 * 24));
-                    daysBetween.push(days);
-                }
-
-                const avgDays = Math.round(daysBetween.reduce((a, b) => a + b) / daysBetween.length);
-                const isConsistent = daysBetween.every(d => Math.abs(d - avgDays) <= 3);
-
-                // If consistent pattern, suggest recurring
-                if (isConsistent) {
-                    let frequency = 'monthly';
-                    if (avgDays <= 7) frequency = 'weekly';
-                    else if (avgDays <= 14) frequency = 'biweekly';
-                    else if (avgDays <= 31) frequency = 'monthly';
-                    else if (avgDays <= 90) frequency = 'quarterly';
-
-                    recurring.push({
-                        name: exps[0].vendor || exps[0].description,
-                        category: exps[0].category,
-                        amount: exps[0].amount,
-                        frequency,
-                        avgDays,
-                        confidence: isConsistent ? 'high' : 'medium'
-                    });
-                }
+            if (!expenseSummary || !OPENAI_API_KEY) {
+                return [];
             }
 
-            return recurring;
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [{
+                            role: 'system',
+                            content: 'Analyze expenses and identify recurring patterns. Respond in JSON format only.'
+                        }, {
+                            role: 'user',
+                            content: `Analyze these expenses and identify which are likely recurring:\n\n${expenseSummary}\n\nRespond with JSON array of {name, frequency, confidence} for recurring items only.`
+                        }],
+                        temperature: 0.3,
+                        max_tokens: 300
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const analysisText = data.choices[0].message.content.trim();
+                    const predictions = JSON.parse(analysisText);
+                    return Array.isArray(predictions) ? predictions : [];
+                }
+            } catch (error) {
+                console.log('Claude recurring prediction failed');
+            }
+
+            return [];
         }
 
-        // 4️⃣ Spending Forecast
-        function forecastSpending() {
+        // 4️⃣ Spending Forecast with Claude
+        async function forecastSpending() {
             const now = new Date();
             const thisMonth = now.getMonth();
             const thisYear = now.getFullYear();
@@ -2793,41 +2841,71 @@
             });
 
             const thisMonthTotal = thisMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-            const avgPerDay = thisMonthTotal / currentDay;
+            const avgPerDay = currentDay > 0 ? thisMonthTotal / currentDay : 0;
             const projectedTotal = thisMonthTotal + (avgPerDay * daysRemaining);
 
-            // Also calculate category forecasts
-            const categoryForecasts = {};
             const categorySpent = {};
-
             thisMonthExpenses.forEach(exp => {
                 if (!categorySpent[exp.category]) categorySpent[exp.category] = 0;
                 categorySpent[exp.category] += exp.amount;
             });
 
+            const categoryForecasts = {};
             for (const [category, spent] of Object.entries(categorySpent)) {
-                const avgCategoryPerDay = spent / currentDay;
+                const avgCategoryPerDay = currentDay > 0 ? spent / currentDay : 0;
                 categoryForecasts[category] = spent + (avgCategoryPerDay * daysRemaining);
+            }
+
+            // Get Claude insight on forecast
+            let forecastInsight = '';
+            if (OPENAI_API_KEY) {
+                try {
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OPENAI_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-3.5-turbo',
+                            messages: [{
+                                role: 'system',
+                                content: 'Provide brief spending forecast insight. Keep it to one sentence.'
+                            }, {
+                                role: 'user',
+                                content: `Current spending: $${thisMonthTotal.toFixed(2)} over ${currentDay} days. Projected total: $${projectedTotal.toFixed(2)}. Days remaining: ${daysRemaining}. Give a brief insight.`
+                            }],
+                            temperature: 0.7,
+                            max_tokens: 50
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        forecastInsight = data.choices[0].message.content.trim();
+                    }
+                } catch (error) {
+                    console.log('Claude forecast insight failed');
+                }
             }
 
             return {
                 projectedTotal: Math.round(projectedTotal * 100) / 100,
                 currentSpent: Math.round(thisMonthTotal * 100) / 100,
                 avgPerDay: Math.round(avgPerDay * 100) / 100,
-                categoryForecasts
+                categoryForecasts,
+                insight: forecastInsight
             };
         }
 
-        // 5️⃣ Spending Insights & Trends
-        function generateSpendingInsights() {
-            const insights = [];
+        // 5️⃣ Spending Insights & Trends with Claude
+        async function generateSpendingInsights() {
             const now = new Date();
             const thisMonth = now.getMonth();
             const thisYear = now.getFullYear();
             const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
             const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
 
-            // This month spending by category
             const thisMonthByCategory = {};
             expenses.forEach(exp => {
                 const expDate = new Date(exp.date);
@@ -2836,7 +2914,6 @@
                 }
             });
 
-            // Last month spending by category
             const lastMonthByCategory = {};
             expenses.forEach(exp => {
                 const expDate = new Date(exp.date);
@@ -2845,64 +2922,51 @@
                 }
             });
 
-            // Compare categories
-            for (const [category, amount] of Object.entries(thisMonthByCategory)) {
-                const lastAmount = lastMonthByCategory[category] || 0;
-                const percentChange = lastAmount > 0 ? ((amount - lastAmount) / lastAmount * 100) : 0;
+            const thisMonthTotal = Object.values(thisMonthByCategory).reduce((a, b) => a + b, 0);
+            const lastMonthTotal = Object.values(lastMonthByCategory).reduce((a, b) => a + b, 0);
 
-                if (Math.abs(percentChange) > 10) {
-                    const direction = percentChange > 0 ? '📈 increased' : '📉 decreased';
-                    insights.push({
-                        type: 'category_change',
-                        text: `${category}: ${direction} by ${Math.abs(Math.round(percentChange))}% (${lastAmount > 0 ? `was $${lastAmount.toFixed(2)}, now $${amount.toFixed(2)}` : `new this month: $${amount.toFixed(2)}`})`,
-                        category,
-                        percentChange
+            // Let Claude analyze and generate insights
+            if (OPENAI_API_KEY) {
+                try {
+                    const spendingData = JSON.stringify({
+                        thisMonth: thisMonthByCategory,
+                        lastMonth: lastMonthByCategory,
+                        thisMonthTotal,
+                        lastMonthTotal
                     });
+
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OPENAI_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-3.5-turbo',
+                            messages: [{
+                                role: 'system',
+                                content: 'Analyze spending data and provide 2-3 key insights. Return JSON array of {type, text} objects.'
+                            }, {
+                                role: 'user',
+                                content: `Analyze this spending data and identify key trends and insights:\n\n${spendingData}`
+                            }],
+                            temperature: 0.7,
+                            max_tokens: 300
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const insightsText = data.choices[0].message.content.trim();
+                        const insights = JSON.parse(insightsText);
+                        return Array.isArray(insights) ? insights : [];
+                    }
+                } catch (error) {
+                    console.log('Claude insights generation failed');
                 }
             }
 
-            // Top spending category
-            const topCategory = Object.entries(thisMonthByCategory).sort((a, b) => b[1] - a[1])[0];
-            if (topCategory) {
-                insights.push({
-                    type: 'top_category',
-                    text: `💰 Top spending: ${topCategory[0]} ($${topCategory[1].toFixed(2)})`,
-                    category: topCategory[0],
-                    amount: topCategory[1]
-                });
-            }
-
-            // Biggest single expense
-            const biggestExpense = [...expenses]
-                .filter(exp => {
-                    const expDate = new Date(exp.date);
-                    return expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear;
-                })
-                .sort((a, b) => b.amount - a.amount)[0];
-            
-            if (biggestExpense) {
-                insights.push({
-                    type: 'biggest_expense',
-                    text: `🏆 Biggest expense: ${biggestExpense.vendor || biggestExpense.description} ($${biggestExpense.amount.toFixed(2)})`,
-                    amount: biggestExpense.amount
-                });
-            }
-
-            // Total this month vs last month
-            const thisMonthTotal = Object.values(thisMonthByCategory).reduce((a, b) => a + b, 0);
-            const lastMonthTotal = Object.values(lastMonthByCategory).reduce((a, b) => a + b, 0);
-            const monthChange = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal * 100) : 0;
-
-            if (Math.abs(monthChange) > 5) {
-                const direction = monthChange > 0 ? 'increased' : 'decreased';
-                insights.push({
-                    type: 'month_comparison',
-                    text: `📊 Total spending ${direction} by ${Math.abs(Math.round(monthChange))}% compared to last month`,
-                    percentChange: monthChange
-                });
-            }
-
-            return insights;
+            return [];
         }
 
         // 🤖 AI Category Suggestion Function
@@ -4207,7 +4271,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 renderIncomeList();
 
                 renderAllMonths();
-                renderInsights();
+                await renderInsights();
                 renderIncomeTemplates(); // Refresh income templates display
             } catch (err) {
                 console.error('❌ Exception in addIncome:', err);
@@ -4235,7 +4299,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 renderIncomeList();
 
                 renderAllMonths();
-                renderInsights();
+                await renderInsights();
             }
         }
 
@@ -4309,7 +4373,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             renderIncomeList();
 
             renderAllMonths();
-            renderInsights();
+            await renderInsights();
             showSuccess('Income entry updated!');
         }
 
@@ -5279,13 +5343,13 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         }
 
         // Render vendor analytics and spending insights
-        function renderInsights() {
+        async function renderInsights() {
             renderNetWorthChart();
             renderTopVendorsSection();
             renderSpendingTrendChart();
             renderCategoryComparisonChart();
             renderVendorAnalyticsTable();
-            renderAIInsightsSection();
+            await renderAIInsightsSection();
         }
 
         // Render vendor analytics and spending insights
@@ -5530,7 +5594,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
         // 🤖 AI INSIGHTS RENDERING
 
-        function renderAIInsightsSection() {
+        async function renderAIInsightsSection() {
             // Get the analytics tab or create a container
             const container = document.getElementById('insightsContainer');
             if (!container) return;
@@ -5538,10 +5602,10 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             let html = '<div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08);">';
             html += '<h2 style="margin-bottom: 24px; font-size: 20px;">🤖 AI Insights & Trends</h2>';
 
-            // Get all insights
-            const insights = generateSpendingInsights();
-            const forecast = forecastSpending();
-            const recurringPredictions = predictRecurringExpenses();
+            // Get all insights (now async)
+            const insights = await generateSpendingInsights();
+            const forecast = await forecastSpending();
+            const recurringPredictions = await predictRecurringExpenses();
 
             // Render insights
             if (insights.length > 0) {
