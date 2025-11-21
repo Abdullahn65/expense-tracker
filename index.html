@@ -3015,10 +3015,30 @@
                     batch_id: batchId // Track which CSV import this came from
                 }));
 
-                const { data, error } = await supabaseClient
+                let { data, error } = await supabaseClient
                     .from('expenses')
                     .insert(expensesToInsert)
                     .select();
+
+                // If batch_id column doesn't exist, try without it
+                if (error && error.message && error.message.includes('batch_id')) {
+                    console.log('⚠️ batch_id column not found in database. Retrying without batch tracking...');
+                    // Remove batch_id from expenses for now
+                    const expensesToInsertWithoutBatch = expensesToInsert.map(exp => {
+                        const { batch_id, ...rest } = exp;
+                        return rest;
+                    });
+                    
+                    const retryResult = await supabaseClient
+                        .from('expenses')
+                        .insert(expensesToInsertWithoutBatch)
+                        .select();
+                    
+                    data = retryResult.data;
+                    error = retryResult.error;
+                    
+                    alert('⚠️ CSV imported successfully, but batch tracking is not available yet.\n\nPlease ask admin to run the migration: add_batch_id_column.sql\n\nBatch delete feature will be available after migration.');
+                }
 
                 if (error) {
                     throw new Error(error.message);
