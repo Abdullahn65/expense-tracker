@@ -1527,22 +1527,32 @@
 
             <!-- CSV Import Tab -->
             <div class="tab-content" id="csvimport">
-                <h2 style="margin-bottom: 30px;">Import Expenses from Chase Freedom CC CSV</h2>
+                <h2 style="margin-bottom: 30px;">Import Expenses from CSV</h2>
                 
                 <div class="expense-form">
-                    <h3 style="margin-bottom: 20px;">📥 Upload Your CSV File</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">Export your Chase Freedom Credit Card transactions and upload the CSV file here. The system will automatically map and import them.</p>
+                    <h3 style="margin-bottom: 20px;">📥 Select Template & Upload</h3>
                     
-                    <div style="background: rgba(16, 185, 129, 0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px; color: var(--text-secondary); font-size: 14px;">
-                        <strong style="color: var(--success);">✓ Chase Freedom CC</strong> • Payment Method: Chase Credit
+                    <div class="form-grid" style="margin-bottom: 24px;">
+                        <div class="form-group">
+                            <label for="csvTemplate">Select Bank Template *</label>
+                            <select id="csvTemplate" required onchange="changeCSVTemplate()">
+                                <option value="">-- Select Template --</option>
+                                <option value="chase_freedom_cc">Chase Freedom Credit Card</option>
+                                <option value="chase_debit">Chase Debit Card</option>
+                            </select>
+                        </div>
                     </div>
 
+                    <div id="csvTemplateInfo" style="background: rgba(16, 185, 129, 0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px; color: var(--text-secondary); font-size: 14px; display: none;"></div>
+
                     <div style="border-top: 1px solid var(--hairline); padding-top: 30px;">
+                        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">Export your transactions and upload the CSV file here. The system will automatically map fields and check for duplicates.</p>
                         
                         <div class="form-group">
                             <label for="csvFile">Select CSV File *</label>
-                            <input type="file" id="csvFile" accept=".csv" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;">
+                            <input type="file" id="csvFile" accept=".csv" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;" disabled>
                         </div>
+
 
                         <div id="csvPreview" style="display: none; margin-top: 24px;">
                             <h3 style="margin-bottom: 16px;">Preview Imports</h3>
@@ -2631,19 +2641,58 @@
 
         // CSV Import Functions
         let csvPreviewData = [];
+        let selectedTemplateId = null;
 
-
-        const csvTemplate = {
-            name: 'Chase Freedom CC',
-            columns: {
-                transactionDate: 'Transaction Date',
-                description: 'Description',
-                category: 'Category',
-                type: 'Type',
-                amount: 'Amount'
+        const csvTemplates = {
+            chase_freedom_cc: {
+                name: 'Chase Freedom Credit Card',
+                paymentMethod: 'Chase Credit',
+                columns: {
+                    transactionDate: 'Transaction Date',
+                    postDate: 'Post Date',
+                    description: 'Description',
+                    category: 'Category',
+                    type: 'Type',
+                    amount: 'Amount',
+                    memo: 'Memo'
+                }
             },
-            paymentMethod: 'Chase Credit'
+            chase_debit: {
+                name: 'Chase Debit Card',
+                paymentMethod: 'Chase Debit',
+                columns: {
+                    details: 'Details',
+                    postDate: 'Posting Date',
+                    description: 'Description',
+                    amount: 'Amount',
+                    type: 'Type',
+                    balance: 'Balance',
+                    checkSlip: 'Check or Slip #'
+                }
+            }
         };
+
+        function changeCSVTemplate() {
+            const templateSelect = document.getElementById('csvTemplate');
+            selectedTemplateId = templateSelect.value;
+            
+            if (!selectedTemplateId) {
+                document.getElementById('csvFile').disabled = true;
+                document.getElementById('csvTemplateInfo').style.display = 'none';
+                document.getElementById('csvFile').value = '';
+                clearCSVPreview();
+                return;
+            }
+
+            document.getElementById('csvFile').disabled = false;
+            const template = csvTemplates[selectedTemplateId];
+            const infoDiv = document.getElementById('csvTemplateInfo');
+            infoDiv.innerHTML = `✓ Selected: <strong>${template.name}</strong> • Payment Method: <strong>${template.paymentMethod}</strong>`;
+            infoDiv.style.display = 'block';
+            
+            document.getElementById('csvFile').value = '';
+            clearCSVPreview();
+        }
 
         function handleCSVFileSelect(event) {
             const file = event.target.files[0];
@@ -2669,26 +2718,37 @@
             }
 
             const headers = lines[0].split(',').map(h => h.trim());
-            const template = csvTemplate;
+            const template = csvTemplates[selectedTemplateId];
+            
+            if (!template) {
+                throw new Error('No template selected');
+            }
             
             // Find column indices
             const columnMap = {};
             for (const [field, columnName] of Object.entries(template.columns)) {
                 const index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
-                if (index === -1 && field !== 'category') {
-                    // Category is optional
+                if (index === -1 && !['category', 'memo', 'checkSlip', 'balance', 'details'].includes(field)) {
+                    // Optional fields
                     console.warn(`Column "${columnName}" not found in CSV`);
                 }
                 columnMap[field] = index;
             }
 
-            const expenses = [];
+            const expensesToImport = [];
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(',').map(v => v.trim());
                 
                 if (values.length < 2 || values.every(v => !v)) continue; // Skip empty lines
 
-                const dateStr = columnMap.transactionDate !== -1 ? values[columnMap.transactionDate] : '';
+                // Get date - try postDate first, then transactionDate
+                let dateStr = '';
+                if (columnMap.postDate !== -1) {
+                    dateStr = values[columnMap.postDate];
+                } else if (columnMap.transactionDate !== -1) {
+                    dateStr = values[columnMap.transactionDate];
+                }
+
                 const description = columnMap.description !== -1 ? values[columnMap.description] : '';
                 const categoryFromCSV = columnMap.category !== -1 ? values[columnMap.category] : '';
                 const type = columnMap.type !== -1 ? values[columnMap.type] : '';
@@ -2696,42 +2756,66 @@
 
                 if (!dateStr || !description || !amountStr) continue;
 
-                // Parse amount (remove $ and commas)
-                let amount = parseFloat(amountStr.replace(/[$,]/g, ''));
+                // Parse amount (remove $ and commas, handle negatives)
+                let amountValue = amountStr.replace(/[$,]/g, '');
+                let amount = parseFloat(amountValue);
                 
-                // If it's a debit (withdrawal), make it negative for consistency
-                if (type.toLowerCase() === 'debit' || type.toLowerCase() === 'withdrawal') {
-                    amount = Math.abs(amount);
-                } else if (type.toLowerCase() === 'credit' || type.toLowerCase() === 'deposit') {
-                    // Credits might be negative in some formats, make them positive
-                    amount = Math.abs(amount);
-                }
+                // Make amount positive (we'll track debits through type/payment method)
+                amount = Math.abs(amount);
 
-                // Parse date (assumes MM/DD/YYYY format from Chase)
+                // Parse date
                 const date = formatDateForInput(dateStr);
 
                 // Map category
                 const mappedCategory = mapCategoryFromCSV(categoryFromCSV);
 
-                expenses.push({
+                expensesToImport.push({
                     date,
                     description,
                     category: mappedCategory,
-                    amount: Math.abs(amount),
+                    amount: amount,
                     payment_method: template.paymentMethod,
                     vendor: extractVendorFromDescription(description),
-                    notes: type ? `Original Type: ${type}` : ''
+                    notes: type ? `Type: ${type}` : '',
+                    importHash: generateExpenseHash(date, description, amount) // For deduplication
                 });
             }
 
-            return expenses;
+            // Filter out duplicates based on existing expenses
+            const dedupedExpenses = expensesToImport.filter(newExp => {
+                return !isDuplicateExpense(newExp);
+            });
+
+            console.log(`Loaded ${expensesToImport.length} expenses, ${dedupedExpenses.length} are new (${expensesToImport.length - dedupedExpenses.length} duplicates removed)`);
+
+            return dedupedExpenses;
+        }
+
+        function generateExpenseHash(date, description, amount) {
+            // Create a hash to identify potential duplicates
+            return `${date}|${description.substring(0, 30)}|${amount}`;
+        }
+
+        function isDuplicateExpense(newExp) {
+            // Check if expense already exists in database
+            return expenses.some(existing => {
+                return existing.date === newExp.date &&
+                       existing.amount === newExp.amount &&
+                       existing.description.substring(0, 30) === newExp.description.substring(0, 30);
+            });
         }
 
         function formatDateForInput(dateStr) {
-            // Handle MM/DD/YYYY format
+            // Handle MM/DD/YYYY or M/D/YY or MM/DD/YY formats
             const parts = dateStr.split('/');
             if (parts.length === 3) {
-                const [month, day, year] = parts;
+                let [month, day, year] = parts;
+                
+                // Convert 2-digit year to 4-digit
+                if (year.length === 2) {
+                    year = '20' + year;
+                }
+                
                 return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
             }
             return dateStr;
@@ -2789,7 +2873,7 @@
             previewBody.innerHTML = '';
             
             if (csvPreviewData.length === 0) {
-                alert('No valid expenses found in CSV');
+                alert('No new expenses found. All transactions may already exist in your tracker.');
                 return;
             }
 
@@ -2809,14 +2893,18 @@
             previewDiv.style.display = 'block';
             document.getElementById('csvUploadArea').style.display = 'none';
             
+            let infoText = `Ready to import ${csvPreviewData.length} expense${csvPreviewData.length !== 1 ? 's' : ''}`;
             if (csvPreviewData.length > 10) {
-                const infoMsg = document.createElement('div');
-                infoMsg.style.marginTop = '12px';
-                infoMsg.style.color = 'var(--text-secondary)';
-                infoMsg.style.fontSize = '14px';
-                infoMsg.innerHTML = `Showing 10 of ${csvPreviewData.length} expenses to import`;
-                previewDiv.appendChild(infoMsg);
+                infoText += ` (showing first 10)`;
             }
+            
+            const infoMsg = document.createElement('div');
+            infoMsg.style.marginTop = '12px';
+            infoMsg.style.color = 'var(--success)';
+            infoMsg.style.fontSize = '14px';
+            infoMsg.style.fontWeight = '600';
+            infoMsg.innerHTML = `✓ ${infoText}`;
+            previewDiv.appendChild(infoMsg);
         }
 
         function clearCSVPreview() {
