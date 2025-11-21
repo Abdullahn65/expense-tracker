@@ -368,6 +368,20 @@
             color: var(--accent);
         }
 
+        .csv-template-btn {
+            transition: all 0.2s ease;
+        }
+
+        .csv-template-btn:hover {
+            background: rgba(59, 130, 246, 0.2) !important;
+            border-color: rgba(59, 130, 246, 0.5) !important;
+            transform: translateY(-2px);
+        }
+
+        .csv-template-btn:active {
+            transform: translateY(0);
+        }
+
         .expense-table {
             width: 100%;
             border-collapse: collapse;
@@ -1316,6 +1330,7 @@
             <button class="nav-tab active" data-tab="insights">Insights</button>
             <button class="nav-tab" data-tab="comparison">Comparison</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
+            <button class="nav-tab" data-tab="csvimport">CSV Import</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
             <button class="nav-tab" data-tab="recurring">Recurring</button>
@@ -1508,6 +1523,54 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Add Expense</button>
                 </form>
+            </div>
+
+            <!-- CSV Import Tab -->
+            <div class="tab-content" id="csvimport">
+                <h2 style="margin-bottom: 30px;">Import Expenses from Chase Freedom CC CSV</h2>
+                
+                <div class="expense-form">
+                    <h3 style="margin-bottom: 20px;">📥 Upload Your CSV File</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">Export your Chase Freedom Credit Card transactions and upload the CSV file here. The system will automatically map and import them.</p>
+                    
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px; color: var(--text-secondary); font-size: 14px;">
+                        <strong style="color: var(--success);">✓ Chase Freedom CC</strong> • Payment Method: Chase Credit
+                    </div>
+
+                    <div style="border-top: 1px solid var(--hairline); padding-top: 30px;">
+                        
+                        <div class="form-group">
+                            <label for="csvFile">Select CSV File *</label>
+                            <input type="file" id="csvFile" accept=".csv" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;">
+                        </div>
+
+                        <div id="csvPreview" style="display: none; margin-top: 24px;">
+                            <h3 style="margin-bottom: 16px;">Preview Imports</h3>
+                            <div style="overflow-x: auto; background: rgba(15, 18, 24, 0.5); border-radius: 8px; border: 1px solid var(--hairline);">
+                                <table class="expense-table" style="font-size: 0.85em;">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Category</th>
+                                            <th>Amount</th>
+                                            <th>Payment Method</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="csvPreviewBody"></tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                                <button type="button" class="btn btn-primary" onclick="importCSVExpenses()" id="importCSVBtn">Import Expenses</button>
+                                <button type="button" class="btn btn-secondary" onclick="clearCSVPreview()">Cancel</button>
+                            </div>
+                        </div>
+
+                        <div id="csvUploadArea" style="margin-top: 20px;">
+                            <button type="button" class="btn btn-secondary" id="selectCSVFileBtn" onclick="document.getElementById('csvFile').click()" style="width: 100%;">Select CSV File</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Income Tab -->
@@ -2561,6 +2624,254 @@
             
             // Setup category auto-suggest
             setupCategoryAutoSuggest();
+
+            // Setup CSV import file input listener
+            document.getElementById('csvFile').addEventListener('change', handleCSVFileSelect);
+        }
+
+        // CSV Import Functions
+        let csvPreviewData = [];
+
+
+        const csvTemplate = {
+            name: 'Chase Freedom CC',
+            columns: {
+                transactionDate: 'Transaction Date',
+                description: 'Description',
+                category: 'Category',
+                type: 'Type',
+                amount: 'Amount'
+            },
+            paymentMethod: 'Chase Credit'
+        };
+
+        function handleCSVFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    csvPreviewData = parseCSV(csv);
+                    displayCSVPreview();
+                } catch (error) {
+                    alert('Error reading CSV file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) {
+                throw new Error('CSV file is empty or has only headers');
+            }
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const template = csvTemplate;
+            
+            // Find column indices
+            const columnMap = {};
+            for (const [field, columnName] of Object.entries(template.columns)) {
+                const index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
+                if (index === -1 && field !== 'category') {
+                    // Category is optional
+                    console.warn(`Column "${columnName}" not found in CSV`);
+                }
+                columnMap[field] = index;
+            }
+
+            const expenses = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                
+                if (values.length < 2 || values.every(v => !v)) continue; // Skip empty lines
+
+                const dateStr = columnMap.transactionDate !== -1 ? values[columnMap.transactionDate] : '';
+                const description = columnMap.description !== -1 ? values[columnMap.description] : '';
+                const categoryFromCSV = columnMap.category !== -1 ? values[columnMap.category] : '';
+                const type = columnMap.type !== -1 ? values[columnMap.type] : '';
+                const amountStr = columnMap.amount !== -1 ? values[columnMap.amount] : '';
+
+                if (!dateStr || !description || !amountStr) continue;
+
+                // Parse amount (remove $ and commas)
+                let amount = parseFloat(amountStr.replace(/[$,]/g, ''));
+                
+                // If it's a debit (withdrawal), make it negative for consistency
+                if (type.toLowerCase() === 'debit' || type.toLowerCase() === 'withdrawal') {
+                    amount = Math.abs(amount);
+                } else if (type.toLowerCase() === 'credit' || type.toLowerCase() === 'deposit') {
+                    // Credits might be negative in some formats, make them positive
+                    amount = Math.abs(amount);
+                }
+
+                // Parse date (assumes MM/DD/YYYY format from Chase)
+                const date = formatDateForInput(dateStr);
+
+                // Map category
+                const mappedCategory = mapCategoryFromCSV(categoryFromCSV);
+
+                expenses.push({
+                    date,
+                    description,
+                    category: mappedCategory,
+                    amount: Math.abs(amount),
+                    payment_method: template.paymentMethod,
+                    vendor: extractVendorFromDescription(description),
+                    notes: type ? `Original Type: ${type}` : ''
+                });
+            }
+
+            return expenses;
+        }
+
+        function formatDateForInput(dateStr) {
+            // Handle MM/DD/YYYY format
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const [month, day, year] = parts;
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+            return dateStr;
+        }
+
+        function mapCategoryFromCSV(csvCategory) {
+            if (!csvCategory) return 'Other';
+            
+            const categoryMap = {
+                'groceries': 'Groceries',
+                'dining': 'Dining Out',
+                'restaurants': 'Dining Out',
+                'gas': 'Transportation',
+                'fuel': 'Transportation',
+                'transportation': 'Transportation',
+                'entertainment': 'Entertainment',
+                'shopping': 'Shopping',
+                'retail': 'Shopping',
+                'healthcare': 'Healthcare',
+                'medical': 'Healthcare',
+                'subscriptions': 'Subscriptions',
+                'subscription': 'Subscriptions',
+                'insurance': 'Insurance',
+                'utilities': 'Housing',
+                'housing': 'Housing',
+                'rent': 'Housing',
+                'mortgage': 'Housing',
+                'education': 'Education',
+                'personal': 'Personal Care',
+                'gifts': 'Gifts',
+                'investment': 'Investment Subscription'
+            };
+
+            const lowerCategory = csvCategory.toLowerCase();
+            for (const [key, value] of Object.entries(categoryMap)) {
+                if (lowerCategory.includes(key)) {
+                    return value;
+                }
+            }
+
+            return 'Other';
+        }
+
+        function extractVendorFromDescription(description) {
+            // Try to extract vendor name from description
+            // Usually the first part before any transaction details
+            const parts = description.split(' - ');
+            return parts[0].substring(0, 50); // Limit to 50 chars
+        }
+
+        function displayCSVPreview() {
+            const previewDiv = document.getElementById('csvPreview');
+            const previewBody = document.getElementById('csvPreviewBody');
+            
+            previewBody.innerHTML = '';
+            
+            if (csvPreviewData.length === 0) {
+                alert('No valid expenses found in CSV');
+                return;
+            }
+
+            // Show first 10 rows in preview
+            csvPreviewData.slice(0, 10).forEach(expense => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${expense.date}</td>
+                    <td>${expense.description}</td>
+                    <td>${expense.category}</td>
+                    <td>$${expense.amount.toFixed(2)}</td>
+                    <td>${expense.payment_method}</td>
+                `;
+                previewBody.appendChild(row);
+            });
+
+            previewDiv.style.display = 'block';
+            document.getElementById('csvUploadArea').style.display = 'none';
+            
+            if (csvPreviewData.length > 10) {
+                const infoMsg = document.createElement('div');
+                infoMsg.style.marginTop = '12px';
+                infoMsg.style.color = 'var(--text-secondary)';
+                infoMsg.style.fontSize = '14px';
+                infoMsg.innerHTML = `Showing 10 of ${csvPreviewData.length} expenses to import`;
+                previewDiv.appendChild(infoMsg);
+            }
+        }
+
+        function clearCSVPreview() {
+            csvPreviewData = [];
+            document.getElementById('csvFile').value = '';
+            document.getElementById('csvPreview').style.display = 'none';
+            document.getElementById('csvUploadArea').style.display = 'block';
+        }
+
+        async function importCSVExpenses() {
+            if (csvPreviewData.length === 0) {
+                alert('No expenses to import');
+                return;
+            }
+
+            const importBtn = document.getElementById('importCSVBtn');
+            importBtn.disabled = true;
+            importBtn.textContent = 'Importing...';
+
+            try {
+                // Add ID to each expense for database
+                const expensesToInsert = csvPreviewData.map(expense => ({
+                    ...expense,
+                    id: Date.now() + Math.random() // Unique ID
+                }));
+
+                const { data, error } = await supabaseClient
+                    .from('expenses')
+                    .insert(expensesToInsert)
+                    .select();
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                // Add to local expenses array
+                expenses.push(...data);
+
+                // Clear preview
+                clearCSVPreview();
+
+                alert(`Successfully imported ${data.length} expenses!`);
+
+                // Refresh views
+                renderAllMonths();
+                renderInsights();
+
+                // Switch to expenses tab to see the imported data
+                switchTab('insights');
+            } catch (error) {
+                alert('Error importing expenses: ' + error.message);
+            } finally {
+                importBtn.disabled = false;
+                importBtn.textContent = 'Import Expenses';
+            }
         }
 
         async function addExpense() {
