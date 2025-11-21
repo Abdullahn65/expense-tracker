@@ -1307,8 +1307,6 @@
             <button class="nav-tab" data-tab="comparison">Comparison</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="csvimport">CSV Import</button>
-            <button class="nav-tab" data-tab="csvexpenses">CSV Expenses</button>
-            <button class="nav-tab" data-tab="csvincome">CSV Income</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
             <button class="nav-tab" data-tab="recurring">Recurring</button>
@@ -1790,20 +1788,6 @@
             </div>
 
             <!-- CSV Expenses Tab -->
-            <div class="tab-content" id="csvexpenses">
-                <h2 style="margin-bottom: 24px;">CSV Imported Expenses</h2>
-                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                    <div id="csvExpensesContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
-                </div>
-            </div>
-
-            <!-- CSV Income Tab -->
-            <div class="tab-content" id="csvincome">
-                <h2 style="margin-bottom: 24px;">CSV Imported Income</h2>
-                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                    <div id="csvIncomeContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -2444,24 +2428,6 @@
                 if (monthSelector) {
                     monthSelector.value = '';
                 }
-            } else if (tabName === 'csvexpenses') {
-                setTimeout(() => {
-                    renderCSVExpenses();
-                }, 100);
-                // Reset month dropdown
-                const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
-            } else if (tabName === 'csvincome') {
-                setTimeout(() => {
-                    renderCSVIncome();
-                }, 100);
-                // Reset month dropdown
-                const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
             } else {
                 // Reset month dropdown when switching to non-month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2617,6 +2583,7 @@
 
         // CSV Import Functions
         let csvPreviewData = [];
+        let csvIncomePreviewData = [];
         let selectedTemplateId = null;
         let lastImportedExpenseIds = []; // Track expenses from last import for removal
         let csvImportHistory = []; // Track all CSV imports with batch IDs
@@ -2680,8 +2647,10 @@
             reader.onload = async function(e) {
                 try {
                     const csv = e.target.result;
-                    csvPreviewData = parseCSV(csv);
-                    // Apply AI categorization
+                    const parsedData = parseCSV(csv);
+                    csvPreviewData = parsedData.expenses;
+                    csvIncomePreviewData = parsedData.income;
+                    // Apply AI categorization to expenses only
                     csvPreviewData = await categorizeCSVExpensesWithAI(csvPreviewData);
                     displayCSVPreview();
                 } catch (error) {
@@ -2747,6 +2716,8 @@
             }
 
             const expensesToImport = [];
+            const incomeToImport = [];
+            
             for (let i = 1; i < lines.length; i++) {
                 const values = parseCSVLine(lines[i]);
                 
@@ -2777,42 +2748,63 @@
                 let amountValue = amountStr.replace(/[$,]/g, '');
                 let amount = parseFloat(amountValue);
                 
-                // ⚠️ BULLETPROOF: Skip positive amounts (only import expenses/debits)
-                if (amount >= 0) {
-                    console.log(`⏭️ Skipping positive amount (not an expense): ${description} ($${amount})`);
-                    continue;
-                }
-                
-                // Make amount positive for storage
-                amount = Math.abs(amount);
-
                 // Parse date
                 const date = formatDateForInput(dateStr);
 
-                // Map CSV category to our categories, or use default
-                let initialCategory = csvCategory ? mapCategoryFromCSV(csvCategory) : 'Other';
+                // 🎯 ROUTE BY AMOUNT SIGN:
+                // - Negative amounts = Expenses (DEBIT)
+                // - Positive amounts = Income (CREDIT)
+                
+                if (amount > 0) {
+                    // This is INCOME (CREDIT transaction)
+                    console.log(`✅ Income detected: ${description} ($${amount})`);
+                    
+                    incomeToImport.push({
+                        date,
+                        description,
+                        source: 'Salary', // Default - can be adjusted
+                        amount: amount,
+                        entry_source: 'csv',
+                        notes: type ? `Type: ${type}` : '',
+                        hash: generateExpenseHash(date, description, amount)
+                    });
+                } else if (amount < 0) {
+                    // This is EXPENSE (DEBIT)
+                    console.log(`✅ Expense detected: ${description} ($${Math.abs(amount)})`);
+                    
+                    // Make amount positive for storage
+                    amount = Math.abs(amount);
 
-                expensesToImport.push({
-                    date,
-                    description,
-                    category: initialCategory, // Start with CSV category, will be refined by AI
-                    amount: amount,
-                    payment_method: template.paymentMethod,
-                    vendor: extractVendorFromDescription(description),
-                    notes: type ? `Type: ${type}` : '',
-                    source: 'csv',
-                    hash: generateExpenseHash(date, description, amount)
-                });
+                    // Map CSV category to our categories, or use default
+                    let initialCategory = csvCategory ? mapCategoryFromCSV(csvCategory) : 'Other';
+
+                    expensesToImport.push({
+                        date,
+                        description,
+                        category: initialCategory,
+                        amount: amount,
+                        payment_method: template.paymentMethod,
+                        vendor: extractVendorFromDescription(description),
+                        notes: type ? `Type: ${type}` : '',
+                        source: 'csv',
+                        hash: generateExpenseHash(date, description, amount)
+                    });
+                }
             }
 
-            // Filter out duplicates based on existing expenses
+            // Filter out duplicates for expenses
             const dedupedExpenses = expensesToImport.filter(newExp => {
                 return !isDuplicateExpense(newExp);
             });
 
             console.log(`Loaded ${expensesToImport.length} expenses, ${dedupedExpenses.length} are new (${expensesToImport.length - dedupedExpenses.length} duplicates removed)`);
+            console.log(`Loaded ${incomeToImport.length} income entries from CSV`);
 
-            return dedupedExpenses;
+            // Return both expenses and income
+            return {
+                expenses: dedupedExpenses,
+                income: incomeToImport
+            };
         }
 
         async function categorizeCSVExpensesWithAI(expensesList) {
@@ -2995,8 +2987,8 @@
         }
 
         async function importCSVExpenses() {
-            if (csvPreviewData.length === 0) {
-                alert('No expenses to import');
+            if (csvPreviewData.length === 0 && csvIncomePreviewData.length === 0) {
+                alert('No transactions to import');
                 return;
             }
 
@@ -3008,75 +3000,93 @@
                 // Create unique batch ID for this import
                 const batchId = `csv_batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 
-                // Add ID and batch ID to each expense
-                const expensesToInsert = csvPreviewData.map(expense => ({
-                    ...expense,
-                    id: Math.floor(Date.now() + Math.random() * 1000000), // Unique integer ID
-                    batch_id: batchId // Track which CSV import this came from
-                }));
+                // Import EXPENSES
+                let expensesInserted = 0;
+                if (csvPreviewData.length > 0) {
+                    const expensesToInsert = csvPreviewData.map(expense => ({
+                        ...expense,
+                        id: Math.floor(Date.now() + Math.random() * 1000000),
+                        batch_id: batchId
+                    }));
 
-                let { data, error } = await supabaseClient
-                    .from('expenses')
-                    .insert(expensesToInsert)
-                    .select();
-
-                // If batch_id column doesn't exist, try without it
-                if (error && error.message && error.message.includes('batch_id')) {
-                    console.log('⚠️ batch_id column not found in database. Retrying without batch tracking...');
-                    // Remove batch_id from expenses for now
-                    const expensesToInsertWithoutBatch = expensesToInsert.map(exp => {
-                        const { batch_id, ...rest } = exp;
-                        return rest;
-                    });
-                    
-                    const retryResult = await supabaseClient
+                    let { data, error } = await supabaseClient
                         .from('expenses')
-                        .insert(expensesToInsertWithoutBatch)
+                        .insert(expensesToInsert)
                         .select();
+
+                    // If batch_id column doesn't exist, retry without it
+                    if (error && error.message && error.message.includes('batch_id')) {
+                        console.log('⚠️ batch_id column not found. Retrying without batch tracking...');
+                        const expensesToInsertWithoutBatch = expensesToInsert.map(exp => {
+                            const { batch_id, ...rest } = exp;
+                            return rest;
+                        });
+                        
+                        const retryResult = await supabaseClient
+                            .from('expenses')
+                            .insert(expensesToInsertWithoutBatch)
+                            .select();
+                        
+                        data = retryResult.data;
+                        error = retryResult.error;
+                    }
+
+                    if (error) throw new Error(`Expenses import error: ${error.message}`);
                     
-                    data = retryResult.data;
-                    error = retryResult.error;
-                    
-                    alert('⚠️ CSV imported successfully, but batch tracking is not available yet.\n\nPlease ask admin to run the migration: add_batch_id_column.sql\n\nBatch delete feature will be available after migration.');
+                    expensesInserted = data.length;
+                    expenses.push(...data);
+                    lastImportedExpenseIds = data.map(exp => exp.id);
+                    console.log(`✅ Inserted ${expensesInserted} expenses`);
                 }
 
-                if (error) {
-                    throw new Error(error.message);
+                // Import INCOME
+                let incomeInserted = 0;
+                if (csvIncomePreviewData.length > 0) {
+                    const incomeToInsert = csvIncomePreviewData.map(inc => ({
+                        ...inc,
+                        id: Math.floor(Date.now() + Math.random() * 1000000),
+                        batch_id: batchId
+                    }));
+
+                    const { data, error } = await supabaseClient
+                        .from('income')
+                        .insert(incomeToInsert)
+                        .select();
+
+                    if (error) throw new Error(`Income import error: ${error.message}`);
+                    
+                    incomeInserted = data.length;
+                    income.push(...data);
+                    console.log(`✅ Inserted ${incomeInserted} income entries`);
                 }
-
-                console.log(`✅ Inserted ${data.length} expenses into database with batch ID: ${batchId}`, data);
-
-                // Track the IDs of imported expenses for later removal if needed
-                lastImportedExpenseIds = data.map(exp => exp.id);
 
                 // Add batch to history
+                const totalImported = expensesInserted + incomeInserted;
                 const importEntry = {
                     batch_id: batchId,
-                    count: data.length,
+                    count: totalImported,
+                    expense_count: expensesInserted,
+                    income_count: incomeInserted,
                     timestamp: new Date().toLocaleString(),
                     date: new Date(),
                     expense_ids: lastImportedExpenseIds
                 };
-                csvImportHistory.unshift(importEntry); // Add to front of history
-
-                // Add to local expenses array
-                expenses.push(...data);
-                
-                console.log(`📊 Total expenses after import: ${expenses.length}`, expenses);
+                csvImportHistory.unshift(importEntry);
 
                 // Show remove option
-                showRemoveImportOption(data.length, batchId);
+                showRemoveImportOption(totalImported, batchId);
 
                 // Clear preview
                 clearCSVPreview();
+                csvIncomePreviewData = [];
 
-                alert(`Successfully imported ${data.length} expenses!`);
+                alert(`✅ Successfully imported ${expensesInserted} expenses and ${incomeInserted} income entries!`);
 
                 // Refresh views
                 renderAllMonths();
                 renderInsights();
-                renderCSVExpenses();
-                renderCSVImportHistory(); // Show new import in history
+                renderIncomeList();
+                renderCSVImportHistory();
 
                 // Switch to current month to see the imported expenses
                 const today = new Date();
