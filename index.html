@@ -1307,6 +1307,8 @@
             <button class="nav-tab" data-tab="comparison">Comparison</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="csvimport">CSV Import</button>
+            <button class="nav-tab" data-tab="csvexpenses">CSV Expenses</button>
+            <button class="nav-tab" data-tab="csvincome">CSV Income</button>
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
             <button class="nav-tab" data-tab="recurring">Recurring</button>
@@ -1781,6 +1783,22 @@
                         <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Your Subscriptions</h3>
                         <div id="recurringList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- CSV Expenses Tab -->
+            <div class="tab-content" id="csvexpenses">
+                <h2 style="margin-bottom: 24px;">CSV Imported Expenses</h2>
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                    <div id="csvExpensesContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                </div>
+            </div>
+
+            <!-- CSV Income Tab -->
+            <div class="tab-content" id="csvincome">
+                <h2 style="margin-bottom: 24px;">CSV Imported Income</h2>
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                    <div id="csvIncomeContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
                 </div>
             </div>
         </div>
@@ -2422,6 +2440,24 @@
                 if (monthSelector) {
                     monthSelector.value = '';
                 }
+            } else if (tabName === 'csvexpenses') {
+                setTimeout(() => {
+                    renderCSVExpenses();
+                }, 100);
+                // Reset month dropdown
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
+            } else if (tabName === 'csvincome') {
+                setTimeout(() => {
+                    renderCSVIncome();
+                }, 100);
+                // Reset month dropdown
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
             } else {
                 // Reset month dropdown when switching to non-month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2744,7 +2780,9 @@
                     amount: amount,
                     payment_method: template.paymentMethod,
                     vendor: extractVendorFromDescription(description),
-                    notes: type ? `Type: ${type}` : ''
+                    notes: type ? `Type: ${type}` : '',
+                    source: 'csv',
+                    hash: generateExpenseHash(date, description, amount)
                 });
             }
 
@@ -2764,11 +2802,11 @@
         }
 
         function isDuplicateExpense(newExp) {
-            // Check if expense already exists in database
+            // Check if expense already exists using hash
+            const newHash = newExp.hash || generateExpenseHash(newExp.date, newExp.description, newExp.amount);
             return expenses.some(existing => {
-                return existing.date === newExp.date &&
-                       existing.amount === newExp.amount &&
-                       existing.description.substring(0, 30) === newExp.description.substring(0, 30);
+                const existingHash = existing.hash || generateExpenseHash(existing.date, existing.description, existing.amount);
+                return newHash === existingHash;
             });
         }
 
@@ -2907,11 +2945,15 @@
                     throw new Error(error.message);
                 }
 
+                console.log(`✅ Inserted ${data.length} expenses into database:`, data);
+
                 // Track the IDs of imported expenses for later removal if needed
                 lastImportedExpenseIds = data.map(exp => exp.id);
 
                 // Add to local expenses array
                 expenses.push(...data);
+                
+                console.log(`📊 Total expenses after import: ${expenses.length}`, expenses);
 
                 // Show remove option
                 showRemoveImportOption(data.length);
@@ -2924,6 +2966,7 @@
                 // Refresh views
                 renderAllMonths();
                 renderInsights();
+                renderCSVExpenses();
 
                 // Switch to current month to see the imported expenses
                 const today = new Date();
@@ -3001,16 +3044,107 @@
             }
         }
 
+        function renderCSVExpenses() {
+            const csvExpenses = expenses.filter(exp => exp.source === 'csv');
+            const container = document.getElementById('csvExpensesContainer');
+            
+            if (!container) return;
+
+            if (csvExpenses.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No CSV expenses imported yet. Go to CSV Import tab to add some.</p>';
+                return;
+            }
+
+            let html = `<table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: rgba(123, 97, 255, 0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <th style="padding: 12px; text-align: left; color: #cbd5e1; font-weight: 600;">Date</th>
+                        <th style="padding: 12px; text-align: left; color: #cbd5e1; font-weight: 600;">Description</th>
+                        <th style="padding: 12px; text-align: left; color: #cbd5e1; font-weight: 600;">Category</th>
+                        <th style="padding: 12px; text-align: right; color: #cbd5e1; font-weight: 600;">Amount</th>
+                        <th style="padding: 12px; text-align: center; color: #cbd5e1; font-weight: 600;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            csvExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(exp => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); hover: background: rgba(123, 97, 255, 0.05);">
+                        <td style="padding: 12px; color: #cbd5e1;">${exp.date}</td>
+                        <td style="padding: 12px; color: #cbd5e1;">${exp.description}</td>
+                        <td style="padding: 12px; color: #cbd5e1;"><span style="background: rgba(123, 97, 255, 0.2); color: #7B61FF; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">${exp.category}</span></td>
+                        <td style="padding: 12px; color: #fbbf24; text-align: right; font-weight: 600;">$${exp.amount.toFixed(2)}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <button class="btn btn-sm" onclick="editExpense(${exp.id})" style="background: #7B61FF; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Edit</button>
+                            <button class="btn btn-sm" onclick="deleteExpense(${exp.id})" style="background: #EF4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin-left: 4px;">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function renderCSVIncome() {
+            // Filter for income entries with entry_source='csv' (when we support CSV income imports)
+            const csvIncome = income.filter(inc => inc.entry_source === 'csv');
+            const container = document.getElementById('csvIncomeContainer');
+            
+            if (!container) return;
+
+            if (csvIncome.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No CSV income imported yet. CSV income import coming soon.</p>';
+                return;
+            }
+
+            let html = `<table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: rgba(34, 197, 94, 0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <th style="padding: 12px; text-align: left; color: #cbd5e1; font-weight: 600;">Date</th>
+                        <th style="padding: 12px; text-align: left; color: #cbd5e1; font-weight: 600;">Description</th>
+                        <th style="padding: 12px; text-align: left; color: #cbd5e1; font-weight: 600;">Source</th>
+                        <th style="padding: 12px; text-align: right; color: #cbd5e1; font-weight: 600;">Amount</th>
+                        <th style="padding: 12px; text-align: center; color: #cbd5e1; font-weight: 600;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            csvIncome.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(inc => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 12px; color: #cbd5e1;">${inc.date}</td>
+                        <td style="padding: 12px; color: #cbd5e1;">${inc.description}</td>
+                        <td style="padding: 12px; color: #cbd5e1;"><span style="background: rgba(34, 197, 94, 0.2); color: #22C55E; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">${inc.source}</span></td>
+                        <td style="padding: 12px; color: #22C55E; text-align: right; font-weight: 600;">$${inc.amount.toFixed(2)}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <button class="btn btn-sm" onclick="editIncome(${inc.id})" style="background: #7B61FF; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Edit</button>
+                            <button class="btn btn-sm" onclick="deleteIncome(${inc.id})" style="background: #EF4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin-left: 4px;">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
         async function addExpense() {
+            const date = document.getElementById('date').value;
+            const description = document.getElementById('description').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            
             const expense = {
                 id: Date.now(),
-                date: document.getElementById('date').value,
+                date: date,
                 category: document.getElementById('category').value,
-                description: document.getElementById('description').value,
-                amount: parseFloat(document.getElementById('amount').value),
+                description: description,
+                amount: amount,
                 payment_method: document.getElementById('paymentMethod').value,
                 vendor: document.getElementById('vendor').value,
-                notes: document.getElementById('notes').value
+                notes: document.getElementById('notes').value,
+                source: 'manual',
+                hash: generateExpenseHash(date, description, amount)
             };
 
             // 🔍 Check for duplicates
@@ -4703,13 +4837,19 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         }
 
         async function addIncome() {
+            const date = document.getElementById('incomeDate').value;
+            const description = document.getElementById('incomeDescription').value;
+            const amount = parseFloat(document.getElementById('incomeAmount').value);
+            
             const incomeEntry = {
                 id: Date.now(),
-                date: document.getElementById('incomeDate').value,
+                date: date,
                 source: document.getElementById('incomeSource').value,
-                description: document.getElementById('incomeDescription').value,
-                amount: parseFloat(document.getElementById('incomeAmount').value),
-                notes: document.getElementById('incomeNotes').value
+                description: description,
+                amount: amount,
+                notes: document.getElementById('incomeNotes').value,
+                entry_source: 'manual',
+                hash: generateExpenseHash(date, description, amount)
             };
 
             console.log('💰 Adding income:', incomeEntry);
@@ -5072,6 +5212,11 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 const incDate = parseLocalDate(inc.date);
                 return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
             });
+
+            console.log(`🗓️ renderMonth(${month}, ${monthIndex}): Found ${monthExpenses.length} expenses out of ${expenses.length} total`);
+            if (monthExpenses.length > 0) {
+                console.log('First expense:', monthExpenses[0]);
+            }
 
             const monthContainer = document.getElementById(month);
             
