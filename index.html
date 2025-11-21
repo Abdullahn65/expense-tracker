@@ -2991,8 +2991,11 @@
                 renderAllMonths();
                 renderInsights();
 
-                // Switch to expenses tab to see the imported data
-                switchTab('insights');
+                // Switch to current month to see the imported expenses
+                const today = new Date();
+                const currentMonthIndex = today.getMonth();
+                const currentMonthTab = months[currentMonthIndex];
+                switchTab(currentMonthTab);
             } catch (error) {
                 alert('Error importing expenses: ' + error.message);
             } finally {
