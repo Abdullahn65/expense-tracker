@@ -1579,6 +1579,8 @@
                         <div id="csvUploadArea" style="margin-top: 20px;">
                             <button type="button" class="btn btn-secondary" id="selectCSVFileBtn" onclick="document.getElementById('csvFile').click()" style="width: 100%;">Select CSV File</button>
                         </div>
+
+                        <div id="removeImportDiv" style="display: none;"></div>
                     </div>
                 </div>
             </div>
@@ -2642,6 +2644,7 @@
         // CSV Import Functions
         let csvPreviewData = [];
         let selectedTemplateId = null;
+        let lastImportedExpenseIds = []; // Track expenses from last import for removal
 
         const csvTemplates = {
             chase_freedom_cc: {
@@ -2940,8 +2943,14 @@
                     throw new Error(error.message);
                 }
 
+                // Track the IDs of imported expenses for later removal if needed
+                lastImportedExpenseIds = data.map(exp => exp.id);
+
                 // Add to local expenses array
                 expenses.push(...data);
+
+                // Show remove option
+                showRemoveImportOption(data.length);
 
                 // Clear preview
                 clearCSVPreview();
@@ -2959,6 +2968,69 @@
             } finally {
                 importBtn.disabled = false;
                 importBtn.textContent = 'Import Expenses';
+            }
+        }
+
+        function showRemoveImportOption(count) {
+            // Show a button to remove the last import
+            const removeDiv = document.getElementById('removeImportDiv');
+            if (removeDiv) {
+                removeDiv.innerHTML = `
+                    <div style="background: rgba(255, 92, 92, 0.1); padding: 16px; border-radius: 8px; margin-top: 24px; border: 1px solid rgba(255, 92, 92, 0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #FF5C5C;">Just imported ${count} expenses</strong>
+                                <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">Want to test more? You can remove this batch.</p>
+                            </div>
+                            <button type="button" class="btn btn-danger" onclick="removeLastImport()" style="white-space: nowrap;">Remove Import</button>
+                        </div>
+                    </div>
+                `;
+                removeDiv.style.display = 'block';
+            }
+        }
+
+        async function removeLastImport() {
+            if (lastImportedExpenseIds.length === 0) {
+                alert('No import to remove');
+                return;
+            }
+
+            if (!confirm(`Remove ${lastImportedExpenseIds.length} expenses from the last import?`)) {
+                return;
+            }
+
+            try {
+                // Delete from database
+                const { error } = await supabaseClient
+                    .from('expenses')
+                    .delete()
+                    .in('id', lastImportedExpenseIds);
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                // Remove from local array
+                expenses = expenses.filter(exp => !lastImportedExpenseIds.includes(exp.id));
+
+                // Clear tracking
+                lastImportedExpenseIds = [];
+
+                // Hide remove button
+                const removeDiv = document.getElementById('removeImportDiv');
+                if (removeDiv) {
+                    removeDiv.style.display = 'none';
+                    removeDiv.innerHTML = '';
+                }
+
+                alert(`Removed ${lastImportedExpenseIds.length} expenses`);
+
+                // Refresh views
+                renderAllMonths();
+                renderInsights();
+            } catch (error) {
+                alert('Error removing import: ' + error.message);
             }
         }
 
