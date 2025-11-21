@@ -1484,6 +1484,9 @@
             <div class="tab-content" id="csvimport">
                 <h2 style="margin-bottom: 30px;">Import Expenses from CSV</h2>
                 
+                <!-- CSV Import History -->
+                <div id="csvImportHistoryContainer" style="margin-bottom: 30px;"></div>
+
                 <div class="expense-form">
                     <h3 style="margin-bottom: 20px;">📥 Select Template & Upload</h3>
                     
@@ -2101,6 +2104,7 @@
                 renderRecurringList();
                 renderFavoriteTemplates();
                 renderIncomeTemplates();
+                renderCSVImportHistory();
 
                 // Restore user's last viewed page or default to insights (no flash this way)
                 const lastTab = localStorage.getItem('lastViewedTab') || 'insights';
@@ -2615,6 +2619,7 @@
         let csvPreviewData = [];
         let selectedTemplateId = null;
         let lastImportedExpenseIds = []; // Track expenses from last import for removal
+        let csvImportHistory = []; // Track all CSV imports with batch IDs
 
         const csvTemplates = {
             chase_freedom_cc: {
@@ -3000,10 +3005,14 @@
             importBtn.textContent = 'Importing...';
 
             try {
-                // Add ID to each expense for database
+                // Create unique batch ID for this import
+                const batchId = `csv_batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Add ID and batch ID to each expense
                 const expensesToInsert = csvPreviewData.map(expense => ({
                     ...expense,
-                    id: Math.floor(Date.now() + Math.random() * 1000000) // Unique integer ID
+                    id: Math.floor(Date.now() + Math.random() * 1000000), // Unique integer ID
+                    batch_id: batchId // Track which CSV import this came from
                 }));
 
                 const { data, error } = await supabaseClient
@@ -3015,10 +3024,20 @@
                     throw new Error(error.message);
                 }
 
-                console.log(`✅ Inserted ${data.length} expenses into database:`, data);
+                console.log(`✅ Inserted ${data.length} expenses into database with batch ID: ${batchId}`, data);
 
                 // Track the IDs of imported expenses for later removal if needed
                 lastImportedExpenseIds = data.map(exp => exp.id);
+
+                // Add batch to history
+                const importEntry = {
+                    batch_id: batchId,
+                    count: data.length,
+                    timestamp: new Date().toLocaleString(),
+                    date: new Date(),
+                    expense_ids: lastImportedExpenseIds
+                };
+                csvImportHistory.unshift(importEntry); // Add to front of history
 
                 // Add to local expenses array
                 expenses.push(...data);
@@ -3026,7 +3045,7 @@
                 console.log(`📊 Total expenses after import: ${expenses.length}`, expenses);
 
                 // Show remove option
-                showRemoveImportOption(data.length);
+                showRemoveImportOption(data.length, batchId);
 
                 // Clear preview
                 clearCSVPreview();
@@ -3037,6 +3056,7 @@
                 renderAllMonths();
                 renderInsights();
                 renderCSVExpenses();
+                renderCSVImportHistory(); // Show new import in history
 
                 // Switch to current month to see the imported expenses
                 const today = new Date();
@@ -3051,7 +3071,7 @@
             }
         }
 
-        function showRemoveImportOption(count) {
+        function showRemoveImportOption(count, batchId) {
             // Show a button to remove the last import
             const removeDiv = document.getElementById('removeImportDiv');
             if (removeDiv) {
@@ -3062,11 +3082,64 @@
                                 <strong style="color: #FF5C5C;">Just imported ${count} expenses</strong>
                                 <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">You can remove this batch if needed.</p>
                             </div>
-                            <button type="button" class="btn btn-danger" onclick="removeLastImport()" style="white-space: nowrap;">Remove Import</button>
+                            <button type="button" class="btn btn-danger" onclick="removeImportByBatch('${batchId}')" style="white-space: nowrap;">Remove Import</button>
                         </div>
                     </div>
                 `;
                 removeDiv.style.display = 'block';
+            }
+        }
+
+        async function removeImportByBatch(batchId) {
+            // Find the batch in history
+            const batchEntry = csvImportHistory.find(b => b.batch_id === batchId);
+            if (!batchEntry) {
+                alert('Import batch not found');
+                return;
+            }
+
+            if (!confirm(`Remove ${batchEntry.count} expenses from this CSV import (${batchEntry.timestamp})?`)) {
+                return;
+            }
+
+            try {
+                // Delete from database using batch_id
+                const { error } = await supabaseClient
+                    .from('expenses')
+                    .delete()
+                    .eq('batch_id', batchId);
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                console.log(`✅ Deleted ${batchEntry.count} expenses with batch_id: ${batchId}`);
+
+                // Remove from local array
+                expenses = expenses.filter(exp => exp.batch_id !== batchId);
+
+                // Remove from history
+                csvImportHistory = csvImportHistory.filter(b => b.batch_id !== batchId);
+
+                // Hide remove button if this is the last import
+                if (batchId && lastImportedExpenseIds.length === batchEntry.expense_ids.length) {
+                    const removeDiv = document.getElementById('removeImportDiv');
+                    if (removeDiv) {
+                        removeDiv.style.display = 'none';
+                        removeDiv.innerHTML = '';
+                    }
+                    lastImportedExpenseIds = [];
+                }
+
+                alert(`✅ Removed ${batchEntry.count} expenses from the CSV import`);
+
+                // Refresh views
+                renderAllMonths();
+                renderInsights();
+                renderCSVExpenses();
+                renderCSVImportHistory();
+            } catch (error) {
+                alert('Error removing import: ' + error.message);
             }
         }
 
@@ -3076,42 +3149,52 @@
                 return;
             }
 
-            if (!confirm(`Remove ${lastImportedExpenseIds.length} expenses from the last import?`)) {
+            // Find the most recent batch from history
+            if (csvImportHistory.length === 0) {
+                alert('No import history found');
                 return;
             }
 
-            try {
-                // Delete from database
-                const { error } = await supabaseClient
-                    .from('expenses')
-                    .delete()
-                    .in('id', lastImportedExpenseIds);
+            const mostRecentBatch = csvImportHistory[0];
+            await removeImportByBatch(mostRecentBatch.batch_id);
+        }
 
-                if (error) {
-                    throw new Error(error.message);
-                }
+        function renderCSVImportHistory() {
+            const historyContainer = document.getElementById('csvImportHistoryContainer');
+            
+            if (!historyContainer) return;
 
-                // Remove from local array
-                expenses = expenses.filter(exp => !lastImportedExpenseIds.includes(exp.id));
-
-                // Clear tracking
-                lastImportedExpenseIds = [];
-
-                // Hide remove button
-                const removeDiv = document.getElementById('removeImportDiv');
-                if (removeDiv) {
-                    removeDiv.style.display = 'none';
-                    removeDiv.innerHTML = '';
-                }
-
-                alert(`Removed ${lastImportedExpenseIds.length} expenses`);
-
-                // Refresh views
-                renderAllMonths();
-                renderInsights();
-            } catch (error) {
-                alert('Error removing import: ' + error.message);
+            if (csvImportHistory.length === 0) {
+                historyContainer.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No CSV imports yet</p>';
+                return;
             }
+
+            let html = `
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">📋 CSV Import History</h3>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+            `;
+
+            csvImportHistory.forEach(batch => {
+                const icon = '📦';
+                html += `
+                    <div style="background: rgba(59, 130, 246, 0.1); padding: 16px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: var(--text-primary); font-weight: 600;">${icon} ${batch.count} expenses</div>
+                            <div style="color: #94a3b8; font-size: 0.9em; margin-top: 4px;">${batch.timestamp}</div>
+                            <div style="color: #64748b; font-size: 0.85em; margin-top: 4px; font-family: monospace;">ID: ${batch.batch_id.substring(0, 20)}...</div>
+                        </div>
+                        <button onclick="removeImportByBatch('${batch.batch_id}')" style="background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap;">Delete Batch</button>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            historyContainer.innerHTML = html;
         }
 
         function renderCSVExpenses() {
