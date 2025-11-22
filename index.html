@@ -2780,8 +2780,7 @@
                         description,
                         source: 'Salary', // Default - can be adjusted
                         amount: amount,
-                        notes: type ? `Type: ${type} | Source: CSV` : 'Source: CSV',
-                        hash: generateExpenseHash(date, description, amount)
+                        notes: type ? `Type: ${type} | Source: CSV` : 'Source: CSV'
                     });
                 } else if (amount < 0) {
                     // This is EXPENSE (DEBIT)
