@@ -175,6 +175,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         h2 {
             font-size: 24px;
             font-weight: 700;
@@ -1864,6 +1869,56 @@
         // Get current year dynamically
         const currentYear = new Date().getFullYear();
 
+        // AI Learning System - Track user corrections
+        let categoryLearningData = JSON.parse(localStorage.getItem('category_learning_data') || '[]');
+
+        function saveCategoryLearning(vendor, description, correctCategory, originalCategory) {
+            // Only save if there was a correction
+            if (correctCategory !== originalCategory && originalCategory) {
+                const learningEntry = {
+                    vendor: vendor ? vendor.toLowerCase().trim() : '',
+                    description: description.toLowerCase().trim(),
+                    correctCategory,
+                    originalCategory,
+                    timestamp: Date.now()
+                };
+                
+                categoryLearningData.push(learningEntry);
+                
+                // Keep only last 500 entries to prevent bloat
+                if (categoryLearningData.length > 500) {
+                    categoryLearningData = categoryLearningData.slice(-500);
+                }
+                
+                localStorage.setItem('category_learning_data', JSON.stringify(categoryLearningData));
+                console.log(`📚 AI Learning: ${vendor || description} → ${correctCategory}`);
+            }
+        }
+
+        function getLearnedCategory(vendor, description) {
+            if (!vendor && !description) return null;
+            
+            const vendorLower = vendor ? vendor.toLowerCase().trim() : '';
+            const descLower = description.toLowerCase().trim();
+            
+            // Find most recent match
+            for (let i = categoryLearningData.length - 1; i >= 0; i--) {
+                const entry = categoryLearningData[i];
+                
+                // Exact vendor match has priority
+                if (vendorLower && entry.vendor && entry.vendor === vendorLower) {
+                    return entry.correctCategory;
+                }
+                
+                // Partial description match
+                if (descLower.includes(entry.description) || entry.description.includes(descLower)) {
+                    return entry.correctCategory;
+                }
+            }
+            
+            return null;
+        }
+
         // Helper function to parse date strings correctly (avoids timezone issues)
         // Converts "2025-11-01" to local date, not UTC
         function parseLocalDate(dateString) {
@@ -2659,6 +2714,24 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            // Show loading indicator
+            const csvPreview = document.getElementById('csvPreview');
+            const csvUploadArea = document.getElementById('csvUploadArea');
+            csvPreview.style.display = 'block';
+            csvUploadArea.style.display = 'none';
+            
+            const previewBody = document.getElementById('csvPreviewBody');
+            previewBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px;">
+                        <div style="display: inline-block;">
+                            <div class="spinner" style="border: 3px solid rgba(59, 130, 246, 0.3); border-top: 3px solid #3B82F6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+                            <div style="color: #94a3b8; font-size: 0.9em;">Processing CSV and categorizing with AI...</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
@@ -2671,6 +2744,8 @@
                     displayCSVPreview();
                 } catch (error) {
                     alert('Error reading CSV file: ' + error.message);
+                    csvPreview.style.display = 'none';
+                    csvUploadArea.style.display = 'block';
                 }
             };
             reader.readAsText(file);
@@ -2824,8 +2899,18 @@
         async function categorizeCSVExpensesWithAI(expensesList) {
             // Categorize all expenses using AI, refining initial categories
             for (const expense of expensesList) {
-                if (OPENAI_API_KEY) {
+                // First, check if we've learned a category for this vendor/description
+                const learnedCategory = getLearnedCategory(expense.vendor, expense.description);
+                
+                if (learnedCategory) {
+                    expense.category = learnedCategory;
+                    console.log(`✅ Using learned category for "${expense.vendor || expense.description}": ${learnedCategory}`);
+                } else if (OPENAI_API_KEY) {
+                    // Use AI if no learned category exists
                     expense.category = await suggestCategoryAI(expense.description, expense.category, expense.amount) || expense.category;
+                } else {
+                    // Fall back to initial category from CSV mapping
+                    // category is already set from parseCSV
                 }
             }
             return expensesList;
@@ -4180,6 +4265,20 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 notes: document.getElementById('editNotes').value
             };
 
+            // Track category changes for AI learning
+            const expenseIndex = expenses.findIndex(exp => exp.id === currentEditingExpenseId);
+            if (expenseIndex !== -1) {
+                const oldExpense = expenses[expenseIndex];
+                if (oldExpense.category !== updatedExpense.category) {
+                    saveCategoryLearning(
+                        updatedExpense.vendor,
+                        updatedExpense.description,
+                        updatedExpense.category,
+                        oldExpense.category
+                    );
+                }
+            }
+
             const { error } = await supabaseClient
                 .from('expenses')
                 .update(updatedExpense)
@@ -4191,7 +4290,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             }
 
             // Update local data
-            const expenseIndex = expenses.findIndex(exp => exp.id === currentEditingExpenseId);
             if (expenseIndex !== -1) {
                 expenses[expenseIndex] = { ...expenses[expenseIndex], ...updatedExpense };
             }
