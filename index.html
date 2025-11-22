@@ -1327,6 +1327,7 @@
                     <option value="nov">November</option>
                     <option value="dec">December</option>
                 </select>
+                <button id="deleteAllMonthBtn" class="btn btn-danger" style="padding: 8px 12px; font-size: 0.85em; margin-left: 12px; display: none;" onclick="deleteAllForSelectedMonth()">🗑️ Delete All</button>
             </div>
         </div>
 
@@ -2371,6 +2372,11 @@
                     if (this.value) {
                         switchTab(this.value);
                         // Keep the selected month displayed (don't reset)
+                        updateDeleteAllButton();
+                    } else {
+                        // Hide delete button if no month selected
+                        const deleteBtn = document.getElementById('deleteAllMonthBtn');
+                        if (deleteBtn) deleteBtn.style.display = 'none';
                     }
                 });
             }
@@ -2407,6 +2413,7 @@
                 setTimeout(() => {
                     renderMonth(tabName, monthIndex);
                     renderMonthChart(tabName);
+                    updateDeleteAllButton();
                 }, 100);
             } else if (tabName === 'comparison') {
                 setTimeout(() => {
@@ -2418,6 +2425,9 @@
                 if (monthSelector) {
                     monthSelector.value = '';
                 }
+                // Hide delete button
+                const deleteBtn = document.getElementById('deleteAllMonthBtn');
+                if (deleteBtn) deleteBtn.style.display = 'none';
             } else if (tabName === 'insights') {
                 setTimeout(async () => {
                     console.log('Insights tab clicked. Rendering vendor analytics and trends.');
@@ -2428,12 +2438,18 @@
                 if (monthSelector) {
                     monthSelector.value = '';
                 }
+                // Hide delete button
+                const deleteBtn = document.getElementById('deleteAllMonthBtn');
+                if (deleteBtn) deleteBtn.style.display = 'none';
             } else {
                 // Reset month dropdown when switching to non-month tabs
                 const monthSelector = document.getElementById('monthSelector');
                 if (monthSelector) {
                     monthSelector.value = '';
                 }
+                // Hide delete button
+                const deleteBtn = document.getElementById('deleteAllMonthBtn');
+                if (deleteBtn) deleteBtn.style.display = 'none';
             }
         }
 
@@ -3565,6 +3581,107 @@
                 renderAllMonths();
 
                 await renderInsights();
+            }
+        }
+
+        async function deleteAllExpensesForMonth(monthIndex) {
+            const monthName = monthNames[monthIndex];
+            if (!confirm(`⚠️ This will DELETE ALL expenses for ${monthName} ${currentYear}. Are you sure?`)) {
+                return;
+            }
+            if (!confirm(`🚨 LAST WARNING: This cannot be undone. Delete all expenses for ${monthName} ${currentYear}?`)) {
+                return;
+            }
+
+            const startDate = `${currentYear}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+            const lastDay = new Date(currentYear, monthIndex + 1, 0).getDate();
+            const endDate = `${currentYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('expenses')
+                    .delete()
+                    .gte('date', startDate)
+                    .lte('date', endDate);
+
+                if (error) {
+                    console.error('Error deleting monthly expenses:', error);
+                    alert('Error: ' + error.message);
+                    return;
+                }
+
+                // Update local array and UI
+                const start = parseLocalDate(startDate);
+                const end = parseLocalDate(endDate);
+                const beforeCount = expenses.length;
+                expenses = expenses.filter(exp => {
+                    const expDate = parseLocalDate(exp.date);
+                    return expDate < start || expDate > end;
+                });
+                const deletedCount = beforeCount - expenses.length;
+
+                console.log(`✅ Deleted ${deletedCount} expenses for ${monthName} ${currentYear}`);
+
+                renderAllMonths();
+                await renderInsights();
+
+                alert(`✅ Deleted ${deletedCount} expense(s) for ${monthName} ${currentYear}.`);
+                
+                // Hide the delete button and reset dropdown after deletion
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) monthSelector.value = '';
+                const deleteBtn = document.getElementById('deleteAllMonthBtn');
+                if (deleteBtn) deleteBtn.style.display = 'none';
+                
+            } catch (err) {
+                console.error('Unexpected error deleting monthly expenses:', err);
+                alert('Unexpected error: ' + err.message);
+            }
+        }
+
+        // Delete all for the currently selected month in dropdown
+        function deleteAllForSelectedMonth() {
+            const monthSelector = document.getElementById('monthSelector');
+            if (!monthSelector || !monthSelector.value) {
+                alert('Please select a month first.');
+                return;
+            }
+            
+            const selectedMonth = monthSelector.value;
+            const monthIndex = months.indexOf(selectedMonth);
+            
+            if (monthIndex === -1) {
+                alert('Invalid month selected.');
+                return;
+            }
+            
+            deleteAllExpensesForMonth(monthIndex);
+        }
+
+        // Update the delete button visibility based on selected month
+        function updateDeleteAllButton() {
+            const monthSelector = document.getElementById('monthSelector');
+            const deleteBtn = document.getElementById('deleteAllMonthBtn');
+            
+            if (!monthSelector || !deleteBtn) return;
+            
+            const selectedMonth = monthSelector.value;
+            
+            if (selectedMonth && months.includes(selectedMonth)) {
+                const monthIndex = months.indexOf(selectedMonth);
+                const monthExpenses = expenses.filter(exp => {
+                    const expDate = parseLocalDate(exp.date);
+                    return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
+                });
+                
+                // Show button only if there are expenses for this month
+                if (monthExpenses.length > 0) {
+                    deleteBtn.style.display = 'inline-block';
+                } else {
+                    deleteBtn.style.display = 'none';
+                }
+            } else {
+                deleteBtn.style.display = 'none';
             }
         }
 
@@ -5583,7 +5700,14 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            let html = `<h2 style="margin-bottom: 20px;">${monthNames[monthIndex]} ${currentYear}</h2>`;
+            // Header + delete all button
+            const deleteBtnDisabled = monthExpenses.length === 0 ? 'disabled' : '';
+            const deleteBtnHTML = `<button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.9em; margin-left: 8px;" onclick="deleteAllExpensesForMonth(${monthIndex})" ${deleteBtnDisabled}>Delete All</button>`;
+
+            let html = `<div style="display:flex; justify-content: space-between; align-items: center;">
+                            <h2 style="margin-bottom: 20px;">${monthNames[monthIndex]} ${currentYear}</h2>
+                            <div style="display:flex; gap: 8px; align-items: center;">${deleteBtnHTML}</div>
+                        </div>`;
 
             // Add search bar
             html += `
@@ -6061,16 +6185,18 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
             // Scroll to the month content and display the filtered list
             const monthContent = document.getElementById(month);
-            if (monthContent) {
+                if (monthContent) {
                 monthContent.classList.add('active');
                 
                 // Find and scroll to the expense table
                 const monthContainer = monthContent.querySelector('.month-expenses');
                 if (monthContainer) {
                     // Clear current content and show filtered expenses
+                    const deleteDisabled = filteredExpenses.length === 0 ? 'disabled' : '';
                     let html = `<h3 style="margin-bottom: 20px;">${category} in ${monthName}</h3>
-                                <div style="margin-bottom: 30px;">
+                                <div style="margin-bottom: 30px; display:flex; gap: 8px;">
                                     <button class="btn btn-secondary" onclick="renderMonth('${month}', ${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;">Show All</button>
+                                    <button class="btn btn-danger" onclick="deleteAllExpensesForMonth(${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;" ${deleteDisabled}>Delete All</button>
                                 </div>`;
                     
                     html += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
