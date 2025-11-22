@@ -2780,8 +2780,7 @@
                         description,
                         source: 'Salary', // Default - can be adjusted
                         amount: amount,
-                        entry_source: 'csv',
-                        notes: type ? `Type: ${type}` : '',
+                        notes: type ? `Type: ${type} | Source: CSV` : 'Source: CSV',
                         hash: generateExpenseHash(date, description, amount)
                     });
                 } else if (amount < 0) {
@@ -3409,14 +3408,14 @@
         }
 
         function renderCSVIncome() {
-            // Filter for income entries with entry_source='csv' (when we support CSV income imports)
-            const csvIncome = income.filter(inc => inc.entry_source === 'csv');
+            // Filter for income entries from CSV import (check notes for 'Source: CSV')
+            const csvIncome = income.filter(inc => inc.notes && inc.notes.includes('Source: CSV'));
             const container = document.getElementById('csvIncomeContainer');
             
             if (!container) return;
 
             if (csvIncome.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No CSV income imported yet. CSV income import coming soon.</p>';
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No CSV income imported yet.</p>';
                 return;
             }
 
