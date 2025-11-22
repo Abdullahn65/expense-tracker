@@ -3141,22 +3141,36 @@
                 // Import INCOME
                 let incomeInserted = 0;
                 if (csvIncomePreviewData.length > 0) {
-                    const incomeToInsert = csvIncomePreviewData.map(inc => ({
+                    // Filter out duplicates before inserting
+                    const incomeToInsert = csvIncomePreviewData.filter(inc => {
+                        const isDup = detectDuplicateIncome(inc.date, inc.description, inc.amount);
+                        if (isDup) {
+                            console.log(`⏭️ Skipping duplicate income: ${inc.description} - $${inc.amount} on ${inc.date}`);
+                        }
+                        return !isDup;
+                    }).map(inc => ({
                         ...inc,
                         id: Math.floor(Date.now() + Math.random() * 1000000),
                         batch_id: batchId
                     }));
 
-                    const { data, error } = await supabaseClient
-                        .from('income')
-                        .insert(incomeToInsert)
-                        .select();
+                    if (incomeToInsert.length > 0) {
+                        const { data, error } = await supabaseClient
+                            .from('income')
+                            .insert(incomeToInsert)
+                            .select();
 
-                    if (error) throw new Error(`Income import error: ${error.message}`);
+                        if (error) throw new Error(`Income import error: ${error.message}`);
+                        
+                        incomeInserted = data.length;
+                        income.push(...data);
+                        console.log(`✅ Inserted ${incomeInserted} income entries`);
+                    }
                     
-                    incomeInserted = data.length;
-                    income.push(...data);
-                    console.log(`✅ Inserted ${incomeInserted} income entries`);
+                    const skippedCount = csvIncomePreviewData.length - incomeToInsert.length;
+                    if (skippedCount > 0) {
+                        console.log(`⏭️ Skipped ${skippedCount} duplicate income entries`);
+                    }
                 }
 
                 // Add batch to history
@@ -5424,6 +5438,21 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
             console.log('💰 Adding income:', incomeEntry);
 
+            // Check for duplicates
+            const duplicate = detectDuplicateIncome(date, description, amount);
+            if (duplicate) {
+                const confirmAdd = confirm(
+                    `⚠️ DUPLICATE INCOME DETECTED!\n\n` +
+                    `Similar income entry found:\n` +
+                    `${duplicate.source}: ${duplicate.description} - $${duplicate.amount.toFixed(2)} on ${duplicate.date}\n\n` +
+                    `Continue adding this income anyway?`
+                );
+                if (!confirmAdd) {
+                    console.log('⏭️ User cancelled duplicate income entry');
+                    return;
+                }
+            }
+
             try {
                 const { data, error } = await supabaseClient
                     .from('income')
@@ -5460,6 +5489,35 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 console.error('❌ Exception in addIncome:', err);
                 alert('Error: ' + err.message);
             }
+        }
+
+        function detectDuplicateIncome(date, description, amount) {
+            // Check for exact or very similar income entries within 7 days
+            const threshold = 7; // days
+            const checkDate = new Date(date);
+            
+            for (const inc of income) {
+                const incDate = new Date(inc.date);
+                const daysDiff = Math.abs((checkDate - incDate) / (1000 * 60 * 60 * 24));
+                
+                // Check if within time threshold
+                if (daysDiff <= threshold) {
+                    // Check if amount matches exactly
+                    if (Math.abs(inc.amount - amount) < 0.01) {
+                        // Check if description is similar
+                        const descLower = description.toLowerCase().trim();
+                        const incDescLower = inc.description.toLowerCase().trim();
+                        
+                        if (descLower === incDescLower || 
+                            descLower.includes(incDescLower) || 
+                            incDescLower.includes(descLower)) {
+                            return inc; // Found duplicate
+                        }
+                    }
+                }
+            }
+            
+            return null; // No duplicate found
         }
 
         async function deleteIncome(id) {
