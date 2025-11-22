@@ -5300,6 +5300,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                             <div style="color: #cbd5e1; font-size: 0.8em;">Next: ${rec.next_due_date}</div>
                         </div>
                         <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85em;" onclick="payRecurringNow(${rec.id})">💳 Pay Now</button>
                             <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em;" onclick="openEditRecurringModal(${rec.id})">Edit</button>
                             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;" onclick="deleteRecurringExpense(${rec.id})">Remove</button>
                         </div>
@@ -5417,6 +5418,86 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     ? `✅ Auto-added 1 subscription expense`
                     : `✅ Auto-added ${processed} subscription expenses`;
                 showSuccess(message);
+            }
+        }
+
+        async function payRecurringNow(recurringId) {
+            const recurring = recurringExpenses.find(r => r.id === recurringId);
+            if (!recurring) {
+                alert('Recurring expense not found');
+                return;
+            }
+
+            const confirmPay = confirm(
+                `💳 Pay Now?\n\n` +
+                `${recurring.name}\n` +
+                `Amount: $${recurring.amount.toFixed(2)}\n` +
+                `Category: ${recurring.category}\n\n` +
+                `This will add it as an expense today and update the next due date.`
+            );
+
+            if (!confirmPay) return;
+
+            try {
+                // Use today's date for the expense
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+
+                // Create an expense from this recurring subscription
+                const expense = {
+                    date: todayStr,
+                    category: recurring.category,
+                    description: recurring.name,
+                    amount: recurring.amount,
+                    payment_method: recurring.payment_method,
+                    vendor: recurring.name,
+                    notes: `Paid from recurring: ${recurring.name}`,
+                    source: 'manual',
+                    hash: generateExpenseHash(todayStr, recurring.name, recurring.amount)
+                };
+
+                const { data, error } = await supabaseClient
+                    .from('expenses')
+                    .insert([expense])
+                    .select();
+
+                if (error) {
+                    alert('Error adding expense: ' + error.message);
+                    return;
+                }
+
+                expenses.push(data[0]);
+                console.log(`✅ Created expense for: ${recurring.name}`);
+
+                // Calculate next due date
+                let nextDate = calculateNextRecurringDate(
+                    recurring.frequency,
+                    recurring.day_of_week,
+                    recurring.day_of_month,
+                    recurring.quarter
+                );
+
+                const { error: updateError } = await supabaseClient
+                    .from('recurring_expenses')
+                    .update({ next_due_date: nextDate })
+                    .eq('id', recurring.id);
+
+                if (!updateError) {
+                    recurring.next_due_date = nextDate;
+                    console.log(`✅ Updated next due date to: ${nextDate}`);
+                } else {
+                    console.error('Error updating next due date:', updateError);
+                }
+
+                // Refresh views
+                renderRecurringList();
+                renderAllMonths();
+                await renderInsights();
+
+                alert(`✅ Payment recorded! Next due: ${nextDate}`);
+            } catch (error) {
+                console.error('Error paying recurring expense:', error);
+                alert('Error: ' + error.message);
             }
         }
 
