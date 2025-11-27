@@ -1501,6 +1501,7 @@
                                 <option value="">-- Select Template --</option>
                                 <option value="chase_freedom_cc">Chase Freedom Credit Card</option>
                                 <option value="chase_debit">Chase Debit Card</option>
+                                <option value="pnc_debit">PNC Debit Card</option>
                             </select>
                         </div>
                     </div>
@@ -2685,6 +2686,17 @@
                     balance: 'Balance',
                     checkSlip: 'Check or Slip #'
                 }
+            },
+            pnc_debit: {
+                name: 'PNC Debit Card',
+                paymentMethod: 'PNC Debit',
+                columns: {
+                    transactionDate: 'Transaction Date',
+                    description: 'Transaction Description',
+                    amount: 'Amount',
+                    category: 'Category',
+                    balance: 'Balance'
+                }
             }
         };
 
@@ -2829,15 +2841,41 @@
 
                 if (!dateStr || !description || !amountStr) continue;
 
+                // Skip PENDING transactions
+                if (dateStr.toUpperCase() === 'PENDING') {
+                    console.log(`⏭️ Skipping PENDING transaction: ${description}`);
+                    continue;
+                }
+
                 // ⚠️ BULLETPROOF: Skip payments (credit card payments, refunds, etc.)
                 if (type && type.toLowerCase().includes('payment')) {
                     console.log(`⏭️ Skipping payment row: ${description}`);
                     continue;
                 }
+                
+                // Skip if description contains "payment to" (common for transfers/payments)
+                if (description.toLowerCase().includes('payment to') || 
+                    description.toLowerCase().includes('transfer to')) {
+                    console.log(`⏭️ Skipping payment/transfer: ${description}`);
+                    continue;
+                }
 
-                // Parse amount (remove $ and commas, handle negatives)
-                let amountValue = amountStr.replace(/[$,]/g, '');
+                // Parse amount (remove $ and commas, handle negatives and parentheses)
+                let amountValue = amountStr.replace(/[$,\s]/g, '');
+                
+                // Check if amount is in parentheses (negative for PNC format)
+                let isNegative = false;
+                if (amountValue.includes('(') && amountValue.includes(')')) {
+                    isNegative = true;
+                    amountValue = amountValue.replace(/[()]/g, '');
+                } else if (amountValue.startsWith('-')) {
+                    isNegative = true;
+                }
+                
                 let amount = parseFloat(amountValue);
+                if (isNegative && amount > 0) {
+                    amount = -amount;
+                }
                 
                 // Parse date
                 const date = formatDateForInput(dateStr);
