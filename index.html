@@ -1502,6 +1502,7 @@
                                 <option value="chase_freedom_cc">Chase Freedom Credit Card</option>
                                 <option value="chase_debit">Chase Debit Card</option>
                                 <option value="pnc_debit">PNC Debit Card</option>
+                                <option value="pnc_credit">PNC Cash Rewards Credit Card</option>
                             </select>
                         </div>
                     </div>
@@ -2697,6 +2698,16 @@
                     category: 'Category',
                     balance: 'Balance'
                 }
+            },
+            pnc_credit: {
+                name: 'PNC Cash Rewards Credit Card',
+                paymentMethod: 'PNC Credit',
+                columns: {
+                    date: 'Date',
+                    description: 'Description',
+                    category: 'Spending Category',
+                    amount: 'Amount'
+                }
             }
         };
 
@@ -2826,12 +2837,14 @@
                 
                 if (values.length < 2 || values.every(v => !v)) continue; // Skip empty lines
 
-                // Get date - try postDate first, then transactionDate
+                // Get date - try multiple date column names
                 let dateStr = '';
                 if (columnMap.postDate !== -1) {
                     dateStr = values[columnMap.postDate];
                 } else if (columnMap.transactionDate !== -1) {
                     dateStr = values[columnMap.transactionDate];
+                } else if (columnMap.date !== -1) {
+                    dateStr = values[columnMap.date];
                 }
 
                 const description = columnMap.description !== -1 ? values[columnMap.description] : '';
@@ -2853,8 +2866,20 @@
                     continue;
                 }
                 
-                // Skip if description contains "payment to" (common for transfers/payments)
+                // Skip credit card payment categories
+                if (csvCategory && (
+                    csvCategory.toLowerCase().includes('credit card payment') ||
+                    csvCategory.toLowerCase().includes('atm') ||
+                    csvCategory.toLowerCase() === 'atm'
+                )) {
+                    console.log(`⏭️ Skipping payment category: ${csvCategory} - ${description}`);
+                    continue;
+                }
+                
+                // Skip if description contains "payment to" or "payment received"
                 if (description.toLowerCase().includes('payment to') || 
+                    description.toLowerCase().includes('payment received') ||
+                    description.toLowerCase().includes('thank you for your pmt') || 
                     description.toLowerCase().includes('transfer to')) {
                     console.log(`⏭️ Skipping payment/transfer: ${description}`);
                     continue;
