@@ -2831,11 +2831,27 @@
 
             const expensesToImport = [];
             const incomeToImport = [];
+            const skipReasons = {
+                empty: 0,
+                missingData: 0,
+                pending: 0,
+                paymentType: 0,
+                paymentCategory: 0,
+                paymentDescription: 0,
+                zeroAmount: 0,
+                processed: 0
+            };
+            
+            console.log(`📊 Starting to parse ${lines.length - 1} CSV rows...`);
             
             for (let i = 1; i < lines.length; i++) {
                 const values = parseCSVLine(lines[i]);
                 
-                if (values.length < 2 || values.every(v => !v)) continue; // Skip empty lines
+                if (values.length < 2 || values.every(v => !v)) {
+                    skipReasons.empty++;
+                    console.log(`⏭️ Row ${i}: Empty line`);
+                    continue;
+                }
 
                 // Get date - try multiple date column names
                 let dateStr = '';
@@ -2852,17 +2868,23 @@
                 const amountStr = columnMap.amount !== -1 ? values[columnMap.amount] : '';
                 const csvCategory = columnMap.category !== -1 ? values[columnMap.category] : '';
 
-                if (!dateStr || !description || !amountStr) continue;
+                if (!dateStr || !description || !amountStr) {
+                    skipReasons.missingData++;
+                    console.log(`⏭️ Row ${i}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
+                    continue;
+                }
 
                 // Skip PENDING transactions
                 if (dateStr.toUpperCase() === 'PENDING') {
-                    console.log(`⏭️ Skipping PENDING transaction: ${description}`);
+                    skipReasons.pending++;
+                    console.log(`⏭️ Row ${i}: PENDING transaction - ${description}`);
                     continue;
                 }
 
                 // ⚠️ BULLETPROOF: Skip payments (credit card payments, refunds, etc.)
                 if (type && type.toLowerCase().includes('payment')) {
-                    console.log(`⏭️ Skipping payment row: ${description}`);
+                    skipReasons.paymentType++;
+                    console.log(`⏭️ Row ${i}: Payment type - Type: "${type}", Desc: ${description}`);
                     continue;
                 }
                 
@@ -2872,7 +2894,8 @@
                     csvCategory.toLowerCase().includes('atm') ||
                     csvCategory.toLowerCase() === 'atm'
                 )) {
-                    console.log(`⏭️ Skipping payment category: ${csvCategory} - ${description}`);
+                    skipReasons.paymentCategory++;
+                    console.log(`⏭️ Row ${i}: Payment category - Category: "${csvCategory}", Desc: ${description}`);
                     continue;
                 }
                 
@@ -2881,7 +2904,8 @@
                     description.toLowerCase().includes('payment received') ||
                     description.toLowerCase().includes('thank you for your pmt') || 
                     description.toLowerCase().includes('transfer to')) {
-                    console.log(`⏭️ Skipping payment/transfer: ${description}`);
+                    skipReasons.paymentDescription++;
+                    console.log(`⏭️ Row ${i}: Payment/transfer in description - ${description}`);
                     continue;
                 }
 
@@ -2902,6 +2926,13 @@
                     amount = -amount;
                 }
                 
+                // Check for zero amounts
+                if (amount === 0) {
+                    skipReasons.zeroAmount++;
+                    console.log(`⏭️ Row ${i}: Zero amount - ${description}`);
+                    continue;
+                }
+                
                 // Parse date
                 const date = formatDateForInput(dateStr);
 
@@ -2911,7 +2942,8 @@
                 
                 if (amount > 0) {
                     // This is INCOME (CREDIT transaction)
-                    console.log(`✅ Income detected: ${description} ($${amount})`);
+                    skipReasons.processed++;
+                    console.log(`✅ Row ${i}: Income detected - ${description} ($${amount})`);
                     
                     incomeToImport.push({
                         date,
@@ -2922,7 +2954,8 @@
                     });
                 } else if (amount < 0) {
                     // This is EXPENSE (DEBIT)
-                    console.log(`✅ Expense detected: ${description} ($${Math.abs(amount)})`);
+                    skipReasons.processed++;
+                    console.log(`✅ Row ${i}: Expense detected - ${description} ($${Math.abs(amount)})`);
                     
                     // Make amount positive for storage
                     amount = Math.abs(amount);
@@ -2946,11 +2979,29 @@
 
             // Filter out duplicates for expenses
             const dedupedExpenses = expensesToImport.filter(newExp => {
-                return !isDuplicateExpense(newExp);
+                const isDup = isDuplicateExpense(newExp);
+                if (isDup) {
+                    console.log(`🔄 Duplicate expense detected: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
+                }
+                return !isDup;
             });
 
-            console.log(`Loaded ${expensesToImport.length} expenses, ${dedupedExpenses.length} are new (${expensesToImport.length - dedupedExpenses.length} duplicates removed)`);
-            console.log(`Loaded ${incomeToImport.length} income entries from CSV`);
+            // Print detailed summary
+            console.log(`\n📊 CSV PARSING SUMMARY:`);
+            console.log(`   Total rows in CSV: ${lines.length - 1}`);
+            console.log(`   ✅ Successfully processed: ${skipReasons.processed}`);
+            console.log(`      - Expenses: ${expensesToImport.length}`);
+            console.log(`      - Income: ${incomeToImport.length}`);
+            console.log(`   🔄 Duplicates removed: ${expensesToImport.length - dedupedExpenses.length}`);
+            console.log(`   ⏭️ Skipped rows: ${lines.length - 1 - skipReasons.processed}`);
+            console.log(`      - Empty lines: ${skipReasons.empty}`);
+            console.log(`      - Missing data: ${skipReasons.missingData}`);
+            console.log(`      - Pending: ${skipReasons.pending}`);
+            console.log(`      - Payment type: ${skipReasons.paymentType}`);
+            console.log(`      - Payment category: ${skipReasons.paymentCategory}`);
+            console.log(`      - Payment description: ${skipReasons.paymentDescription}`);
+            console.log(`      - Zero amount: ${skipReasons.zeroAmount}`);
+            console.log(`   📦 Final import count: ${dedupedExpenses.length} expenses + ${incomeToImport.length} income\n`);
 
             // Return both expenses and income
             return {
