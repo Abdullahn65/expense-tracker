@@ -1316,7 +1316,11 @@
             <button class="nav-tab" data-tab="budget">Budget</button>
             <button class="nav-tab" data-tab="recurring">Recurring</button>
             <div class="month-dropdown-container">
-                <label for="monthSelector" style="color: #cbd5e1; font-size: 0.85em; margin: 0; text-transform: uppercase; letter-spacing: 0.6px;">View Month:</label>
+                <label for="yearSelector" style="color: #cbd5e1; font-size: 0.85em; margin: 0; text-transform: uppercase; letter-spacing: 0.6px;">Year:</label>
+                <select id="yearSelector" class="month-dropdown" style="min-width: 90px;">
+                    <!-- Populated dynamically -->
+                </select>
+                <label for="monthSelector" style="color: #cbd5e1; font-size: 0.85em; margin: 0 0 0 12px; text-transform: uppercase; letter-spacing: 0.6px;">Month:</label>
                 <select id="monthSelector" class="month-dropdown">
                     <option value="">Select a Month</option>
                     <option value="jan">January</option>
@@ -1868,8 +1872,75 @@
         const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         
-        // Get current year dynamically
-        const currentYear = new Date().getFullYear();
+        // Get selected year from dropdown (default to current year)
+        let selectedYear = new Date().getFullYear();
+        
+        // For backwards compatibility, currentYear now references selectedYear
+        function getCurrentYear() {
+            return selectedYear;
+        }
+        
+        // Alias for code that still uses currentYear directly
+        let currentYear = selectedYear;
+        
+        // Initialize year selector with available years from data
+        function initializeYearSelector() {
+            const yearSelector = document.getElementById('yearSelector');
+            if (!yearSelector) return;
+            
+            // Get all unique years from expenses and income
+            const years = new Set();
+            const thisYear = new Date().getFullYear();
+            
+            // Always include current year and last year
+            years.add(thisYear);
+            years.add(thisYear - 1);
+            
+            // Add years from expenses
+            expenses.forEach(exp => {
+                if (exp.date) {
+                    const expYear = parseLocalDate(exp.date).getFullYear();
+                    if (expYear >= 2020 && expYear <= thisYear + 1) {
+                        years.add(expYear);
+                    }
+                }
+            });
+            
+            // Add years from income
+            income.forEach(inc => {
+                if (inc.date) {
+                    const incYear = parseLocalDate(inc.date).getFullYear();
+                    if (incYear >= 2020 && incYear <= thisYear + 1) {
+                        years.add(incYear);
+                    }
+                }
+            });
+            
+            // Sort years descending (newest first)
+            const sortedYears = Array.from(years).sort((a, b) => b - a);
+            
+            // Populate dropdown
+            yearSelector.innerHTML = sortedYears.map(y => 
+                `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>`
+            ).join('');
+            
+            // Add change listener
+            yearSelector.addEventListener('change', function() {
+                selectedYear = parseInt(this.value);
+                currentYear = selectedYear; // Update the alias too
+                console.log(`📅 Year changed to ${selectedYear}`);
+                refreshAllViews();
+            });
+        }
+        
+        // Refresh all views when year changes
+        function refreshAllViews() {
+            renderAllMonths();
+            renderInsights();
+            renderIncomeList();
+            renderComparison();
+            updateDeleteAllButton();
+        }
 
         // AI Learning System - Track user corrections
         let categoryLearningData = JSON.parse(localStorage.getItem('category_learning_data') || '[]');
@@ -2119,6 +2190,9 @@
         async function initializeApp() {
             try {
                 console.log('🎯 initializeApp() called');
+                
+                // Initialize year selector first (needs expense data)
+                initializeYearSelector();
                 
                 // Set default date to today in local timezone
                 const today = new Date();
