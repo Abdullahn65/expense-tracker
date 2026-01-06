@@ -1892,11 +1892,10 @@
             const years = new Set();
             const thisYear = new Date().getFullYear();
             
-            // Always include current year and last year
+            // Always include current year
             years.add(thisYear);
-            years.add(thisYear - 1);
             
-            // Add years from expenses
+            // Add years from expenses (this captures ALL historical data)
             expenses.forEach(exp => {
                 if (exp.date) {
                     const expYear = parseLocalDate(exp.date).getFullYear();
