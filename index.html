@@ -384,6 +384,16 @@
             letter-spacing: 0.5px;
             border-bottom: 1px solid var(--hairline);
             text-transform: uppercase;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .expense-table th:hover {
+            background: rgba(55, 224, 255, 0.1);
+            color: var(--accent);
+        }
+
+        .expense-table th:active {
+            background: rgba(55, 224, 255, 0.15);
         }
 
         .expense-table td {
@@ -1939,6 +1949,77 @@
             renderIncomeList();
             renderComparison();
             updateDeleteAllButton();
+        }
+
+        // Sorting state for expense tables
+        const sortState = {};
+        
+        function sortExpenses(month, column) {
+            // Initialize sort state for this month if not exists
+            if (!sortState[month]) {
+                sortState[month] = { column: null, direction: 'asc' };
+            }
+            
+            // Toggle direction if same column, otherwise reset to desc for amount, asc for others
+            if (sortState[month].column === column) {
+                sortState[month].direction = sortState[month].direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState[month].column = column;
+                // Default to desc for amount (highest first), asc for others
+                sortState[month].direction = column === 'amount' ? 'desc' : 'asc';
+            }
+            
+            console.log(`🔀 Sorting ${month} by ${column} (${sortState[month].direction})`);
+            
+            // Re-render the month with new sort
+            const monthIndex = months.indexOf(month);
+            renderMonth(month, monthIndex);
+        }
+        
+        function getSortedExpenses(monthExpenses, month) {
+            if (!sortState[month] || !sortState[month].column) {
+                // Default sort: by date descending (newest first)
+                return monthExpenses.sort((a, b) => parseLocalDate(b.date) - parseLocalDate(a.date));
+            }
+            
+            const { column, direction } = sortState[month];
+            const multiplier = direction === 'asc' ? 1 : -1;
+            
+            return [...monthExpenses].sort((a, b) => {
+                let valA, valB;
+                
+                switch (column) {
+                    case 'date':
+                        return multiplier * (parseLocalDate(a.date) - parseLocalDate(b.date));
+                    case 'amount':
+                        return multiplier * (a.amount - b.amount);
+                    case 'category':
+                        valA = (a.category || '').toLowerCase();
+                        valB = (b.category || '').toLowerCase();
+                        return multiplier * valA.localeCompare(valB);
+                    case 'description':
+                        valA = (a.description || '').toLowerCase();
+                        valB = (b.description || '').toLowerCase();
+                        return multiplier * valA.localeCompare(valB);
+                    case 'vendor':
+                        valA = (a.vendor || '').toLowerCase();
+                        valB = (b.vendor || '').toLowerCase();
+                        return multiplier * valA.localeCompare(valB);
+                    case 'payment':
+                        valA = (a.payment_method || '').toLowerCase();
+                        valB = (b.payment_method || '').toLowerCase();
+                        return multiplier * valA.localeCompare(valB);
+                    default:
+                        return 0;
+                }
+            });
+        }
+        
+        function getSortIcon(month, column) {
+            if (!sortState[month] || sortState[month].column !== column) {
+                return '↕️'; // Unsorted
+            }
+            return sortState[month].direction === 'asc' ? '↑' : '↓';
         }
 
         // AI Learning System - Track user corrections
@@ -6099,10 +6180,13 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         }
 
         function renderMonth(month, monthIndex) {
-            const monthExpenses = expenses.filter(exp => {
+            const rawMonthExpenses = expenses.filter(exp => {
                 const expDate = parseLocalDate(exp.date);
                 return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
-            }).sort((a, b) => parseLocalDate(b.date) - parseLocalDate(a.date));
+            });
+            
+            // Apply sorting
+            const monthExpenses = getSortedExpenses(rawMonthExpenses, month);
 
             const monthIncome = income.filter(inc => {
                 const incDate = parseLocalDate(inc.date);
@@ -6223,12 +6307,24 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     <table class="expense-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Category</th>
-                                <th>Description</th>
-                                <th>Vendor</th>
-                                <th>Amount</th>
-                                <th>Payment</th>
+                                <th onclick="sortExpenses('${month}', 'date')" style="cursor: pointer; user-select: none;" title="Click to sort">
+                                    Date <span style="opacity: 0.6; font-size: 0.85em;">${getSortIcon(month, 'date')}</span>
+                                </th>
+                                <th onclick="sortExpenses('${month}', 'category')" style="cursor: pointer; user-select: none;" title="Click to sort">
+                                    Category <span style="opacity: 0.6; font-size: 0.85em;">${getSortIcon(month, 'category')}</span>
+                                </th>
+                                <th onclick="sortExpenses('${month}', 'description')" style="cursor: pointer; user-select: none;" title="Click to sort">
+                                    Description <span style="opacity: 0.6; font-size: 0.85em;">${getSortIcon(month, 'description')}</span>
+                                </th>
+                                <th onclick="sortExpenses('${month}', 'vendor')" style="cursor: pointer; user-select: none;" title="Click to sort">
+                                    Vendor <span style="opacity: 0.6; font-size: 0.85em;">${getSortIcon(month, 'vendor')}</span>
+                                </th>
+                                <th onclick="sortExpenses('${month}', 'amount')" style="cursor: pointer; user-select: none;" title="Click to sort">
+                                    Amount <span style="opacity: 0.6; font-size: 0.85em;">${getSortIcon(month, 'amount')}</span>
+                                </th>
+                                <th onclick="sortExpenses('${month}', 'payment')" style="cursor: pointer; user-select: none;" title="Click to sort">
+                                    Payment <span style="opacity: 0.6; font-size: 0.85em;">${getSortIcon(month, 'payment')}</span>
+                                </th>
                                 <th>Action</th>
                             </tr>
                         </thead>
