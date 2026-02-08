@@ -3310,11 +3310,6 @@
             const previewBody = document.getElementById('csvPreviewBody');
             
             previewBody.innerHTML = '';
-            
-            if (csvPreviewData.length === 0) {
-                alert('No new expenses found. All transactions may already exist in your tracker.');
-                return;
-            }
 
             // Show first 10 rows in preview
             csvPreviewData.slice(0, 10).forEach(expense => {
