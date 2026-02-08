@@ -2972,16 +2972,28 @@
                 throw new Error('No template selected');
             }
             
-            // Find column indices
+            console.log('📋 CSV Headers:', headers);
+            console.log('📋 Using template:', template.name);
+            
+            // Find column indices with more flexible matching
             const columnMap = {};
             for (const [field, columnName] of Object.entries(template.columns)) {
-                const index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
-                if (index === -1 && !['category', 'memo', 'checkSlip', 'balance', 'details'].includes(field)) {
-                    // Optional fields
-                    console.warn(`Column "${columnName}" not found in CSV`);
+                let index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
+                
+                // If not found, try partial matching
+                if (index === -1) {
+                    index = headers.findIndex(h => h.toLowerCase().includes(columnName.toLowerCase()) || columnName.toLowerCase().includes(h.toLowerCase()));
+                }
+                
+                if (index !== -1) {
+                    console.log(`✅ Found column "${field}": "${headers[index]}" at index ${index}`);
+                } else {
+                    console.warn(`⚠️ Column "${columnName}" (field: ${field}) not found in CSV`);
                 }
                 columnMap[field] = index;
             }
+            
+            console.log('📊 Column map:', columnMap);
 
             const expensesToImport = [];
             const incomeToImport = [];
@@ -3007,7 +3019,7 @@
                     continue;
                 }
 
-                // Get date - try multiple date column names
+                // Get date - try multiple date column names and indices
                 let dateStr = '';
                 if (columnMap.postDate !== -1) {
                     dateStr = values[columnMap.postDate];
@@ -3015,16 +3027,42 @@
                     dateStr = values[columnMap.transactionDate];
                 } else if (columnMap.date !== -1) {
                     dateStr = values[columnMap.date];
+                } else if (columnMap.details !== -1) {
+                    // For some templates, date might be in details column
+                    dateStr = values[columnMap.details]?.split(',')[0] || '';
+                } else {
+                    // Try to find date in first column
+                    dateStr = values[0];
                 }
 
-                const description = columnMap.description !== -1 ? values[columnMap.description] : '';
+                // Get description - try multiple column names
+                let description = '';
+                if (columnMap.description !== -1) {
+                    description = values[columnMap.description];
+                } else if (columnMap.details !== -1) {
+                    description = values[columnMap.details];
+                } else {
+                    // Fallback to first non-empty value after date
+                    description = values.find((v, idx) => idx > 0 && v) || '';
+                }
+
+                // Get amount - try different column names
+                let amountStr = '';
+                if (columnMap.amount !== -1) {
+                    amountStr = values[columnMap.amount];
+                } else {
+                    // Try to find amount column (often has $ or numbers)
+                    amountStr = values.find(v => /^[\d.,()-]*$/.test(v) && /\d/.test(v)) || '';
+                }
+
                 const type = columnMap.type !== -1 ? values[columnMap.type] : '';
-                const amountStr = columnMap.amount !== -1 ? values[columnMap.amount] : '';
                 const csvCategory = columnMap.category !== -1 ? values[columnMap.category] : '';
+
+                console.log(`Row ${i}: date="${dateStr}", desc="${description}", amount="${amountStr}"`);
 
                 if (!dateStr || !description || !amountStr) {
                     skipReasons.missingData++;
-                    console.log(`⏭️ Row ${i}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
+                    console.log(`⏭️ Row ${i}: Missing required data`);
                     continue;
                 }
 
