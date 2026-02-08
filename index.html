@@ -3028,41 +3028,6 @@
                     continue;
                 }
 
-                // Skip PENDING transactions
-                if (dateStr.toUpperCase() === 'PENDING') {
-                    skipReasons.pending++;
-                    console.log(`⏭️ Row ${i}: PENDING transaction - ${description}`);
-                    continue;
-                }
-
-                // ⚠️ BULLETPROOF: Skip payments (credit card payments, refunds, etc.)
-                if (type && type.toLowerCase().includes('payment')) {
-                    skipReasons.paymentType++;
-                    console.log(`⏭️ Row ${i}: Payment type - Type: "${type}", Desc: ${description}`);
-                    continue;
-                }
-                
-                // Skip credit card payment categories
-                if (csvCategory && (
-                    csvCategory.toLowerCase().includes('credit card payment') ||
-                    csvCategory.toLowerCase().includes('atm') ||
-                    csvCategory.toLowerCase() === 'atm'
-                )) {
-                    skipReasons.paymentCategory++;
-                    console.log(`⏭️ Row ${i}: Payment category - Category: "${csvCategory}", Desc: ${description}`);
-                    continue;
-                }
-                
-                // Skip if description contains "payment to" or "payment received"
-                if (description.toLowerCase().includes('payment to') || 
-                    description.toLowerCase().includes('payment received') ||
-                    description.toLowerCase().includes('thank you for your pmt') || 
-                    description.toLowerCase().includes('transfer to')) {
-                    skipReasons.paymentDescription++;
-                    console.log(`⏭️ Row ${i}: Payment/transfer in description - ${description}`);
-                    continue;
-                }
-
                 // Parse amount (remove $ and commas, handle negatives and parentheses)
                 let amountValue = amountStr.replace(/[$,\s]/g, '');
                 
@@ -3131,35 +3096,17 @@
                 }
             }
 
-            // Filter out duplicates for expenses
-            const dedupedExpenses = expensesToImport.filter(newExp => {
-                const isDup = isDuplicateExpense(newExp);
-                if (isDup) {
-                    console.log(`🔄 Duplicate expense detected: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
-                }
-                return !isDup;
-            });
-
             // Print detailed summary
             console.log(`\n📊 CSV PARSING SUMMARY:`);
             console.log(`   Total rows in CSV: ${lines.length - 1}`);
             console.log(`   ✅ Successfully processed: ${skipReasons.processed}`);
             console.log(`      - Expenses: ${expensesToImport.length}`);
             console.log(`      - Income: ${incomeToImport.length}`);
-            console.log(`   🔄 Duplicates removed: ${expensesToImport.length - dedupedExpenses.length}`);
-            console.log(`   ⏭️ Skipped rows: ${lines.length - 1 - skipReasons.processed}`);
-            console.log(`      - Empty lines: ${skipReasons.empty}`);
-            console.log(`      - Missing data: ${skipReasons.missingData}`);
-            console.log(`      - Pending: ${skipReasons.pending}`);
-            console.log(`      - Payment type: ${skipReasons.paymentType}`);
-            console.log(`      - Payment category: ${skipReasons.paymentCategory}`);
-            console.log(`      - Payment description: ${skipReasons.paymentDescription}`);
-            console.log(`      - Zero amount: ${skipReasons.zeroAmount}`);
-            console.log(`   📦 Final import count: ${dedupedExpenses.length} expenses + ${incomeToImport.length} income\n`);
+            console.log(`   � Final import count: ${expensesToImport.length} expenses + ${incomeToImport.length} income\n`);
 
             // Return both expenses and income
             return {
-                expenses: dedupedExpenses,
+                expenses: expensesToImport,
                 income: incomeToImport
             };
         }
