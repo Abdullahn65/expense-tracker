@@ -3091,39 +3091,43 @@
                     continue;
                 }
 
-                // ⚠️ BULLETPROOF: Skip payments (credit card payments, refunds, etc.)
-                if (type && type.toLowerCase().includes('payment')) {
+                // ⚠️ Skip payments/transfers - but only for CREDIT CARD templates
+                // For debit cards, "payment to" and "transfers" are often real transactions
+                const isDebitTemplate = selectedTemplateId.includes('debit');
+                
+                // Skip PENDING transactions (applies to all)
+                if (type && type.toLowerCase() === 'payment') {
                     skipReasons.paymentType++;
                     console.log(`⏭️ Row ${i}: Payment type - Type: "${type}", Desc: ${description}`);
                     continue;
                 }
                 
-                // Skip credit card payment categories
-                if (csvCategory && (
-                    csvCategory.toLowerCase().includes('credit card payment') ||
-                    csvCategory.toLowerCase().includes('atm') ||
-                    csvCategory.toLowerCase() === 'atm'
+                // For credit cards only: skip credit card payment categories
+                if (!isDebitTemplate && csvCategory && (
+                    csvCategory.toLowerCase().includes('credit card payment')
                 )) {
                     skipReasons.paymentCategory++;
-                    console.log(`⏭️ Row ${i}: Payment category - Category: "${csvCategory}", Desc: ${description}`);
+                    console.log(`⏭️ Row ${i}: CC payment category - Category: "${csvCategory}", Desc: ${description}`);
                     continue;
                 }
                 
-                // Skip if description contains payment or transfer keywords
-                if (description.toLowerCase().includes('payment to') || 
-                    description.toLowerCase().includes('payment received') ||
-                    description.toLowerCase().includes('thank you for your pmt') || 
-                    description.toLowerCase().includes('transfer to') ||
-                    description.toLowerCase().includes('transfer from')) {
+                // For credit cards: skip payment/thank you descriptions
+                if (!isDebitTemplate && (
+                    description.toLowerCase().includes('thank you for your pmt') ||
+                    description.toLowerCase().includes('payment received')
+                )) {
                     skipReasons.paymentDescription++;
-                    console.log(`⏭️ Row ${i}: Payment/transfer in description - ${description}`);
+                    console.log(`⏭️ Row ${i}: CC payment in description - ${description}`);
                     continue;
                 }
-
-                // Skip rows with "Transfers" category (internal bank transfers, not real expenses/income)
-                if (csvCategory && csvCategory.toLowerCase().trim() === 'transfers') {
-                    skipReasons.paymentCategory++;
-                    console.log(`⏭️ Row ${i}: Transfers category - ${description}`);
+                
+                // For debit cards: only skip internal bank transfers (account-to-account)
+                if (isDebitTemplate && (
+                    (description.toLowerCase().includes('online transfer to') && description.toLowerCase().includes('xxxxx')) ||
+                    (description.toLowerCase().includes('online transfer from') && description.toLowerCase().includes('xxxxx'))
+                )) {
+                    skipReasons.paymentDescription++;
+                    console.log(`⏭️ Row ${i}: Internal bank transfer - ${description}`);
                     continue;
                 }
 
