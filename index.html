@@ -1528,7 +1528,7 @@
                         
                         <div class="form-group">
                             <label for="csvFile">Select CSV File *</label>
-                            <input type="file" id="csvFile" accept=".csv" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;" disabled>
+                            <input type="file" id="csvFile" accept=".csv,.tsv,.txt" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;" disabled>
                         </div>
 
 
@@ -2816,6 +2816,7 @@
         // CSV Import Functions
         let csvPreviewData = [];
         let csvIncomePreviewData = [];
+        let csvSkippedData = [];
         let selectedTemplateId = null;
         let lastImportedExpenseIds = []; // Track expenses from last import for removal
         let csvImportHistory = []; // Track all CSV imports with batch IDs
@@ -2824,6 +2825,7 @@
             chase_freedom_cc: {
                 name: 'Chase Freedom Credit Card',
                 paymentMethod: 'Chase Credit',
+                cardType: 'credit',
                 columns: {
                     transactionDate: 'Transaction Date',
                     postDate: 'Post Date',
@@ -2837,6 +2839,7 @@
             chase_debit: {
                 name: 'Chase Debit Card',
                 paymentMethod: 'Chase Debit',
+                cardType: 'debit',
                 columns: {
                     details: 'Details',
                     postDate: 'Posting Date',
@@ -2850,6 +2853,7 @@
             pnc_debit: {
                 name: 'PNC Debit Card',
                 paymentMethod: 'PNC Debit',
+                cardType: 'debit',
                 columns: {
                     transactionDate: 'Transaction Date',
                     description: 'Transaction Description',
@@ -2861,6 +2865,8 @@
             pnc_credit: {
                 name: 'PNC Cash Rewards Credit Card',
                 paymentMethod: 'PNC Credit',
+                cardType: 'credit',
+                amountSignFlipped: true,
                 columns: {
                     date: 'Date',
                     description: 'Description',
@@ -2921,6 +2927,7 @@
                     const parsedData = parseCSV(csv);
                     csvPreviewData = parsedData.expenses;
                     csvIncomePreviewData = parsedData.income;
+                    csvSkippedData = parsedData.skipped || [];
                     // Apply AI categorization to expenses only
                     csvPreviewData = await categorizeCSVExpensesWithAI(csvPreviewData);
                     displayCSVPreview();
@@ -2934,7 +2941,20 @@
         }
 
         function parseCSV(csvText) {
-            // Parse CSV properly handling quoted fields
+            // ========== PREPROCESSING ==========
+            // Strip BOM (byte order mark) that some programs add
+            if (csvText.charCodeAt(0) === 0xFEFF) {
+                csvText = csvText.substring(1);
+            }
+            // Normalize line endings: \r\n → \n, stray \r → \n
+            csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            // ========== AUTO-DETECT DELIMITER (tab vs comma) ==========
+            const firstDataLine = csvText.split('\n')[0] || '';
+            const delimiter = firstDataLine.includes('\t') ? '\t' : ',';
+            console.log(`🔍 Auto-detected delimiter: ${delimiter === '\t' ? 'TAB' : 'COMMA'}`);
+
+            // Parse a single CSV/TSV line handling quoted fields
             function parseCSVLine(line) {
                 const result = [];
                 let current = '';
@@ -2946,14 +2966,12 @@
                     
                     if (char === '"') {
                         if (insideQuotes && nextChar === '"') {
-                            // Escaped quote
                             current += '"';
                             i++;
                         } else {
-                            // Toggle quote state
                             insideQuotes = !insideQuotes;
                         }
-                    } else if (char === ',' && !insideQuotes) {
+                    } else if (char === delimiter && !insideQuotes) {
                         result.push(current.trim());
                         current = '';
                     } else {
@@ -2965,113 +2983,159 @@
                 return result;
             }
 
-            const lines = csvText.trim().split('\n');
-            if (lines.length < 2) {
+            const allLines = csvText.trim().split('\n');
+            if (allLines.length < 2) {
                 throw new Error('CSV file is empty or has only headers');
             }
 
-            const headers = parseCSVLine(lines[0]);
             const template = csvTemplates[selectedTemplateId];
-            
             if (!template) {
                 throw new Error('No template selected');
             }
-            
-            // Find column indices
+
+            // ========== SMART HEADER ROW DETECTION ==========
+            // Some bank CSVs have metadata rows before the actual header.
+            // Scan first 10 lines and pick the one that best matches the template columns.
+            const expectedColumns = Object.values(template.columns).map(c => c.toLowerCase());
+            let headerRowIndex = 0;
+            let bestMatchCount = 0;
+
+            const scanLimit = Math.min(10, allLines.length);
+            for (let i = 0; i < scanLimit; i++) {
+                const candidate = parseCSVLine(allLines[i]).map(h => h.toLowerCase());
+                let matchCount = 0;
+                for (const expected of expectedColumns) {
+                    // Exact match or partial match (header contains expected or vice-versa)
+                    if (candidate.some(h => h === expected || h.includes(expected) || expected.includes(h))) {
+                        matchCount++;
+                    }
+                }
+                if (matchCount > bestMatchCount) {
+                    bestMatchCount = matchCount;
+                    headerRowIndex = i;
+                }
+            }
+            console.log(`📋 Header row detected at line ${headerRowIndex + 1} (matched ${bestMatchCount}/${expectedColumns.length} columns)`);
+
+            const headers = parseCSVLine(allLines[headerRowIndex]);
+            console.log('📋 Headers found:', headers);
+            const dataLines = allLines.slice(headerRowIndex + 1);
+
+            // ========== MAP COLUMNS ==========
             const columnMap = {};
             for (const [field, columnName] of Object.entries(template.columns)) {
-                const index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
-                if (index === -1 && !['category', 'memo', 'checkSlip', 'balance', 'details'].includes(field)) {
-                    // Optional fields
-                    console.warn(`Column "${columnName}" not found in CSV`);
+                // Try exact match first
+                let index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
+                // Try partial/flexible match if exact fails
+                if (index === -1) {
+                    index = headers.findIndex(h => 
+                        h.toLowerCase().includes(columnName.toLowerCase()) || 
+                        columnName.toLowerCase().includes(h.toLowerCase())
+                    );
+                }
+                if (index === -1 && !['category', 'memo', 'checkSlip', 'balance', 'details', 'type'].includes(field)) {
+                    console.warn(`⚠️ Column "${columnName}" not found in CSV headers`);
                 }
                 columnMap[field] = index;
             }
+            console.log('🗺️ Column map:', columnMap);
+
+            // Helper: safely get value from column map
+            function getVal(fieldName, values) {
+                const idx = columnMap[fieldName];
+                if (idx === undefined || idx === -1) return '';
+                return (values[idx] || '').trim();
+            }
+
+            const isCredit = template.cardType === 'credit';
+            const isDebit = template.cardType === 'debit';
 
             const expensesToImport = [];
             const incomeToImport = [];
+            const skippedTransactions = [];
             const skipReasons = {
                 empty: 0,
                 missingData: 0,
                 pending: 0,
-                paymentType: 0,
-                paymentCategory: 0,
-                paymentDescription: 0,
+                filtered: 0,
                 zeroAmount: 0,
                 processed: 0
             };
             
-            console.log(`📊 Starting to parse ${lines.length - 1} CSV rows...`);
+            console.log(`📊 Starting to parse ${dataLines.length} CSV rows (template: ${template.name})...`);
             
-            for (let i = 1; i < lines.length; i++) {
-                const values = parseCSVLine(lines[i]);
+            for (let i = 0; i < dataLines.length; i++) {
+                const values = parseCSVLine(dataLines[i]);
                 
                 if (values.length < 2 || values.every(v => !v)) {
                     skipReasons.empty++;
-                    console.log(`⏭️ Row ${i}: Empty line`);
                     continue;
                 }
 
-                // Get date - try multiple date column names
-                let dateStr = '';
-                if (columnMap.postDate !== -1) {
-                    dateStr = values[columnMap.postDate];
-                } else if (columnMap.transactionDate !== -1) {
-                    dateStr = values[columnMap.transactionDate];
-                } else if (columnMap.date !== -1) {
-                    dateStr = values[columnMap.date];
-                }
-
-                const description = columnMap.description !== -1 ? values[columnMap.description] : '';
-                const type = columnMap.type !== -1 ? values[columnMap.type] : '';
-                const amountStr = columnMap.amount !== -1 ? values[columnMap.amount] : '';
-                const csvCategory = columnMap.category !== -1 ? values[columnMap.category] : '';
+                // Get date - try multiple date column names in priority order
+                let dateStr = getVal('postDate', values) || getVal('transactionDate', values) || getVal('date', values);
+                const description = getVal('description', values);
+                const type = getVal('type', values);
+                const details = getVal('details', values);
+                const amountStr = getVal('amount', values);
+                const csvCategory = getVal('category', values);
 
                 if (!dateStr || !description || !amountStr) {
                     skipReasons.missingData++;
-                    console.log(`⏭️ Row ${i}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
+                    console.log(`⏭️ Row ${i + 1}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
                     continue;
                 }
 
                 // Skip PENDING transactions
                 if (dateStr.toUpperCase() === 'PENDING') {
-                    skipReasons.pending++;
-                    console.log(`⏭️ Row ${i}: PENDING transaction - ${description}`);
+                    skipReasons.filtered++;
+                    skippedTransactions.push({ date: dateStr, description, amount: amountStr, reason: 'Pending transaction' });
                     continue;
                 }
 
-                // ⚠️ BULLETPROOF: Skip payments (credit card payments, refunds, etc.)
-                if (type && type.toLowerCase().includes('payment')) {
-                    skipReasons.paymentType++;
-                    console.log(`⏭️ Row ${i}: Payment type - Type: "${type}", Desc: ${description}`);
-                    continue;
+                // ========== CONTEXT-AWARE SKIP FILTERS ==========
+                let skipReason = null;
+
+                if (isCredit) {
+                    // CREDIT CARD filters: skip payments, ATM, transfers
+                    if (type && type.toLowerCase().includes('payment')) {
+                        skipReason = 'Payment type (credit card)';
+                    } else if (csvCategory && (
+                        csvCategory.toLowerCase().includes('credit card payment') ||
+                        csvCategory.toLowerCase().includes('atm') ||
+                        csvCategory.toLowerCase() === 'atm' ||
+                        csvCategory.toLowerCase() === 'transfers'
+                    )) {
+                        skipReason = `Filtered category: ${csvCategory}`;
+                    } else if (
+                        description.toLowerCase().includes('payment to') ||
+                        description.toLowerCase().includes('payment received') ||
+                        description.toLowerCase().includes('thank you for your pmt') ||
+                        description.toLowerCase().includes('transfer to') ||
+                        description.toLowerCase().includes('transfer from')
+                    ) {
+                        skipReason = 'Payment/transfer in description';
+                    }
+                } else if (isDebit) {
+                    // DEBIT CARD filters: only skip internal bank transfers (account-to-account)
+                    const descLower = description.toLowerCase();
+                    if ((descLower.includes('online transfer to') || descLower.includes('online transfer from')) &&
+                        descLower.match(/x{3,}\d+/i)) {
+                        skipReason = 'Internal bank transfer';
+                    }
                 }
-                
-                // Skip credit card payment categories
-                if (csvCategory && (
-                    csvCategory.toLowerCase().includes('credit card payment') ||
-                    csvCategory.toLowerCase().includes('atm') ||
-                    csvCategory.toLowerCase() === 'atm'
-                )) {
-                    skipReasons.paymentCategory++;
-                    console.log(`⏭️ Row ${i}: Payment category - Category: "${csvCategory}", Desc: ${description}`);
-                    continue;
-                }
-                
-                // Skip if description contains "payment to" or "payment received"
-                if (description.toLowerCase().includes('payment to') || 
-                    description.toLowerCase().includes('payment received') ||
-                    description.toLowerCase().includes('thank you for your pmt') || 
-                    description.toLowerCase().includes('transfer to')) {
-                    skipReasons.paymentDescription++;
-                    console.log(`⏭️ Row ${i}: Payment/transfer in description - ${description}`);
+
+                if (skipReason) {
+                    skipReasons.filtered++;
+                    skippedTransactions.push({ date: dateStr, description, amount: amountStr, reason: skipReason });
+                    console.log(`⏭️ Row ${i + 1}: ${skipReason} - ${description}`);
                     continue;
                 }
 
-                // Parse amount (remove $ and commas, handle negatives and parentheses)
+                // ========== PARSE AMOUNT ==========
                 let amountValue = amountStr.replace(/[$,\s]/g, '');
                 
-                // Check if amount is in parentheses (negative for PNC format)
+                // Handle parentheses (negative in some bank formats)
                 let isNegative = false;
                 if (amountValue.includes('(') && amountValue.includes(')')) {
                     isNegative = true;
@@ -3081,28 +3145,34 @@
                 }
                 
                 let amount = parseFloat(amountValue);
+                if (isNaN(amount)) {
+                    skipReasons.missingData++;
+                    console.log(`⏭️ Row ${i + 1}: Unparseable amount "${amountStr}" - ${description}`);
+                    continue;
+                }
                 if (isNegative && amount > 0) {
                     amount = -amount;
                 }
+
+                // Flip sign for templates where charges are positive (e.g., PNC credit)
+                if (template.amountSignFlipped) {
+                    amount = -amount;
+                }
                 
-                // Check for zero amounts
                 if (amount === 0) {
                     skipReasons.zeroAmount++;
-                    console.log(`⏭️ Row ${i}: Zero amount - ${description}`);
+                    skippedTransactions.push({ date: dateStr, description, amount: amountStr, reason: 'Zero amount' });
                     continue;
                 }
                 
-                // Parse date
                 const date = formatDateForInput(dateStr);
 
-                // 🎯 ROUTE BY AMOUNT SIGN:
-                // - Negative amounts = Expenses (DEBIT)
-                // - Positive amounts = Income (CREDIT)
+                // ========== ROUTE BY AMOUNT SIGN ==========
+                // Negative = Expense, Positive = Income
                 
                 if (amount > 0) {
-                    // This is INCOME (CREDIT transaction)
                     skipReasons.processed++;
-                    console.log(`✅ Row ${i}: Income detected - ${description} ($${amount})`);
+                    console.log(`✅ Row ${i + 1}: Income - ${description} ($${amount.toFixed(2)})`);
                     
                     // Auto-detect income source from description
                     let incomeSource = 'Other';
@@ -3129,14 +3199,10 @@
                         notes: type ? `Type: ${type} | Source: CSV` : 'Source: CSV'
                     });
                 } else if (amount < 0) {
-                    // This is EXPENSE (DEBIT)
                     skipReasons.processed++;
-                    console.log(`✅ Row ${i}: Expense detected - ${description} ($${Math.abs(amount)})`);
-                    
-                    // Make amount positive for storage
                     amount = Math.abs(amount);
+                    console.log(`✅ Row ${i + 1}: Expense - ${description} ($${amount.toFixed(2)})`);
 
-                    // Map CSV category to our categories, or use default
                     let initialCategory = csvCategory ? mapCategoryFromCSV(csvCategory) : 'Other';
 
                     expensesToImport.push({
@@ -3157,32 +3223,26 @@
             const dedupedExpenses = expensesToImport.filter(newExp => {
                 const isDup = isDuplicateExpense(newExp);
                 if (isDup) {
-                    console.log(`🔄 Duplicate expense detected: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
+                    skippedTransactions.push({ date: newExp.date, description: newExp.description, amount: `$${newExp.amount.toFixed(2)}`, reason: 'Duplicate expense' });
+                    console.log(`🔄 Duplicate: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
                 }
                 return !isDup;
             });
 
             // Print detailed summary
+            const totalRows = dataLines.length;
+            const totalSkipped = totalRows - skipReasons.processed;
             console.log(`\n📊 CSV PARSING SUMMARY:`);
-            console.log(`   Total rows in CSV: ${lines.length - 1}`);
-            console.log(`   ✅ Successfully processed: ${skipReasons.processed}`);
-            console.log(`      - Expenses: ${expensesToImport.length}`);
-            console.log(`      - Income: ${incomeToImport.length}`);
+            console.log(`   Total rows: ${totalRows}`);
+            console.log(`   ✅ Processed: ${skipReasons.processed} (${expensesToImport.length} expenses + ${incomeToImport.length} income)`);
             console.log(`   🔄 Duplicates removed: ${expensesToImport.length - dedupedExpenses.length}`);
-            console.log(`   ⏭️ Skipped rows: ${lines.length - 1 - skipReasons.processed}`);
-            console.log(`      - Empty lines: ${skipReasons.empty}`);
-            console.log(`      - Missing data: ${skipReasons.missingData}`);
-            console.log(`      - Pending: ${skipReasons.pending}`);
-            console.log(`      - Payment type: ${skipReasons.paymentType}`);
-            console.log(`      - Payment category: ${skipReasons.paymentCategory}`);
-            console.log(`      - Payment description: ${skipReasons.paymentDescription}`);
-            console.log(`      - Zero amount: ${skipReasons.zeroAmount}`);
-            console.log(`   📦 Final import count: ${dedupedExpenses.length} expenses + ${incomeToImport.length} income\n`);
+            console.log(`   ⏭️ Skipped: ${totalSkipped} (${skipReasons.empty} empty, ${skipReasons.missingData} missing data, ${skipReasons.filtered} filtered, ${skipReasons.zeroAmount} zero)`);
+            console.log(`   📦 Final: ${dedupedExpenses.length} expenses + ${incomeToImport.length} income\n`);
 
-            // Return both expenses and income
             return {
                 expenses: dedupedExpenses,
-                income: incomeToImport
+                income: incomeToImport,
+                skipped: skippedTransactions
             };
         }
 
@@ -3495,47 +3555,129 @@
 
         function displayCSVPreview() {
             const previewDiv = document.getElementById('csvPreview');
-            const previewBody = document.getElementById('csvPreviewBody');
             
-            previewBody.innerHTML = '';
-            
-            if (csvPreviewData.length === 0) {
-                alert('No new expenses found. All transactions may already exist in your tracker.');
+            if (csvPreviewData.length === 0 && csvIncomePreviewData.length === 0) {
+                alert('No new transactions found. All transactions may already exist in your tracker, or the CSV had no valid data.');
+                previewDiv.style.display = 'none';
+                document.getElementById('csvUploadArea').style.display = 'block';
                 return;
             }
 
-            // Show first 10 rows in preview
-            csvPreviewData.slice(0, 10).forEach(expense => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${expense.date}</td>
-                    <td>${expense.description}</td>
-                    <td>${expense.category}</td>
-                    <td>$${expense.amount.toFixed(2)}</td>
-                    <td>${expense.payment_method}</td>
-                `;
-                previewBody.appendChild(row);
-            });
+            let html = '';
+
+            // ========== SUMMARY BANNER ==========
+            html += `<div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">`;
+            if (csvPreviewData.length > 0) {
+                html += `<div style="flex: 1; min-width: 150px; padding: 16px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; text-align: center;">
+                    <div style="font-size: 1.8em; font-weight: 700; color: #ef4444;">📤 ${csvPreviewData.length}</div>
+                    <div style="color: #fca5a5; font-size: 0.85em; margin-top: 4px;">Expense${csvPreviewData.length !== 1 ? 's' : ''}</div>
+                </div>`;
+            }
+            if (csvIncomePreviewData.length > 0) {
+                html += `<div style="flex: 1; min-width: 150px; padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; text-align: center;">
+                    <div style="font-size: 1.8em; font-weight: 700; color: #10b981;">📥 ${csvIncomePreviewData.length}</div>
+                    <div style="color: #6ee7b7; font-size: 0.85em; margin-top: 4px;">Income</div>
+                </div>`;
+            }
+            if (csvSkippedData.length > 0) {
+                html += `<div style="flex: 1; min-width: 150px; padding: 16px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; text-align: center;">
+                    <div style="font-size: 1.8em; font-weight: 700; color: #f59e0b;">⏭️ ${csvSkippedData.length}</div>
+                    <div style="color: #fcd34d; font-size: 0.85em; margin-top: 4px;">Skipped</div>
+                </div>`;
+            }
+            html += `</div>`;
+
+            // ========== EXPENSES TABLE ==========
+            if (csvPreviewData.length > 0) {
+                const expenseTotal = csvPreviewData.reduce((s, e) => s + e.amount, 0);
+                html += `<div style="margin-bottom: 24px;">
+                    <h4 style="color: #ef4444; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        📤 Expenses <span style="font-weight: 400; color: #94a3b8; font-size: 0.85em;">(${csvPreviewData.length} entries · $${expenseTotal.toFixed(2)} total)</span>
+                    </h4>
+                    <div style="overflow-x: auto; background: rgba(239, 68, 68, 0.03); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.15);">
+                        <table class="expense-table" style="font-size: 0.85em;">
+                            <thead><tr>
+                                <th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Payment</th>
+                            </tr></thead>
+                            <tbody>`;
+                csvPreviewData.forEach(exp => {
+                    html += `<tr>
+                        <td>${exp.date}</td>
+                        <td>${exp.description}</td>
+                        <td>${exp.category}</td>
+                        <td style="color: #ef4444; font-weight: 600;">-$${exp.amount.toFixed(2)}</td>
+                        <td>${exp.payment_method}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div></div>`;
+            }
+
+            // ========== INCOME TABLE ==========
+            if (csvIncomePreviewData.length > 0) {
+                const incomeTotal = csvIncomePreviewData.reduce((s, e) => s + e.amount, 0);
+                html += `<div style="margin-bottom: 24px;">
+                    <h4 style="color: #10b981; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        📥 Income <span style="font-weight: 400; color: #94a3b8; font-size: 0.85em;">(${csvIncomePreviewData.length} entries · $${incomeTotal.toFixed(2)} total)</span>
+                    </h4>
+                    <div style="overflow-x: auto; background: rgba(16, 185, 129, 0.03); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.15);">
+                        <table class="expense-table" style="font-size: 0.85em;">
+                            <thead><tr>
+                                <th>Date</th><th>Description</th><th>Source</th><th>Amount</th>
+                            </tr></thead>
+                            <tbody>`;
+                csvIncomePreviewData.forEach(inc => {
+                    html += `<tr>
+                        <td>${inc.date}</td>
+                        <td>${inc.description}</td>
+                        <td>${inc.source}</td>
+                        <td style="color: #10b981; font-weight: 600;">+$${inc.amount.toFixed(2)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div></div>`;
+            }
+
+            // ========== SKIPPED TABLE (collapsible) ==========
+            if (csvSkippedData.length > 0) {
+                html += `<div style="margin-bottom: 24px;">
+                    <h4 style="color: #f59e0b; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px;"
+                        onclick="const t=document.getElementById('skippedTableCSV'); const a=document.getElementById('skippedArrow'); if(t.style.display==='none'){t.style.display='block';a.textContent='▼';}else{t.style.display='none';a.textContent='▶';}">
+                        <span id="skippedArrow">▶</span> ⏭️ Skipped <span style="font-weight: 400; color: #94a3b8; font-size: 0.85em;">(${csvSkippedData.length} entries — click to expand)</span>
+                    </h4>
+                    <div id="skippedTableCSV" style="display: none; overflow-x: auto; background: rgba(245, 158, 11, 0.03); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.15);">
+                        <table class="expense-table" style="font-size: 0.85em;">
+                            <thead><tr>
+                                <th>Date</th><th>Description</th><th>Amount</th><th>Reason</th>
+                            </tr></thead>
+                            <tbody>`;
+                csvSkippedData.forEach(s => {
+                    html += `<tr style="opacity: 0.7;">
+                        <td>${s.date || '-'}</td>
+                        <td>${s.description || '-'}</td>
+                        <td>${s.amount || '-'}</td>
+                        <td style="color: #f59e0b; font-style: italic;">${s.reason}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div></div>`;
+            }
+
+            // Replace preview content
+            previewDiv.innerHTML = `
+                <h3 style="margin-bottom: 16px;">Preview Imports</h3>
+                ${html}
+                <div style="margin-top: 20px; display: flex; gap: 12px;">
+                    <button type="button" class="btn btn-primary" onclick="importCSVExpenses()" id="importCSVBtn">Import All (${csvPreviewData.length} expenses + ${csvIncomePreviewData.length} income)</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearCSVPreview()">Cancel</button>
+                </div>
+            `;
 
             previewDiv.style.display = 'block';
             document.getElementById('csvUploadArea').style.display = 'none';
-            
-            let infoText = `Ready to import ${csvPreviewData.length} expense${csvPreviewData.length !== 1 ? 's' : ''}`;
-            if (csvPreviewData.length > 10) {
-                infoText += ` (showing first 10)`;
-            }
-            
-            const infoMsg = document.createElement('div');
-            infoMsg.style.marginTop = '12px';
-            infoMsg.style.color = 'var(--success)';
-            infoMsg.style.fontSize = '14px';
-            infoMsg.style.fontWeight = '600';
-            infoMsg.innerHTML = `✓ ${infoText}`;
-            previewDiv.appendChild(infoMsg);
         }
 
         function clearCSVPreview() {
             csvPreviewData = [];
+            csvIncomePreviewData = [];
+            csvSkippedData = [];
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').style.display = 'none';
             document.getElementById('csvUploadArea').style.display = 'block';
