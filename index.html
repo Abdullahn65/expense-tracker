@@ -3109,13 +3109,21 @@
                     continue;
                 }
                 
-                // Skip if description contains "payment to" or "payment received"
+                // Skip if description contains payment or transfer keywords
                 if (description.toLowerCase().includes('payment to') || 
                     description.toLowerCase().includes('payment received') ||
                     description.toLowerCase().includes('thank you for your pmt') || 
-                    description.toLowerCase().includes('transfer to')) {
+                    description.toLowerCase().includes('transfer to') ||
+                    description.toLowerCase().includes('transfer from')) {
                     skipReasons.paymentDescription++;
                     console.log(`⏭️ Row ${i}: Payment/transfer in description - ${description}`);
+                    continue;
+                }
+
+                // Skip rows with "Transfers" category (internal bank transfers, not real expenses/income)
+                if (csvCategory && csvCategory.toLowerCase().trim() === 'transfers') {
+                    skipReasons.paymentCategory++;
+                    console.log(`⏭️ Row ${i}: Transfers category - ${description}`);
                     continue;
                 }
 
@@ -3374,31 +3382,61 @@
             
             previewBody.innerHTML = '';
             
-            if (csvPreviewData.length === 0) {
-                alert('No new expenses found. All transactions may already exist in your tracker.');
+            if (csvPreviewData.length === 0 && csvIncomePreviewData.length === 0) {
+                alert('No new transactions found. All transactions may already exist in your tracker.');
                 return;
             }
 
-            // Show first 10 rows in preview
-            csvPreviewData.slice(0, 10).forEach(expense => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${expense.date}</td>
-                    <td>${expense.description}</td>
-                    <td>${expense.category}</td>
-                    <td>$${expense.amount.toFixed(2)}</td>
-                    <td>${expense.payment_method}</td>
-                `;
-                previewBody.appendChild(row);
-            });
+            // Show expenses
+            if (csvPreviewData.length > 0) {
+                const expenseHeader = document.createElement('tr');
+                expenseHeader.innerHTML = `<td colspan="5" style="background: rgba(255,92,92,0.1); color: var(--danger); font-weight: 700; text-align: center; padding: 10px;">💸 Expenses (${csvPreviewData.length})</td>`;
+                previewBody.appendChild(expenseHeader);
+                
+                csvPreviewData.slice(0, 10).forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${expense.date}</td>
+                        <td>${expense.description}</td>
+                        <td>${expense.category}</td>
+                        <td style="color: var(--danger);">-$${expense.amount.toFixed(2)}</td>
+                        <td>${expense.payment_method}</td>
+                    `;
+                    previewBody.appendChild(row);
+                });
+            }
+            
+            // Show income
+            if (csvIncomePreviewData.length > 0) {
+                const incomeHeader = document.createElement('tr');
+                incomeHeader.innerHTML = `<td colspan="5" style="background: rgba(53,230,166,0.1); color: var(--success); font-weight: 700; text-align: center; padding: 10px;">💰 Income (${csvIncomePreviewData.length})</td>`;
+                previewBody.appendChild(incomeHeader);
+                
+                csvIncomePreviewData.slice(0, 10).forEach(inc => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${inc.date}</td>
+                        <td>${inc.description}</td>
+                        <td>${inc.source || 'Salary'}</td>
+                        <td style="color: var(--success);">+$${inc.amount.toFixed(2)}</td>
+                        <td>-</td>
+                    `;
+                    previewBody.appendChild(row);
+                });
+            }
 
             previewDiv.style.display = 'block';
             document.getElementById('csvUploadArea').style.display = 'none';
             
-            let infoText = `Ready to import ${csvPreviewData.length} expense${csvPreviewData.length !== 1 ? 's' : ''}`;
-            if (csvPreviewData.length > 10) {
-                infoText += ` (showing first 10)`;
+            // Build info text showing both expenses and income
+            let parts = [];
+            if (csvPreviewData.length > 0) {
+                parts.push(`${csvPreviewData.length} expense${csvPreviewData.length !== 1 ? 's' : ''}`);
             }
+            if (csvIncomePreviewData.length > 0) {
+                parts.push(`${csvIncomePreviewData.length} income entr${csvIncomePreviewData.length !== 1 ? 'ies' : 'y'}`);
+            }
+            let infoText = `Ready to import ${parts.join(' and ')}`;
             
             const infoMsg = document.createElement('div');
             infoMsg.style.marginTop = '12px';
