@@ -3011,18 +3011,18 @@
 
                 // Get date - try multiple date column names
                 let dateStr = '';
-                if (columnMap.postDate !== -1) {
+                if (columnMap.postDate !== undefined && columnMap.postDate !== -1) {
                     dateStr = values[columnMap.postDate];
-                } else if (columnMap.transactionDate !== -1) {
+                } else if (columnMap.transactionDate !== undefined && columnMap.transactionDate !== -1) {
                     dateStr = values[columnMap.transactionDate];
-                } else if (columnMap.date !== -1) {
+                } else if (columnMap.date !== undefined && columnMap.date !== -1) {
                     dateStr = values[columnMap.date];
                 }
 
-                const description = columnMap.description !== -1 ? values[columnMap.description] : '';
-                const type = columnMap.type !== -1 ? values[columnMap.type] : '';
-                const amountStr = columnMap.amount !== -1 ? values[columnMap.amount] : '';
-                const csvCategory = columnMap.category !== -1 ? values[columnMap.category] : '';
+                const description = (columnMap.description !== undefined && columnMap.description !== -1) ? values[columnMap.description] : '';
+                const type = (columnMap.type !== undefined && columnMap.type !== -1) ? values[columnMap.type] : '';
+                const amountStr = (columnMap.amount !== undefined && columnMap.amount !== -1) ? values[columnMap.amount] : '';
+                const csvCategory = (columnMap.category !== undefined && columnMap.category !== -1) ? values[columnMap.category] : '';
 
                 if (!dateStr || !description || !amountStr) {
                     skipReasons.missingData++;
