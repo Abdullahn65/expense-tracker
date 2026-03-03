@@ -2962,28 +2962,70 @@
                 return result;
             }
 
-            const lines = csvText.trim().split('\n');
+            const lines = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
             if (lines.length < 2) {
                 throw new Error('CSV file is empty or has only headers');
             }
 
-            const headers = parseCSVLine(lines[0]);
             const template = csvTemplates[selectedTemplateId];
             
             if (!template) {
                 throw new Error('No template selected');
             }
             
-            // Find column indices
+            console.log('📋 Using template:', template.name);
+            
+            // Smart header detection: find the row that best matches the template's column names
+            // Some bank CSVs (like PNC) have extra metadata rows before the actual headers
+            let headerRowIndex = 0;
+            let headers = parseCSVLine(lines[0]);
+            const templateColumnNames = Object.values(template.columns).map(c => c.toLowerCase().trim());
+            
+            let bestMatchCount = 0;
+            for (let r = 0; r < Math.min(10, lines.length); r++) {
+                const candidateHeaders = parseCSVLine(lines[r]);
+                const matchCount = templateColumnNames.filter(colName =>
+                    candidateHeaders.some(h => {
+                        const hLower = h.toLowerCase().trim();
+                        return hLower === colName || hLower.includes(colName) || colName.includes(hLower);
+                    })
+                ).length;
+                
+                if (matchCount > bestMatchCount) {
+                    bestMatchCount = matchCount;
+                    headerRowIndex = r;
+                    headers = candidateHeaders;
+                }
+            }
+            
+            if (headerRowIndex > 0) {
+                console.log(`📋 Skipped ${headerRowIndex} metadata row(s) before headers`);
+            }
+            console.log(`📋 CSV Headers (row ${headerRowIndex}):`, headers);
+            
+            // Find column indices - exact match first, then partial match fallback
             const columnMap = {};
             for (const [field, columnName] of Object.entries(template.columns)) {
-                const index = headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
-                if (index === -1 && !['category', 'memo', 'checkSlip', 'balance', 'details'].includes(field)) {
-                    // Optional fields
-                    console.warn(`Column "${columnName}" not found in CSV`);
+                // Try exact match (case-insensitive)
+                let index = headers.findIndex(h => h.toLowerCase().trim() === columnName.toLowerCase().trim());
+                
+                // Fallback: try partial match (one contains the other)
+                if (index === -1) {
+                    index = headers.findIndex(h => 
+                        h.toLowerCase().trim().includes(columnName.toLowerCase().trim()) || 
+                        columnName.toLowerCase().trim().includes(h.toLowerCase().trim())
+                    );
+                }
+                
+                if (index !== -1) {
+                    console.log(`✅ Mapped "${field}" → CSV column "${headers[index]}" (index ${index})`);
+                } else if (!['category', 'memo', 'checkSlip', 'balance', 'details'].includes(field)) {
+                    console.warn(`⚠️ Column "${columnName}" (field: ${field}) not found in CSV headers`);
                 }
                 columnMap[field] = index;
             }
+            
+            console.log('📊 Final column map:', JSON.stringify(columnMap));
 
             const expensesToImport = [];
             const incomeToImport = [];
@@ -2998,9 +3040,15 @@
                 processed: 0
             };
             
-            console.log(`📊 Starting to parse ${lines.length - 1} CSV rows...`);
+            const dataStartRow = headerRowIndex + 1;
+            console.log(`📊 Starting to parse ${lines.length - dataStartRow} CSV data rows (starting at line ${dataStartRow})...`);
+            // Debug: log first 3 data rows to see CSV structure
+            for (let d = dataStartRow; d < Math.min(dataStartRow + 3, lines.length); d++) {
+                console.log(`📄 Raw line ${d}: "${lines[d]}"`);
+                console.log(`📄 Parsed line ${d}:`, parseCSVLine(lines[d]));
+            }
             
-            for (let i = 1; i < lines.length; i++) {
+            for (let i = dataStartRow; i < lines.length; i++) {
                 const values = parseCSVLine(lines[i]);
                 
                 if (values.length < 2 || values.every(v => !v)) {
@@ -3149,13 +3197,14 @@
             });
 
             // Print detailed summary
+            const totalDataRows = lines.length - dataStartRow;
             console.log(`\n📊 CSV PARSING SUMMARY:`);
-            console.log(`   Total rows in CSV: ${lines.length - 1}`);
+            console.log(`   Total data rows in CSV: ${totalDataRows}`);
             console.log(`   ✅ Successfully processed: ${skipReasons.processed}`);
             console.log(`      - Expenses: ${expensesToImport.length}`);
             console.log(`      - Income: ${incomeToImport.length}`);
             console.log(`   🔄 Duplicates removed: ${expensesToImport.length - dedupedExpenses.length}`);
-            console.log(`   ⏭️ Skipped rows: ${lines.length - 1 - skipReasons.processed}`);
+            console.log(`   ⏭️ Skipped rows: ${totalDataRows - skipReasons.processed}`);
             console.log(`      - Empty lines: ${skipReasons.empty}`);
             console.log(`      - Missing data: ${skipReasons.missingData}`);
             console.log(`      - Pending: ${skipReasons.pending}`);
