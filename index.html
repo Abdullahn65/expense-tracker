@@ -1618,7 +1618,10 @@
                     <button type="submit" class="btn btn-primary">Add Income</button>
                 </form>
 
-                <h3 style="margin-top: 40px; margin-bottom: 20px;">Income History</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">Income History</h3>
+                    <button id="aiCategorizeIncomeBtn" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em;" onclick="aiCategorizeAllIncome()">✨ AI Categorize</button>
+                </div>
                 <div id="incomeList"></div>
             </div>
 
@@ -3314,6 +3317,172 @@
             } catch (error) {
                 console.error('Error in AI categorization:', error);
                 return null;
+            }
+        }
+
+        // ============================================
+        // AI BULK CATEGORIZE (Expenses & Income)
+        // ============================================
+
+        async function aiCategorizeMonthExpenses(monthIndex, month) {
+            if (!OPENAI_API_KEY) {
+                alert('⚠️ OpenAI API key not configured.\n\nGo to Settings or you will be prompted to enter it.');
+                return;
+            }
+
+            const monthExpenses = expenses.filter(exp => {
+                const expDate = parseLocalDate(exp.date);
+                return expDate.getFullYear() === currentYear && expDate.getMonth() === monthIndex;
+            });
+
+            if (monthExpenses.length === 0) {
+                alert('No expenses to categorize in this month.');
+                return;
+            }
+
+            const btn = document.getElementById(`aiCategorizeBtn_${month}`);
+            const originalText = btn.textContent;
+            btn.disabled = true;
+
+            let updated = 0;
+            let failed = 0;
+
+            try {
+                for (let i = 0; i < monthExpenses.length; i++) {
+                    const exp = monthExpenses[i];
+                    btn.textContent = `⏳ ${i + 1}/${monthExpenses.length}...`;
+
+                    const newCategory = await suggestCategoryAI(exp.description, exp.category, exp.amount);
+
+                    if (newCategory && newCategory !== exp.category) {
+                        // Update in Supabase
+                        const { error } = await supabaseClient
+                            .from('expenses')
+                            .update({ category: newCategory })
+                            .eq('id', exp.id);
+
+                        if (!error) {
+                            // Track category learning
+                            saveCategoryLearning(exp.vendor, exp.description, newCategory, exp.category);
+                            // Update local data
+                            const idx = expenses.findIndex(e => e.id === exp.id);
+                            if (idx !== -1) expenses[idx].category = newCategory;
+                            updated++;
+                            console.log(`✅ ${exp.description}: ${exp.category} → ${newCategory}`);
+                        } else {
+                            failed++;
+                            console.error(`❌ Failed to update ${exp.description}:`, error);
+                        }
+                    }
+                }
+
+                // Re-render the month
+                renderMonth(month, monthIndex);
+                renderAllMonths();
+                await renderInsights();
+
+                if (updated > 0 || failed > 0) {
+                    showSuccess(`✨ AI Categorize: ${updated} updated, ${monthExpenses.length - updated - failed} unchanged${failed > 0 ? `, ${failed} failed` : ''}`);
+                } else {
+                    showSuccess('✨ All expenses already have the best categories!');
+                }
+            } catch (error) {
+                console.error('AI categorization error:', error);
+                alert('Error during AI categorization: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function aiCategorizeAllIncome() {
+            if (!OPENAI_API_KEY) {
+                alert('⚠️ OpenAI API key not configured.\n\nGo to Settings or you will be prompted to enter it.');
+                return;
+            }
+
+            if (income.length === 0) {
+                alert('No income entries to categorize.');
+                return;
+            }
+
+            const btn = document.getElementById('aiCategorizeIncomeBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+
+            const sourceList = ['Salary', 'Zelle', 'Freelance', 'Business', 'Investments', 'Dividends', 'Interest', 'Bonus', 'Gift', 'Refund', 'Other'];
+
+            let updated = 0;
+            let failed = 0;
+
+            try {
+                for (let i = 0; i < income.length; i++) {
+                    const inc = income[i];
+                    btn.textContent = `⏳ ${i + 1}/${income.length}...`;
+
+                    try {
+                        const prompt = `Categorize this income transaction into ONE of: ${sourceList.join(', ')}.\n\nDescription: "${inc.description}"\nAmount: $${inc.amount}\nCurrent source: ${inc.source}\n\nReply with ONLY the source category name.`;
+
+                        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${OPENAI_API_KEY}`
+                            },
+                            body: JSON.stringify({
+                                model: 'gpt-3.5-turbo',
+                                messages: [{ role: 'user', content: prompt }],
+                                temperature: 0.3,
+                                max_tokens: 20
+                            })
+                        });
+
+                        if (!response.ok) {
+                            failed++;
+                            continue;
+                        }
+
+                        const data = await response.json();
+                        const suggestedSource = data.choices[0].message.content.trim();
+
+                        if (sourceList.includes(suggestedSource) && suggestedSource !== inc.source) {
+                            // Update in Supabase
+                            const { error } = await supabaseClient
+                                .from('income')
+                                .update({ source: suggestedSource })
+                                .eq('id', inc.id);
+
+                            if (!error) {
+                                console.log(`✅ Income "${inc.description}": ${inc.source} → ${suggestedSource}`);
+                                inc.source = suggestedSource;
+                                updated++;
+                            } else {
+                                failed++;
+                                console.error(`❌ Failed to update income "${inc.description}":`, error);
+                            }
+                        }
+                    } catch (err) {
+                        failed++;
+                        console.error(`Error categorizing income "${inc.description}":`, err);
+                    }
+                }
+
+                // Re-render
+                renderIncomeList();
+                renderAllMonths();
+                await renderInsights();
+
+                if (updated > 0 || failed > 0) {
+                    showSuccess(`✨ AI Categorize: ${updated} updated, ${income.length - updated - failed} unchanged${failed > 0 ? `, ${failed} failed` : ''}`);
+                } else {
+                    showSuccess('✨ All income entries already have the best source categories!');
+                }
+            } catch (error) {
+                console.error('AI income categorization error:', error);
+                alert('Error during AI categorization: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         }
 
@@ -6226,13 +6395,15 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            // Header + delete all button
+            // Header + delete all button + AI categorize button
             const deleteBtnDisabled = monthExpenses.length === 0 ? 'disabled' : '';
-            const deleteBtnHTML = `<button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.9em; margin-left: 8px;" onclick="deleteAllExpensesForMonth(${monthIndex})" ${deleteBtnDisabled}>Delete All</button>`;
+            const aiBtnDisabled = monthExpenses.length === 0 ? 'disabled' : '';
+            const deleteBtnHTML = `<button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.9em;" onclick="deleteAllExpensesForMonth(${monthIndex})" ${deleteBtnDisabled}>Delete All</button>`;
+            const aiCategorizeBtnHTML = `<button id="aiCategorizeBtn_${month}" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em;" onclick="aiCategorizeMonthExpenses(${monthIndex}, '${month}')" ${aiBtnDisabled}>✨ AI Categorize</button>`;
 
             let html = `<div style="display:flex; justify-content: space-between; align-items: center;">
                             <h2 style="margin-bottom: 20px;">${monthNames[monthIndex]} ${currentYear}</h2>
-                            <div style="display:flex; gap: 8px; align-items: center;">${deleteBtnHTML}</div>
+                            <div style="display:flex; gap: 8px; align-items: center;">${aiCategorizeBtnHTML}${deleteBtnHTML}</div>
                         </div>`;
 
             // Add search bar
