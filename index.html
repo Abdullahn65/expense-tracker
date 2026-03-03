@@ -2811,6 +2811,7 @@
         // CSV Import Functions
         let csvPreviewData = [];
         let csvIncomePreviewData = [];
+        let csvSkippedData = [];
         let selectedTemplateId = null;
         let lastImportedExpenseIds = []; // Track expenses from last import for removal
         let csvImportHistory = []; // Track all CSV imports with batch IDs
@@ -2918,6 +2919,7 @@
                     const parsedData = parseCSV(csv);
                     csvPreviewData = parsedData.expenses;
                     csvIncomePreviewData = parsedData.income;
+                    csvSkippedData = parsedData.skipped || [];
                     // Apply AI categorization to expenses only
                     csvPreviewData = await categorizeCSVExpensesWithAI(csvPreviewData);
                     displayCSVPreview();
@@ -3045,6 +3047,7 @@
                 zeroAmount: 0,
                 processed: 0
             };
+            const skippedTransactions = []; // Track skipped rows for display
             
             const dataStartRow = headerRowIndex + 1;
             console.log(`📊 Starting to parse ${lines.length - dataStartRow} CSV data rows (starting at line ${dataStartRow})...`);
@@ -3098,6 +3101,7 @@
                 // Skip PENDING transactions (applies to all)
                 if (type && type.toLowerCase() === 'payment') {
                     skipReasons.paymentType++;
+                    skippedTransactions.push({ description, amount: amountStr, reason: 'Payment type' });
                     console.log(`⏭️ Row ${i}: Payment type - Type: "${type}", Desc: ${description}`);
                     continue;
                 }
@@ -3107,6 +3111,7 @@
                     csvCategory.toLowerCase().includes('credit card payment')
                 )) {
                     skipReasons.paymentCategory++;
+                    skippedTransactions.push({ description, amount: amountStr, reason: 'CC payment category' });
                     console.log(`⏭️ Row ${i}: CC payment category - Category: "${csvCategory}", Desc: ${description}`);
                     continue;
                 }
@@ -3117,6 +3122,7 @@
                     description.toLowerCase().includes('payment received')
                 )) {
                     skipReasons.paymentDescription++;
+                    skippedTransactions.push({ description, amount: amountStr, reason: 'CC payment' });
                     console.log(`⏭️ Row ${i}: CC payment in description - ${description}`);
                     continue;
                 }
@@ -3127,6 +3133,7 @@
                     (description.toLowerCase().includes('online transfer from') && description.toLowerCase().includes('xxxxx'))
                 )) {
                     skipReasons.paymentDescription++;
+                    skippedTransactions.push({ description, amount: amountStr, reason: 'Internal transfer' });
                     console.log(`⏭️ Row ${i}: Internal bank transfer - ${description}`);
                     continue;
                 }
@@ -3235,7 +3242,8 @@
             // Return both expenses and income
             return {
                 expenses: dedupedExpenses,
-                income: incomeToImport
+                income: incomeToImport,
+                skipped: skippedTransactions
             };
         }
 
@@ -3429,6 +3437,28 @@
                 });
             }
 
+            // Show skipped transactions
+            if (csvSkippedData.length > 0) {
+                const skippedHeader = document.createElement('tr');
+                skippedHeader.innerHTML = `<td colspan="5" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); font-weight: 700; text-align: center; padding: 10px; cursor: pointer;" onclick="this.parentElement.querySelectorAll('.skipped-row').forEach(r => r.style.display = r.style.display === 'none' ? '' : 'none')">⏭️ Skipped (${csvSkippedData.length}) — click to toggle</td>`;
+                previewBody.appendChild(skippedHeader);
+                
+                csvSkippedData.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'skipped-row';
+                    row.style.display = 'none';
+                    row.style.opacity = '0.5';
+                    row.innerHTML = `
+                        <td>-</td>
+                        <td>${item.description}</td>
+                        <td style="color: var(--text-secondary); font-style: italic;">${item.reason}</td>
+                        <td>${item.amount}</td>
+                        <td>-</td>
+                    `;
+                    previewBody.appendChild(row);
+                });
+            }
+
             previewDiv.style.display = 'block';
             document.getElementById('csvUploadArea').style.display = 'none';
             
@@ -3441,6 +3471,9 @@
                 parts.push(`${csvIncomePreviewData.length} income entr${csvIncomePreviewData.length !== 1 ? 'ies' : 'y'}`);
             }
             let infoText = `Ready to import ${parts.join(' and ')}`;
+            if (csvSkippedData.length > 0) {
+                infoText += ` (${csvSkippedData.length} skipped)`;
+            }
             
             const infoMsg = document.createElement('div');
             infoMsg.style.marginTop = '12px';
