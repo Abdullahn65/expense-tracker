@@ -3960,8 +3960,12 @@
                 return expDate.getMonth() === monthIndex;
             });
 
-            // Calculate stats
-            const totalSpent = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+            // Calculate stats — separate investments from regular spending
+            const investCats = ['Investment Subscription', 'Investments'];
+            const regularMonthExp = monthExpenses.filter(exp => !investCats.includes(exp.category));
+            const investMonthExp = monthExpenses.filter(exp => investCats.includes(exp.category));
+            const totalSpent = regularMonthExp.reduce((sum, exp) => sum + exp.amount, 0);
+            const totalInvested = investMonthExp.reduce((sum, exp) => sum + exp.amount, 0);
             const categorySpending = {};
             monthExpenses.forEach(exp => {
                 categorySpending[exp.category] = (categorySpending[exp.category] || 0) + exp.amount;
@@ -3977,18 +3981,22 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: ${totalInvested > 0 ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr'}; gap: 16px; margin-bottom: 30px;">
                     <div class="summary-card">
                         <h3>Total Spent</h3>
                         <div class="value" style="color: #fbbf24;">$${totalSpent.toFixed(2)}</div>
                     </div>
+                    ${totalInvested > 0 ? `<div class="summary-card" style="border-color: rgba(139, 92, 246, 0.3);">
+                        <h3 style="color: #a78bfa;">📈 Invested</h3>
+                        <div class="value" style="color: #a78bfa;">$${totalInvested.toFixed(2)}</div>
+                    </div>` : ''}
                     <div class="summary-card">
                         <h3>Transactions</h3>
                         <div class="value">${monthExpenses.length}</div>
                     </div>
                     <div class="summary-card">
                         <h3>Average</h3>
-                        <div class="value">$${monthExpenses.length > 0 ? (totalSpent / monthExpenses.length).toFixed(2) : '0.00'}</div>
+                        <div class="value">$${monthExpenses.length > 0 ? ((totalSpent + totalInvested) / monthExpenses.length).toFixed(2) : '0.00'}</div>
                     </div>
                 </div>
 
@@ -6557,13 +6565,17 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 </div>
             `;
 
-            // Summary cards
-            const totalSpent = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+            // Summary cards — separate Investment Subscription from regular expenses
+            const investmentCategories = ['Investment Subscription', 'Investments'];
+            const regularExpenses = monthExpenses.filter(exp => !investmentCategories.includes(exp.category));
+            const investmentExpenses = monthExpenses.filter(exp => investmentCategories.includes(exp.category));
+            const totalSpent = regularExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+            const totalInvested = investmentExpenses.reduce((sum, exp) => sum + exp.amount, 0);
             const totalIncome = monthIncome.reduce((sum, inc) => sum + inc.amount, 0);
             const categoryTotals = calculateCategoryTotals(monthExpenses);
             const totalBudget = calculateMonthlyBudget();
             const remaining = totalBudget - totalSpent;
-            const netIncome = totalIncome - totalSpent;
+            const netIncome = totalIncome - totalSpent - totalInvested;
 
             html += `
                 <div class="summary-cards">
@@ -6574,6 +6586,10 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     <div class="summary-card">
                         <h3>Total Spent</h3>
                         <div class="value">$${totalSpent.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-card" style="border-color: rgba(139, 92, 246, 0.3);">
+                        <h3 style="color: #a78bfa;">📈 Invested</h3>
+                        <div class="value" style="color: #a78bfa;">$${totalInvested.toFixed(2)}</div>
                     </div>
                     <div class="summary-card">
                         <h3>Net Income</h3>
