@@ -1528,7 +1528,7 @@
                         
                         <div class="form-group">
                             <label for="csvFile">Select CSV File *</label>
-                            <input type="file" id="csvFile" accept=".csv" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;" disabled>
+                            <input type="file" id="csvFile" accept=".csv,.tsv,.txt" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;" disabled>
                         </div>
 
 
@@ -2931,7 +2931,13 @@
         }
 
         function parseCSV(csvText) {
-            // Parse CSV properly handling quoted fields
+            // Auto-detect delimiter: tab vs comma
+            const cleanedText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+            const firstLine = cleanedText.split('\n')[0];
+            const delimiter = firstLine.includes('\t') ? '\t' : ',';
+            console.log(`📋 Detected delimiter: ${delimiter === '\t' ? 'TAB' : 'COMMA'}`);
+            
+            // Parse CSV/TSV properly handling quoted fields
             function parseCSVLine(line) {
                 const result = [];
                 let current = '';
@@ -2950,7 +2956,7 @@
                             // Toggle quote state
                             insideQuotes = !insideQuotes;
                         }
-                    } else if (char === ',' && !insideQuotes) {
+                    } else if (char === delimiter && !insideQuotes) {
                         result.push(current.trim());
                         current = '';
                     } else {
@@ -2962,7 +2968,7 @@
                 return result;
             }
 
-            const lines = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
+            const lines = cleanedText.split('\n');
             if (lines.length < 2) {
                 throw new Error('CSV file is empty or has only headers');
             }
