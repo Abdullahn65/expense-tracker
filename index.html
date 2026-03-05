@@ -1152,15 +1152,6 @@
                             <label for="editPaymentMethod">Payment Method *</label>
                             <select id="editPaymentMethod" required>
                                 <option value="">Select Method</option>
-                                <option value="Chase Debit">Chase Debit</option>
-                                <option value="Chase Credit">Chase Credit</option>
-                                <option value="PNC Debit">PNC Debit</option>
-                                <option value="PNC Credit">PNC Credit</option>
-                                <option value="Cash">Cash</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="PayPal">PayPal</option>
-                                <option value="Zelle">Zelle</option>
-                                <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1224,12 +1215,6 @@
                             <input type="text" id="templateDescription" placeholder="Description (optional)" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
                             <select id="templatePaymentMethod" style="padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
                                 <option value="">Payment Method</option>
-                                <option value="Cash">Cash</option>
-                                <option value="Chase Debit">Chase Debit</option>
-                                <option value="Chase Credit">Chase Credit</option>
-                                <option value="Apple Card">Apple Card</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="Other">Other</option>
                             </select>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <button class="btn btn-primary" onclick="saveNewTemplate()">Create</button>
@@ -1300,12 +1285,6 @@
                     <div>
                         <label style="color: #cbd5e1; font-size: 0.9em; display: block; margin-bottom: 8px;">Payment Method</label>
                         <select id="editTemplatePaymentMethod" style="width: 100%; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-primary);">
-                            <option value="Cash">Cash</option>
-                            <option value="Chase Debit">Chase Debit</option>
-                            <option value="Chase Credit">Chase Credit</option>
-                            <option value="Apple Card">Apple Card</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Other">Other</option>
                         </select>
                     </div>
                 </div>
@@ -1325,6 +1304,7 @@
             <button class="nav-tab" data-tab="income">Income</button>
             <button class="nav-tab" data-tab="budget">Budget</button>
             <button class="nav-tab" data-tab="recurring">Recurring</button>
+            <button class="nav-tab" data-tab="settings">⚙️ Settings</button>
             <div class="month-dropdown-container">
                 <label for="yearSelector" style="color: #cbd5e1; font-size: 0.85em; margin: 0; text-transform: uppercase; letter-spacing: 0.6px;">Year:</label>
                 <select id="yearSelector" class="month-dropdown" style="min-width: 90px;">
@@ -1470,15 +1450,6 @@
                             <label for="paymentMethod">Payment Method *</label>
                             <select id="paymentMethod" required>
                                 <option value="">Select Method</option>
-                                <option value="Chase Debit">Chase Debit</option>
-                                <option value="Chase Credit">Chase Credit</option>
-                                <option value="PNC Debit">PNC Debit</option>
-                                <option value="PNC Credit">PNC Credit</option>
-                                <option value="Cash">Cash</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="PayPal">PayPal</option>
-                                <option value="Zelle">Zelle</option>
-                                <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1513,10 +1484,6 @@
                             <label for="csvTemplate">Select Bank Template *</label>
                             <select id="csvTemplate" required onchange="changeCSVTemplate()">
                                 <option value="">-- Select Template --</option>
-                                <option value="chase_freedom_cc">Chase Freedom Credit Card</option>
-                                <option value="chase_debit">Chase Debit Card</option>
-                                <option value="pnc_debit">PNC Debit Card</option>
-                                <option value="pnc_credit">PNC Cash Rewards Credit Card</option>
                             </select>
                         </div>
                     </div>
@@ -1783,14 +1750,6 @@
                                 <label for="recurringPaymentMethod">Payment Method *</label>
                                 <select id="recurringPaymentMethod" required>
                                     <option value="">Select Method</option>
-                                    <option value="Chase Debit">Chase Debit</option>
-                                    <option value="Chase Credit">Chase Credit</option>
-                                    <option value="PNC Debit">PNC Debit</option>
-                                    <option value="PNC Credit">PNC Credit</option>
-                                    <option value="Cash">Cash</option>
-                                    <option value="Bank Transfer">Bank Transfer</option>
-                                    <option value="PayPal">PayPal</option>
-                                    <option value="Other">Other</option>
                                 </select>
                             </div>
                             
@@ -1810,6 +1769,57 @@
                     <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column;">
                         <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Your Subscriptions</h3>
                         <div id="recurringList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div class="tab-content" id="settings">
+                <h2 style="margin-bottom: 24px;">⚙️ Settings</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <!-- Payment Methods Section -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">💳 Payment Methods</h3>
+                        <p style="color: var(--neutral-500); font-size: 13px; margin-bottom: 16px;">
+                            Add your cards and payment methods. These appear in all payment dropdowns throughout the app.
+                        </p>
+                        
+                        <!-- Add new payment method -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                            <input type="text" id="newPaymentMethodInput" placeholder="e.g., Chase Debit, PNC Credit" 
+                                   style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; font-size: 14px;"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault(); addPaymentMethodFromSettings();}">
+                            <button onclick="addPaymentMethodFromSettings()" class="btn btn-primary" style="white-space: nowrap; padding: 10px 18px;">+ Add</button>
+                        </div>
+                        
+                        <!-- Current payment methods list -->
+                        <div id="paymentMethodsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                        
+                        <!-- Reset to defaults -->
+                        <button onclick="resetPaymentMethods()" style="margin-top: 16px; background: none; border: 1px solid rgba(255,255,255,0.1); color: var(--neutral-500); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            🔄 Reset to Defaults
+                        </button>
+                    </div>
+                    
+                    <!-- CSV Import Templates Section -->
+                    <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">📄 CSV Import Templates</h3>
+                        <p style="color: var(--neutral-500); font-size: 13px; margin-bottom: 16px;">
+                            Enable or disable built-in bank templates for CSV import. Only enabled templates appear in the CSV Import dropdown.
+                        </p>
+                        
+                        <!-- Built-in templates with toggles -->
+                        <div id="builtinTemplatesList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;"></div>
+                        
+                        <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 8px;">
+                            <p style="color: var(--neutral-400); font-size: 13px; margin-bottom: 8px; font-weight: 600;">
+                                Custom templates coming soon...
+                            </p>
+                            <p style="color: var(--neutral-500); font-size: 12px;">
+                                You'll be able to define your own CSV column mappings for any bank.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1852,6 +1862,281 @@
         let templateUsageStats = {};
 
         const categories = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Investments', 'Other'];
+
+        // ============================================
+        // USER PAYMENT METHODS (per-user, localStorage)
+        // ============================================
+        const DEFAULT_PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'PayPal', 'Zelle', 'Other'];
+
+        function getUserPaymentMethods() {
+            const stored = localStorage.getItem('user_payment_methods');
+            if (stored) return JSON.parse(stored);
+            return [...DEFAULT_PAYMENT_METHODS];
+        }
+
+        function saveUserPaymentMethods(methods) {
+            localStorage.setItem('user_payment_methods', JSON.stringify(methods));
+        }
+
+        function addPaymentMethod(name) {
+            if (!name || !name.trim()) return false;
+            const methods = getUserPaymentMethods();
+            if (methods.some(m => m.toLowerCase() === name.trim().toLowerCase())) return false;
+            methods.push(name.trim());
+            saveUserPaymentMethods(methods);
+            populateAllPaymentDropdowns();
+            return true;
+        }
+
+        function removePaymentMethod(name) {
+            let methods = getUserPaymentMethods();
+            methods = methods.filter(m => m !== name);
+            saveUserPaymentMethods(methods);
+            populateAllPaymentDropdowns();
+        }
+
+        function populatePaymentDropdown(selectId, includeEmpty = true) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const currentVal = select.value;
+            const methods = getUserPaymentMethods();
+            select.innerHTML = '';
+            if (includeEmpty) {
+                select.innerHTML = '<option value="">Select Method</option>';
+            }
+            methods.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                select.appendChild(opt);
+            });
+            // Restore selection if still valid
+            if (currentVal && methods.includes(currentVal)) {
+                select.value = currentVal;
+            }
+        }
+
+        function populateAllPaymentDropdowns() {
+            populatePaymentDropdown('paymentMethod');
+            populatePaymentDropdown('editPaymentMethod');
+            populatePaymentDropdown('recurringPaymentMethod');
+            populatePaymentDropdown('templatePaymentMethod', true);
+            populatePaymentDropdown('editTemplatePaymentMethod', false);
+        }
+
+        // ============================================
+        // USER CSV TEMPLATES (per-user, localStorage)
+        // ============================================
+        const BUILTIN_CSV_TEMPLATES = {
+            chase_freedom_cc: {
+                name: 'Chase Freedom Credit Card',
+                paymentMethod: 'Chase Credit',
+                cardType: 'credit',
+                columns: {
+                    transactionDate: 'Transaction Date',
+                    postDate: 'Post Date',
+                    description: 'Description',
+                    category: 'Category',
+                    type: 'Type',
+                    amount: 'Amount',
+                    memo: 'Memo'
+                }
+            },
+            chase_debit: {
+                name: 'Chase Debit Card',
+                paymentMethod: 'Chase Debit',
+                cardType: 'debit',
+                columns: {
+                    details: 'Details',
+                    postDate: 'Posting Date',
+                    description: 'Description',
+                    amount: 'Amount',
+                    type: 'Type',
+                    balance: 'Balance',
+                    checkSlip: 'Check or Slip #'
+                }
+            },
+            pnc_debit: {
+                name: 'PNC Debit Card',
+                paymentMethod: 'PNC Debit',
+                cardType: 'debit',
+                columns: {
+                    transactionDate: 'Transaction Date',
+                    description: 'Transaction Description',
+                    amount: 'Amount',
+                    category: 'Category',
+                    balance: 'Balance'
+                }
+            },
+            pnc_credit: {
+                name: 'PNC Cash Rewards Credit Card',
+                paymentMethod: 'PNC Credit',
+                cardType: 'credit',
+                amountSignFlipped: true,
+                columns: {
+                    date: 'Date',
+                    description: 'Description',
+                    category: 'Spending Category',
+                    amount: 'Amount'
+                }
+            }
+        };
+
+        function getUserCSVTemplates() {
+            const stored = localStorage.getItem('user_csv_templates');
+            if (stored) return JSON.parse(stored);
+            return {}; // Empty by default — user adds what they need
+        }
+
+        function saveUserCSVTemplates(templates) {
+            localStorage.setItem('user_csv_templates', JSON.stringify(templates));
+        }
+
+        function getActiveCSVTemplates() {
+            // Merge built-in with user's enabled selections
+            const userEnabled = getUserEnabledCSVTemplates();
+            const result = {};
+            for (const [key, tmpl] of Object.entries(BUILTIN_CSV_TEMPLATES)) {
+                if (userEnabled.includes(key)) {
+                    result[key] = tmpl;
+                }
+            }
+            // Also include any custom user templates
+            const custom = getUserCSVTemplates();
+            for (const [key, tmpl] of Object.entries(custom)) {
+                result[key] = tmpl;
+            }
+            return result;
+        }
+
+        function getUserEnabledCSVTemplates() {
+            const stored = localStorage.getItem('user_enabled_csv_templates');
+            if (stored) return JSON.parse(stored);
+            return []; // None enabled by default
+        }
+
+        function saveUserEnabledCSVTemplates(list) {
+            localStorage.setItem('user_enabled_csv_templates', JSON.stringify(list));
+        }
+
+        function populateCSVTemplateDropdown() {
+            const select = document.getElementById('csvTemplate');
+            if (!select) return;
+            const active = getActiveCSVTemplates();
+            select.innerHTML = '<option value="">-- Select Template --</option>';
+            for (const [key, tmpl] of Object.entries(active)) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = tmpl.name;
+                select.appendChild(opt);
+            }
+            // Update the global csvTemplates to match
+            Object.keys(csvTemplates).forEach(k => delete csvTemplates[k]);
+            Object.assign(csvTemplates, active);
+        }
+
+        // ============================================
+        // SETTINGS UI FUNCTIONS
+        // ============================================
+        function renderSettings() {
+            renderPaymentMethodsList();
+            renderBuiltinTemplatesList();
+        }
+
+        function renderPaymentMethodsList() {
+            const container = document.getElementById('paymentMethodsList');
+            if (!container) return;
+            const methods = getUserPaymentMethods();
+            
+            container.innerHTML = methods.map((method, index) => {
+                const isDefault = DEFAULT_PAYMENT_METHODS.includes(method);
+                return `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                        <span style="font-size: 14px; color: #fff;">
+                            ${isDefault ? '🏷️' : '💳'} ${method}
+                            ${isDefault ? '<span style="color: var(--neutral-500); font-size: 11px; margin-left: 6px;">(default)</span>' : ''}
+                        </span>
+                        <button onclick="removePaymentMethodFromSettings('${method.replace(/'/g, "\\'")}')" 
+                                style="background: none; border: none; color: #EF4444; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;"
+                                onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='none'"
+                                title="Remove ${method}">✕</button>
+                    </div>
+                `;
+            }).join('');
+            
+            if (methods.length === 0) {
+                container.innerHTML = '<p style="color: var(--neutral-500); font-size: 13px; text-align: center; padding: 16px;">No payment methods configured. Add one above or reset to defaults.</p>';
+            }
+        }
+
+        function renderBuiltinTemplatesList() {
+            const container = document.getElementById('builtinTemplatesList');
+            if (!container) return;
+            const enabled = getUserEnabledCSVTemplates();
+            
+            container.innerHTML = Object.entries(BUILTIN_CSV_TEMPLATES).map(([key, tmpl]) => {
+                const isEnabled = enabled.includes(key);
+                return `
+                    <label style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid ${isEnabled ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.06)'}; cursor: pointer; transition: all 0.2s;"
+                           onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                        <input type="checkbox" ${isEnabled ? 'checked' : ''} 
+                               onchange="toggleBuiltinTemplate('${key}', this.checked)"
+                               style="width: 18px; height: 18px; accent-color: #6366F1; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; color: #fff; font-weight: 500;">${tmpl.name}</div>
+                            <div style="font-size: 12px; color: var(--neutral-500); margin-top: 2px;">
+                                Payment: ${tmpl.paymentMethod} · Type: ${tmpl.cardType}
+                            </div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function addPaymentMethodFromSettings() {
+            const input = document.getElementById('newPaymentMethodInput');
+            if (!input) return;
+            const name = input.value.trim();
+            if (!name) return;
+            
+            const success = addPaymentMethod(name);
+            if (success) {
+                input.value = '';
+                renderPaymentMethodsList();
+                showSuccess(`✅ Added "${name}" as a payment method`);
+            } else {
+                showSuccess(`⚠️ "${name}" already exists`);
+            }
+        }
+
+        function removePaymentMethodFromSettings(name) {
+            if (confirm(`Remove "${name}" from your payment methods?`)) {
+                removePaymentMethod(name);
+                renderPaymentMethodsList();
+                showSuccess(`Removed "${name}"`);
+            }
+        }
+
+        function resetPaymentMethods() {
+            if (confirm('Reset payment methods to defaults? This will remove all your custom cards.')) {
+                saveUserPaymentMethods([...DEFAULT_PAYMENT_METHODS]);
+                populateAllPaymentDropdowns();
+                renderPaymentMethodsList();
+                showSuccess('🔄 Payment methods reset to defaults');
+            }
+        }
+
+        function toggleBuiltinTemplate(key, enabled) {
+            let list = getUserEnabledCSVTemplates();
+            if (enabled && !list.includes(key)) {
+                list.push(key);
+            } else if (!enabled) {
+                list = list.filter(k => k !== key);
+            }
+            saveUserEnabledCSVTemplates(list);
+            populateCSVTemplateDropdown();
+            renderBuiltinTemplatesList();
+        }
 
         // 🤖 AI Configuration
         // ⚠️ IMPORTANT: Store your OpenAI API key in an environment variable or backend!
@@ -2294,6 +2579,11 @@
                 console.log('Setting up event listeners...');
                 setupNavigation();
                 setupForm();
+                
+                // Populate per-user payment method dropdowns and CSV template dropdown
+                populateAllPaymentDropdowns();
+                populateCSVTemplateDropdown();
+                
                 setupIncomeForm();
                 console.log('About to call setupRecurringForm()');
                 setupRecurringForm();
@@ -2306,6 +2596,7 @@
                 renderFavoriteTemplates();
                 renderIncomeTemplates();
                 renderCSVImportHistory();
+                renderSettings();
 
                 // Restore user's last viewed page or default to insights (no flash this way)
                 const lastTab = localStorage.getItem('lastViewedTab') || 'insights';
@@ -2666,6 +2957,11 @@
                 // Hide delete button
                 const deleteBtn = document.getElementById('deleteAllMonthBtn');
                 if (deleteBtn) deleteBtn.style.display = 'none';
+                
+                // Refresh settings lists when navigating to settings tab
+                if (tabName === 'settings') {
+                    renderSettings();
+                }
             }
         }
 
@@ -2821,60 +3117,8 @@
         let lastImportedExpenseIds = []; // Track expenses from last import for removal
         let csvImportHistory = []; // Track all CSV imports with batch IDs
 
-        const csvTemplates = {
-            chase_freedom_cc: {
-                name: 'Chase Freedom Credit Card',
-                paymentMethod: 'Chase Credit',
-                cardType: 'credit',
-                columns: {
-                    transactionDate: 'Transaction Date',
-                    postDate: 'Post Date',
-                    description: 'Description',
-                    category: 'Category',
-                    type: 'Type',
-                    amount: 'Amount',
-                    memo: 'Memo'
-                }
-            },
-            chase_debit: {
-                name: 'Chase Debit Card',
-                paymentMethod: 'Chase Debit',
-                cardType: 'debit',
-                columns: {
-                    details: 'Details',
-                    postDate: 'Posting Date',
-                    description: 'Description',
-                    amount: 'Amount',
-                    type: 'Type',
-                    balance: 'Balance',
-                    checkSlip: 'Check or Slip #'
-                }
-            },
-            pnc_debit: {
-                name: 'PNC Debit Card',
-                paymentMethod: 'PNC Debit',
-                cardType: 'debit',
-                columns: {
-                    transactionDate: 'Transaction Date',
-                    description: 'Transaction Description',
-                    amount: 'Amount',
-                    category: 'Category',
-                    balance: 'Balance'
-                }
-            },
-            pnc_credit: {
-                name: 'PNC Cash Rewards Credit Card',
-                paymentMethod: 'PNC Credit',
-                cardType: 'credit',
-                amountSignFlipped: true,
-                columns: {
-                    date: 'Date',
-                    description: 'Description',
-                    category: 'Spending Category',
-                    amount: 'Amount'
-                }
-            }
-        };
+        // CSV templates are populated dynamically from user settings
+        let csvTemplates = {};
 
         function changeCSVTemplate() {
             const templateSelect = document.getElementById('csvTemplate');
