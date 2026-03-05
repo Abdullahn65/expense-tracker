@@ -2012,7 +2012,8 @@
         function getUserEnabledCSVTemplates() {
             const stored = localStorage.getItem('user_enabled_csv_templates');
             if (stored) return JSON.parse(stored);
-            return []; // None enabled by default
+            // All built-in templates enabled by default
+            return Object.keys(BUILTIN_CSV_TEMPLATES);
         }
 
         function saveUserEnabledCSVTemplates(list) {
