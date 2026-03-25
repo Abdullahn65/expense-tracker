@@ -19,16 +19,9 @@
             --success: #35E6A6;
             --hairline: rgba(255,255,255,0.08);
             
-            /* Category Colors */
-            --cat-transport: #3B82F6;
-            --cat-dining: #8B5CF6;
-            --cat-investment: #EC4899;
-            --cat-subscriptions: #06B6D4;
-            --cat-housing: #F59E0B;
-            --cat-entertainment: #EF4444;
-            --cat-healthcare: #10B981;
-            --cat-shopping: #06B6D4;
-            --cat-other: #6366F1;
+            /* Neutral shades (used in Settings and other UI text) */
+            --neutral-400: #94A3B8;
+            --neutral-500: #64748B;
         }
 
         * {
@@ -787,101 +780,13 @@
             color: var(--text-primary);
         }
 
-        .budget-form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .form-group label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-group input {
-            background: rgba(15,18,24,0.85);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 8px;
-            padding: 12px;
-            color: var(--text-primary);
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(55, 224, 255, 0.1);
-        }
-
-        /* Table Styles */
-        .expense-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: rgba(15,18,24,0.85);
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .expense-table thead {
-            background: rgba(15,18,24,0.95);
-            border-bottom: 2px solid rgba(55, 224, 255, 0.2);
-        }
-
-        .expense-table th {
-            padding: 14px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-primary);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .expense-table td {
-            padding: 14px;
-            color: var(--text-secondary);
-            font-size: 13px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-
-        .expense-table tbody tr {
-            transition: background 0.2s ease;
-        }
-
-        .expense-table tbody tr:hover {
-            background: rgba(55, 224, 255, 0.05);
-        }
-
-        .expense-table tbody tr:last-child td {
-            border-bottom: none;
-        }
+        /* Duplicate CSS blocks removed during audit.
+           .budget-form, .form-group, .expense-table, .empty-state
+           are already defined earlier in this stylesheet. */
 
         #incomeList,
         #expenseList {
             width: 100%;
-        }
-
-        .empty-state {
-            padding: 40px 20px;
-            text-align: center;
-            color: var(--text-secondary);
-        }
-
-        .empty-state p:first-child {
-            font-size: 1.2em;
-            font-weight: 600;
         }
 
         .modal {
@@ -1712,9 +1617,16 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- CSV Expenses Tab -->
+                <!-- Data Export Section -->
+                <div style="background: rgba(15,18,24,0.85); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-top: 24px;">
+                    <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">📥 Data Export</h3>
+                    <p style="color: var(--neutral-500); font-size: 13px; margin-bottom: 16px;">
+                        Download all your expense data as a CSV file for backup or external analysis.
+                    </p>
+                    <button onclick="exportToCSV()" class="btn btn-primary export-btn" style="padding: 10px 18px;">📥 Export Expenses to CSV</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1737,6 +1649,8 @@
         }
 
         // Initialize Supabase
+        // ⚠️ SECURITY NOTE: These are public anon keys (safe for client-side use with RLS enabled).
+        // Never expose service_role keys here. Ensure Row Level Security is ON for all tables.
         const SUPABASE_URL = 'https://ctnzoxsqyepaqvvpryip.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0bnpveHNxeWVwYXF2dnByeWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwODcxNzAsImV4cCI6MjA3NjY2MzE3MH0.6RV7EiyxSo5-_OSeWCv_aZ4oj7ORV-Os8LmTogA0Y1s';
         const { createClient } = supabase;
@@ -2202,6 +2116,23 @@
         }
 
         // AI Learning System - Track user corrections
+        const MAX_LEARNING_ENTRIES = 500;
+        const DUPLICATE_CHECK_DAYS = 2;
+        const INCOME_DUPLICATE_CHECK_DAYS = 7;
+
+        // Shared chart color palette (used by monthly & annual charts)
+        const CATEGORY_COLORS = {
+            'Transportation': '#3B82F6',
+            'Dining Out': '#8B5CF6',
+            'Investment': '#EC4899',
+            'Subscriptions': '#06B6D4',
+            'Housing': '#F59E0B',
+            'Entertainment': '#EF4444',
+            'Healthcare': '#10B981',
+            'Shopping': '#06B6D4',
+        };
+        const DEFAULT_CATEGORY_COLOR = '#6366F1';
+
         let categoryLearningData = JSON.parse(localStorage.getItem('category_learning_data') || '[]');
 
         function saveCategoryLearning(vendor, description, correctCategory, originalCategory) {
@@ -2217,9 +2148,9 @@
                 
                 categoryLearningData.push(learningEntry);
                 
-                // Keep only last 500 entries to prevent bloat
-                if (categoryLearningData.length > 500) {
-                    categoryLearningData = categoryLearningData.slice(-500);
+                // Keep only last entries to prevent localStorage bloat
+                if (categoryLearningData.length > MAX_LEARNING_ENTRIES) {
+                    categoryLearningData = categoryLearningData.slice(-MAX_LEARNING_ENTRIES);
                 }
                 
                 localStorage.setItem('category_learning_data', JSON.stringify(categoryLearningData));
@@ -2388,64 +2319,6 @@
             setTimeout(() => successDiv.style.display = 'none', 5000);
         }
 
-        function debugShowIncome() {
-            console.log('=== ALL INCOME ENTRIES ===');
-            income.forEach((inc, idx) => {
-                console.log(`${idx + 1}. ID: ${inc.id} | Date: ${inc.date} | Source: ${inc.source} | Amount: $${inc.amount}`);
-            });
-            console.log(`Total income entries: ${income.length}`);
-            console.log(`Total income amount: $${income.reduce((sum, inc) => sum + inc.amount, 0)}`);
-        }
-
-        async function deleteAllIncomeEntries() {
-            if (!confirm('⚠️ This will DELETE ALL income entries from the database. Are you sure?')) {
-                return;
-            }
-            if (!confirm('🚨 LAST WARNING: This cannot be undone. Delete all income entries?')) {
-                return;
-            }
-
-            try {
-                // Delete all income from database
-                const { error } = await supabaseClient
-                    .from('income')
-                    .delete()
-                    .neq('id', 0); // Delete all rows (neq always true)
-
-                if (error) {
-                    console.error('Error deleting income:', error);
-                    alert('Error: ' + error.message);
-                    return;
-                }
-
-                // Clear local income array
-                income = [];
-                
-                console.log('✅ All income entries deleted from database');
-                
-                // Force reload from database to verify deletion
-                const { data: verifyData, error: verifyError } = await supabaseClient
-                    .from('income')
-                    .select('*');
-                
-                if (verifyError) {
-                    console.error('Error verifying deletion:', verifyError);
-                } else {
-                    console.log('✅ Verified - income table now has', verifyData.length, 'entries');
-                }
-                
-                alert('✅ All income entries have been deleted!');
-                
-                // Refresh views
-                renderIncomeList();
-                await renderInsights();
-                renderAllMonths();
-            } catch (err) {
-                console.error('Exception:', err);
-                alert('Error: ' + err.message);
-            }
-        }
-
         async function initializeApp() {
             try {
                 console.log('🎯 initializeApp() called');
@@ -2490,24 +2363,10 @@
                 // Get and log current user info for debugging
                 const { data: { user } } = await supabaseClient.auth.getUser();
                 if (user) {
-                    console.log('===== IMPORTANT FOR DEBUGGING =====');
-                    console.log('Your User ID:', user.id);
-                    console.log('Your Email:', user.email);
-                    console.log('=====================================');
-
-                    // Automatically fix legacy records without user_id
-                    try {
-                        await autoFixLegacyRecords(user.id);
-                    } catch (err) {
-                        console.error('Error in auto-fix (non-blocking):', err);
-                        // Don't break the app if auto-fix fails
-                    }
+                    console.log('Logged in as:', user.email, '(ID:', user.id, ')');
                 }
 
-                // Fix any existing income entries with missing user_id
-                await fixIncomeUserIds();
-
-                // Reload income after fixing user_ids
+                // Reload income to ensure it's up to date
                 const { data: fixedIncomeData } = await supabaseClient
                     .from('income')
                     .select('*')
@@ -2516,14 +2375,8 @@
                 if (fixedIncomeData) {
                     income = fixedIncomeData;
                     renderIncomeList();
-                    console.log('Reloaded income entries after fix:', income.length);
+                    console.log('Reloaded income entries:', income.length);
                 }
-
-                // Render dashboard monthly charts after all data is loaded
-                setTimeout(() => {
-                    console.log('Rendering monthly charts. Expenses count:', expenses.length, 'Income count:', income.length);
-                    renderDashboardMonthlyCharts();
-                }, 500);
             } catch (err) {
                 console.error('Error in initializeApp:', err);
                 showError('Error initializing app: ' + err.message);
@@ -2690,7 +2543,7 @@
                 }, 100);
             } else if (tabName === 'comparison') {
                 setTimeout(() => {
-                    console.log('Comparison tab clicked. Rendering comparison data.');
+                    console.debug('Comparison tab clicked. Rendering comparison data.');
                     renderComparison();
                 }, 200);
                 // Reset month dropdown when switching away from month tabs
@@ -2703,8 +2556,8 @@
                 if (deleteBtn) deleteBtn.style.display = 'none';
             } else if (tabName === 'insights') {
                 setTimeout(async () => {
-                    console.log('Insights tab clicked. Rendering vendor analytics and trends.');
-                    await renderInsights();
+                    console.debug('Insights tab clicked. Rendering vendor analytics and trends.');
+                    renderInsights();
                 }, 200);
                 // Reset month dropdown when switching away from month tabs
                 const monthSelector = document.getElementById('monthSelector');
@@ -2749,7 +2602,8 @@
             return vendorMap;
         }
 
-        function suggestCategory(description, vendor) {
+        // Local keyword/vendor-history based suggestion (sync, no AI)
+        function suggestCategoryLocal(description, vendor) {
             const vendorMap = buildVendorCategoryMap();
             
             // If vendor has history, suggest its most common category
@@ -2796,7 +2650,7 @@
             let isAutoSuggested = false;
             
             const updateSuggestion = () => {
-                const suggested = suggestCategory(descInput.value, vendorInput.value);
+                const suggested = suggestCategoryLocal(descInput.value, vendorInput.value);
                 
                 // Allow re-suggestion if:
                 // 1. There's a suggestion AND
@@ -3092,7 +2946,7 @@
 
                 if (!dateStr || !description || !amountStr) {
                     skipReasons.missingData++;
-                    console.log(`⏭️ Row ${i + 1}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
+                    console.debug(`Row ${i + 1}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
                     continue;
                 }
 
@@ -3138,7 +2992,7 @@
                 if (skipReason) {
                     skipReasons.filtered++;
                     skippedTransactions.push({ date: dateStr, description, amount: amountStr, reason: skipReason });
-                    console.log(`⏭️ Row ${i + 1}: ${skipReason} - ${description}`);
+                    console.debug(`Row ${i + 1}: ${skipReason} - ${description}`);
                     continue;
                 }
 
@@ -3157,7 +3011,7 @@
                 let amount = parseFloat(amountValue);
                 if (isNaN(amount)) {
                     skipReasons.missingData++;
-                    console.log(`⏭️ Row ${i + 1}: Unparseable amount "${amountStr}" - ${description}`);
+                    console.debug(`Row ${i + 1}: Unparseable amount "${amountStr}" - ${description}`);
                     continue;
                 }
                 if (isNegative && amount > 0) {
@@ -3182,7 +3036,7 @@
                 
                 if (amount > 0) {
                     skipReasons.processed++;
-                    console.log(`✅ Row ${i + 1}: Income - ${description} ($${amount.toFixed(2)})`);
+                    console.debug(`Row ${i + 1}: Income - ${description} ($${amount.toFixed(2)})`);
                     
                     // Auto-detect income source from description
                     let incomeSource = 'Other';
@@ -3211,7 +3065,7 @@
                 } else if (amount < 0) {
                     skipReasons.processed++;
                     amount = Math.abs(amount);
-                    console.log(`✅ Row ${i + 1}: Expense - ${description} ($${amount.toFixed(2)})`);
+                    console.debug(`Row ${i + 1}: Expense - ${description} ($${amount.toFixed(2)})`);
 
                     let initialCategory = csvCategory ? mapCategoryFromCSV(csvCategory) : 'Other';
 
@@ -3234,20 +3088,16 @@
                 const isDup = isDuplicateExpense(newExp);
                 if (isDup) {
                     skippedTransactions.push({ date: newExp.date, description: newExp.description, amount: `$${newExp.amount.toFixed(2)}`, reason: 'Duplicate expense' });
-                    console.log(`🔄 Duplicate: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
+                    console.debug(`Duplicate: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
                 }
                 return !isDup;
             });
 
-            // Print detailed summary
+            // Consolidated CSV parse summary
             const totalRows = dataLines.length;
             const totalSkipped = totalRows - skipReasons.processed;
-            console.log(`\n📊 CSV PARSING SUMMARY:`);
-            console.log(`   Total rows: ${totalRows}`);
-            console.log(`   ✅ Processed: ${skipReasons.processed} (${expensesToImport.length} expenses + ${incomeToImport.length} income)`);
-            console.log(`   🔄 Duplicates removed: ${expensesToImport.length - dedupedExpenses.length}`);
-            console.log(`   ⏭️ Skipped: ${totalSkipped} (${skipReasons.empty} empty, ${skipReasons.missingData} missing data, ${skipReasons.filtered} filtered, ${skipReasons.zeroAmount} zero)`);
-            console.log(`   📦 Final: ${dedupedExpenses.length} expenses + ${incomeToImport.length} income\n`);
+            const dupsRemoved = expensesToImport.length - dedupedExpenses.length;
+            console.log(`📊 CSV parsed: ${totalRows} rows → ${dedupedExpenses.length} expenses + ${incomeToImport.length} income (skipped ${totalSkipped}, deduped ${dupsRemoved})`);
 
             return {
                 expenses: dedupedExpenses,
@@ -3449,7 +3299,7 @@
                 // Re-render the month
                 renderMonth(month, monthIndex);
                 renderAllMonths();
-                await renderInsights();
+                renderInsights();
 
                 if (updated > 0 || failed > 0) {
                     showSuccess(`✨ AI Categorize: ${updated} updated, ${monthExpenses.length - updated - failed} unchanged${failed > 0 ? `, ${failed} failed` : ''}`);
@@ -3540,7 +3390,7 @@
                 // Re-render
                 renderIncomeList();
                 renderAllMonths();
-                await renderInsights();
+                renderInsights();
 
                 if (updated > 0 || failed > 0) {
                     showSuccess(`✨ AI Categorize: ${updated} updated, ${income.length - updated - failed} unchanged${failed > 0 ? `, ${failed} failed` : ''}`);
@@ -3887,27 +3737,10 @@
                 // Refresh views
                 renderAllMonths();
                 renderInsights();
-                renderCSVExpenses();
                 renderCSVImportHistory();
             } catch (error) {
                 alert('Error removing import: ' + error.message);
             }
-        }
-
-        async function removeLastImport() {
-            if (lastImportedExpenseIds.length === 0) {
-                alert('No import to remove');
-                return;
-            }
-
-            // Find the most recent batch from history
-            if (csvImportHistory.length === 0) {
-                alert('No import history found');
-                return;
-            }
-
-            const mostRecentBatch = csvImportHistory[0];
-            await removeImportByBatch(mostRecentBatch.batch_id);
         }
 
         function renderCSVImportHistory() {
@@ -3948,272 +3781,9 @@
             historyContainer.innerHTML = html;
         }
 
-        function renderCSVExpenses() {
-            const csvExpenses = expenses.filter(exp => exp.source === 'csv');
-            const container = document.getElementById('csvExpensesContainer');
-            
-            if (!container) return;
-
-            if (csvExpenses.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No CSV expenses imported yet. Go to CSV Import tab to add some.</p>';
-                return;
-            }
-
-            // Get selected month from dropdown or default to current month
-            const monthSelector = document.getElementById('csvExpensesMonthSelector');
-            const selectedMonth = monthSelector ? monthSelector.value : monthNames[new Date().getMonth()];
-            
-            // Filter expenses for selected month
-            const monthIndex = monthNames.indexOf(selectedMonth) >= 0 ? monthNames.indexOf(selectedMonth) : new Date().getMonth();
-            const monthExpenses = csvExpenses.filter(exp => {
-                const expDate = parseLocalDate(exp.date);
-                return expDate.getMonth() === monthIndex;
-            });
-
-            // Calculate stats — separate investments from regular spending
-            const investCats = ['Investment Subscription', 'Investments'];
-            const regularMonthExp = monthExpenses.filter(exp => !investCats.includes(exp.category));
-            const investMonthExp = monthExpenses.filter(exp => investCats.includes(exp.category));
-            const totalSpent = regularMonthExp.reduce((sum, exp) => sum + exp.amount, 0);
-            const totalInvested = investMonthExp.reduce((sum, exp) => sum + exp.amount, 0);
-            const categorySpending = {};
-            monthExpenses.forEach(exp => {
-                categorySpending[exp.category] = (categorySpending[exp.category] || 0) + exp.amount;
-            });
-
-            let html = `
-                <div style="margin-bottom: 30px;">
-                    <div class="form-group" style="max-width: 200px;">
-                        <label for="csvExpensesMonthSelector">Select Month</label>
-                        <select id="csvExpensesMonthSelector" class="month-dropdown" onchange="renderCSVExpenses()">
-                            ${monthNames.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: ${totalInvested > 0 ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr'}; gap: 16px; margin-bottom: 30px;">
-                    <div class="summary-card">
-                        <h3>Total Spent</h3>
-                        <div class="value" style="color: #fbbf24;">$${totalSpent.toFixed(2)}</div>
-                    </div>
-                    ${totalInvested > 0 ? `<div class="summary-card" style="border-color: rgba(139, 92, 246, 0.3);">
-                        <h3 style="color: #a78bfa;">📈 Invested</h3>
-                        <div class="value" style="color: #a78bfa;">$${totalInvested.toFixed(2)}</div>
-                    </div>` : ''}
-                    <div class="summary-card">
-                        <h3>Transactions</h3>
-                        <div class="value">${monthExpenses.length}</div>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Average</h3>
-                        <div class="value">$${monthExpenses.length > 0 ? ((totalSpent + totalInvested) / monthExpenses.length).toFixed(2) : '0.00'}</div>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px;">
-                    <div class="summary-card">
-                        <h3>📊 Category Breakdown</h3>
-                        <canvas id="csvExpensesCategoryChart" style="max-height: 300px; margin-top: 16px;"></canvas>
-                    </div>
-
-                    <div class="summary-card">
-                        <h3>💰 Top Categories</h3>
-                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-            `;
-
-            // Add top categories
-            Object.entries(categorySpending)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .forEach(([cat, amount]) => {
-                    const percentage = ((amount / totalSpent) * 100).toFixed(1);
-                    html += `
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: var(--text-primary);">${cat}</span>
-                            <span style="color: #fbbf24; font-weight: 600;">$${amount.toFixed(2)} (${percentage}%)</span>
-                        </div>
-                    `;
-                });
-
-            html += `
-                        </div>
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <h3>Transactions for ${selectedMonth}</h3>
-                    <div style="overflow-x: auto;">
-                        <table class="expense-table" style="font-size: 0.9em; width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th>Category</th>
-                                    <th>Amount</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-            `;
-
-            monthExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(exp => {
-                html += `
-                    <tr>
-                        <td style="padding: 12px; color: #cbd5e1;">${exp.date}</td>
-                        <td style="padding: 12px; color: #cbd5e1;">${exp.description}</td>
-                        <td style="padding: 12px;">
-                            <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">${exp.category}</span>
-                        </td>
-                        <td style="padding: 12px; color: #fbbf24; font-weight: 600;">$${exp.amount.toFixed(2)}</td>
-                        <td style="padding: 12px;">
-                            <button onclick="editExpense(${exp.id})" style="background: #3b82f6; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Edit</button>
-                            <button onclick="deleteExpense(${exp.id})" style="background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin-left: 4px;">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = html;
-
-            // Render pie chart
-            setTimeout(() => {
-                renderCSVExpensesPieChart(categorySpending);
-            }, 100);
-        }
-
-        function renderCSVExpensesPieChart(categorySpending) {
-            const canvas = document.getElementById('csvExpensesCategoryChart');
-            if (!canvas) return;
-
-            const ctx = canvas.getContext('2d');
-            const categories = Object.keys(categorySpending);
-            const amounts = Object.values(categorySpending);
-            const colors = ['#fbbf24', '#f97316', '#ef4444', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#ec4899', '#f59e0b', '#6366f1'];
-
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: categories,
-                    datasets: [{
-                        data: amounts,
-                        backgroundColor: colors.slice(0, categories.length),
-                        borderColor: 'rgba(15, 18, 24, 0.85)',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#cbd5e1', font: { size: 12 } }
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderCSVIncome() {
-            // Filter for income entries from CSV import (check notes for 'Source: CSV')
-            const csvIncome = income.filter(inc => inc.notes && inc.notes.includes('Source: CSV'));
-            const container = document.getElementById('csvIncomeContainer');
-            
-            if (!container) return;
-
-            if (csvIncome.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 20px;">No CSV income imported yet.</p>';
-                return;
-            }
-
-            // Get selected month from dropdown or default to current month
-            const monthSelector = document.getElementById('csvIncomeMonthSelector');
-            const selectedMonth = monthSelector ? monthSelector.value : monthNames[new Date().getMonth()];
-            
-            // Filter income for selected month
-            const monthIndex = monthNames.indexOf(selectedMonth) >= 0 ? monthNames.indexOf(selectedMonth) : new Date().getMonth();
-            const monthIncome = csvIncome.filter(inc => {
-                const incDate = parseLocalDate(inc.date);
-                return incDate.getMonth() === monthIndex;
-            });
-
-            // Calculate stats
-            const totalIncome = monthIncome.reduce((sum, inc) => sum + inc.amount, 0);
-
-            let html = `
-                <div style="margin-bottom: 30px;">
-                    <div class="form-group" style="max-width: 200px;">
-                        <label for="csvIncomeMonthSelector">Select Month</label>
-                        <select id="csvIncomeMonthSelector" class="month-dropdown" onchange="renderCSVIncome()">
-                            ${monthNames.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 30px;">
-                    <div class="summary-card">
-                        <h3>Total Income</h3>
-                        <div class="value" style="color: #22c55e;">$${totalIncome.toFixed(2)}</div>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Transactions</h3>
-                        <div class="value">${monthIncome.length}</div>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Average</h3>
-                        <div class="value">$${monthIncome.length > 0 ? (totalIncome / monthIncome.length).toFixed(2) : '0.00'}</div>
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <h3>Transactions for ${selectedMonth}</h3>
-                    <div style="overflow-x: auto;">
-                        <table class="expense-table" style="font-size: 0.9em; width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th>Source</th>
-                                    <th>Amount</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-            `;
-
-            monthIncome.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(inc => {
-                html += `
-                    <tr>
-                        <td style="padding: 12px; color: #cbd5e1;">${inc.date}</td>
-                        <td style="padding: 12px; color: #cbd5e1;">${inc.description}</td>
-                        <td style="padding: 12px;">
-                            <span style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">${inc.source}</span>
-                        </td>
-                        <td style="padding: 12px; color: #22c55e; font-weight: 600;">$${inc.amount.toFixed(2)}</td>
-                        <td style="padding: 12px;">
-                            <button onclick="editIncome(${inc.id})" style="background: #3b82f6; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Edit</button>
-                            <button onclick="deleteIncome(${inc.id})" style="background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin-left: 4px;">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = html;
-        }
+        /* Removed dead functions: renderCSVExpenses, renderCSVExpensesPieChart, renderCSVIncome
+           These targeted DOM containers (csvExpensesContainer, csvIncomeContainer) that were
+           removed from the HTML. CSV data is shown via the main monthly views instead. */
 
         async function addExpense() {
             const date = document.getElementById('date').value;
@@ -4270,7 +3840,7 @@
 
             // Refresh views
             renderAllMonths();
-            await renderInsights();
+            renderInsights();
 
         }
 
@@ -4293,7 +3863,7 @@
                 
                 renderAllMonths();
 
-                await renderInsights();
+                renderInsights();
             }
         }
 
@@ -4336,7 +3906,7 @@
                 console.log(`✅ Deleted ${deletedCount} expenses for ${monthName} ${currentYear}`);
 
                 renderAllMonths();
-                await renderInsights();
+                renderInsights();
 
                 alert(`✅ Deleted ${deletedCount} expense(s) for ${monthName} ${currentYear}.`);
                 
@@ -4403,7 +3973,7 @@
         // 1️⃣ Duplicate Detection with Claude
         async function detectDuplicateExpense(description, amount, vendor) {
             // First do quick local check
-            const threshold = 2; // days
+            const threshold = DUPLICATE_CHECK_DAYS;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
@@ -4518,189 +4088,8 @@
             return { isDuplicate: false };
         }
 
-        // 2️⃣ Smart Tags Generation with Claude
-        async function generateSmartTags(description, category, vendor, amount) {
-            if (!OPENAI_API_KEY) {
-                // Fallback to basic tags
-                return ['expense', category.toLowerCase()];
-            }
-
-            try {
-                const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${OPENAI_API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: 'gpt-3.5-turbo',
-                        messages: [{
-                            role: 'system',
-                            content: 'Generate 3-5 relevant tags for an expense. Return ONLY comma-separated tags, no explanations.'
-                        }, {
-                            role: 'user',
-                            content: `Description: ${description}\nVendor: ${vendor || 'N/A'}\nCategory: ${category}\nAmount: $${amount}\n\nGenerate relevant tags:`
-                        }],
-                        temperature: 0.7,
-                        max_tokens: 50
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const tagsText = data.choices[0].message.content.trim();
-                    const tags = tagsText.split(',').map(t => t.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-                    return [...new Set(tags.filter(t => t.length > 0))];
-                }
-            } catch (error) {
-                console.log('Claude tags failed, using basic tags');
-            }
-
-            return ['expense', category.toLowerCase()];
-        }
-
-        // 4️⃣ Spending Forecast with Claude
-        async function forecastSpending() {
-            const now = new Date();
-            const thisMonth = now.getMonth();
-            const thisYear = now.getFullYear();
-            const daysInMonth = new Date(thisYear, thisMonth + 1, 0).getDate();
-            const currentDay = now.getDate();
-            const daysRemaining = daysInMonth - currentDay;
-
-            const thisMonthExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
-                return expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear;
-            });
-
-            const thisMonthTotal = thisMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-            const avgPerDay = currentDay > 0 ? thisMonthTotal / currentDay : 0;
-            const projectedTotal = thisMonthTotal + (avgPerDay * daysRemaining);
-
-            const categorySpent = {};
-            thisMonthExpenses.forEach(exp => {
-                if (!categorySpent[exp.category]) categorySpent[exp.category] = 0;
-                categorySpent[exp.category] += exp.amount;
-            });
-
-            const categoryForecasts = {};
-            for (const [category, spent] of Object.entries(categorySpent)) {
-                const avgCategoryPerDay = currentDay > 0 ? spent / currentDay : 0;
-                categoryForecasts[category] = spent + (avgCategoryPerDay * daysRemaining);
-            }
-
-            // Get Claude insight on forecast
-            let forecastInsight = '';
-            if (OPENAI_API_KEY) {
-                try {
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OPENAI_API_KEY}`
-                        },
-                        body: JSON.stringify({
-                            model: 'gpt-3.5-turbo',
-                            messages: [{
-                                role: 'system',
-                                content: 'Provide brief spending forecast insight. Keep it to one sentence.'
-                            }, {
-                                role: 'user',
-                                content: `Current spending: $${thisMonthTotal.toFixed(2)} over ${currentDay} days. Projected total: $${projectedTotal.toFixed(2)}. Days remaining: ${daysRemaining}. Give a brief insight.`
-                            }],
-                            temperature: 0.7,
-                            max_tokens: 50
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        forecastInsight = data.choices[0].message.content.trim();
-                    }
-                } catch (error) {
-                    console.log('Claude forecast insight failed');
-                }
-            }
-
-            return {
-                projectedTotal: Math.round(projectedTotal * 100) / 100,
-                currentSpent: Math.round(thisMonthTotal * 100) / 100,
-                avgPerDay: Math.round(avgPerDay * 100) / 100,
-                categoryForecasts,
-                insight: forecastInsight
-            };
-        }
-
-        // 5️⃣ Spending Insights & Trends with Claude
-        async function generateSpendingInsights() {
-            const now = new Date();
-            const thisMonth = now.getMonth();
-            const thisYear = now.getFullYear();
-            const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-            const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-
-            const thisMonthByCategory = {};
-            expenses.forEach(exp => {
-                const expDate = new Date(exp.date);
-                if (expDate.getMonth() === thisMonth && expDate.getFullYear() === thisYear) {
-                    thisMonthByCategory[exp.category] = (thisMonthByCategory[exp.category] || 0) + exp.amount;
-                }
-            });
-
-            const lastMonthByCategory = {};
-            expenses.forEach(exp => {
-                const expDate = new Date(exp.date);
-                if (expDate.getMonth() === lastMonth && expDate.getFullYear() === lastMonthYear) {
-                    lastMonthByCategory[exp.category] = (lastMonthByCategory[exp.category] || 0) + exp.amount;
-                }
-            });
-
-            const thisMonthTotal = Object.values(thisMonthByCategory).reduce((a, b) => a + b, 0);
-            const lastMonthTotal = Object.values(lastMonthByCategory).reduce((a, b) => a + b, 0);
-
-            // Let Claude analyze and generate insights
-            if (OPENAI_API_KEY) {
-                try {
-                    const spendingData = JSON.stringify({
-                        thisMonth: thisMonthByCategory,
-                        lastMonth: lastMonthByCategory,
-                        thisMonthTotal,
-                        lastMonthTotal
-                    });
-
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OPENAI_API_KEY}`
-                        },
-                        body: JSON.stringify({
-                            model: 'gpt-3.5-turbo',
-                            messages: [{
-                                role: 'system',
-                                content: 'Analyze spending data and provide 2-3 key insights. Return JSON array of {type, text} objects.'
-                            }, {
-                                role: 'user',
-                                content: `Analyze this spending data and identify key trends and insights:\n\n${spendingData}`
-                            }],
-                            temperature: 0.7,
-                            max_tokens: 300
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        const insightsText = data.choices[0].message.content.trim();
-                        const insights = JSON.parse(insightsText);
-                        return Array.isArray(insights) ? insights : [];
-                    }
-                } catch (error) {
-                    console.log('Claude insights generation failed');
-                }
-            }
-
-            return [];
-        }
+        /* Removed dead functions: forecastSpending, generateSpendingInsights
+           — their only consumer (renderAIInsightsSection) was removed earlier. */
 
         // 🤖 AI Category Suggestion Function
         async function suggestCategory() {
@@ -5572,7 +4961,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 renderIncomeList();
 
                 renderAllMonths();
-                await renderInsights();
+                renderInsights();
                 renderIncomeTemplates(); // Refresh income templates display
             } catch (err) {
                 console.error('❌ Exception in addIncome:', err);
@@ -5582,7 +4971,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
         function detectDuplicateIncome(date, description, amount) {
             // Check for exact or very similar income entries within 7 days
-            const threshold = 7; // days
+            const threshold = INCOME_DUPLICATE_CHECK_DAYS;
             const checkDate = new Date(date);
             
             for (const inc of income) {
@@ -5629,7 +5018,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 renderIncomeList();
 
                 renderAllMonths();
-                await renderInsights();
+                renderInsights();
             }
         }
 
@@ -5703,7 +5092,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             renderIncomeList();
 
             renderAllMonths();
-            await renderInsights();
+            renderInsights();
             showSuccess('Income entry updated!');
         }
 
@@ -5933,10 +5322,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
             });
 
-            console.log(`🗓️ renderMonth(${month}, ${monthIndex}): Found ${monthExpenses.length} expenses out of ${expenses.length} total`);
-            if (monthExpenses.length > 0) {
-                console.log('First expense:', monthExpenses[0]);
-            }
+            console.debug(`renderMonth(${month}, ${monthIndex}): ${monthExpenses.length} expenses`);
 
             const monthContainer = document.getElementById(month);
             
@@ -6129,21 +5515,10 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             const categoryTotals = calculateCategoryTotals(monthExpenses);
             if (Object.keys(categoryTotals).length === 0) return;
 
-            const shieldColors = {
-                'Transportation': '#3B82F6',
-                'Dining Out': '#8B5CF6',
-                'Investment': '#EC4899',
-                'Subscriptions': '#06B6D4',
-                'Housing': '#F59E0B',
-                'Entertainment': '#EF4444',
-                'Healthcare': '#10B981',
-                'Shopping': '#06B6D4',
-            };
-
             const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
             const labels = sortedData.map(([cat]) => cat);
             const data = sortedData.map(([, amount]) => amount);
-            const colors = labels.map(label => shieldColors[label] || '#6366F1');
+            const colors = labels.map(label => CATEGORY_COLORS[label] || DEFAULT_CATEGORY_COLOR);
 
             // Destroy existing chart if any
             if (window[`chart_${month}`] && typeof window[`chart_${month}`].destroy === 'function') {
@@ -6291,16 +5666,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            const shieldColors = {
-                'Transportation': '#3B82F6',
-                'Dining Out': '#8B5CF6',
-                'Investment': '#EC4899',
-                'Subscriptions': '#06B6D4',
-                'Housing': '#F59E0B',
-                'Entertainment': '#EF4444',
-                'Healthcare': '#10B981',
-                'Shopping': '#06B6D4',
-            };
 
             // Force white text color on the canvas container
             canvas.parentElement.style.color = '#FFFFFF';
@@ -6317,7 +5682,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
             const labels = sortedData.map(([cat]) => cat);
             const data = sortedData.map(([, amount]) => amount);
-            const colors = labels.map(label => shieldColors[label] || '#6366F1');
+            const colors = labels.map(label => CATEGORY_COLORS[label] || DEFAULT_CATEGORY_COLOR);
 
             if (window.annualCategoryChart && typeof window.annualCategoryChart.destroy === 'function') {
                 window.annualCategoryChart.destroy();
@@ -6417,7 +5782,11 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             }
 
             // Delete existing budgets and insert new ones
-            await supabaseClient.from('budgets').delete().neq('id', 0);
+            const { error: deleteError } = await supabaseClient.from('budgets').delete().neq('id', 0);
+            if (deleteError) {
+                alert('Error clearing old budgets: ' + deleteError.message);
+                return;
+            }
 
             const { error } = await supabaseClient
                 .from('budgets')
@@ -6453,62 +5822,57 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
             // Scroll to the month content and display the filtered list
             const monthContent = document.getElementById(month);
-                if (monthContent) {
+            if (monthContent) {
                 monthContent.classList.add('active');
                 
-                // Find and scroll to the expense table
-                const monthContainer = monthContent.querySelector('.month-expenses');
-                if (monthContainer) {
-                    // Clear current content and show filtered expenses
-                    const deleteDisabled = filteredExpenses.length === 0 ? 'disabled' : '';
-                    let html = `<h3 style="margin-bottom: 20px;">${category} in ${monthName}</h3>
-                                <div style="margin-bottom: 30px; display:flex; gap: 8px;">
-                                    <button class="btn btn-secondary" onclick="renderMonth('${month}', ${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;">Show All</button>
-                                    <button class="btn btn-danger" onclick="deleteAllExpensesForMonth(${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;" ${deleteDisabled}>Delete All</button>
-                                </div>`;
-                    
-                    html += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-                    html += `<thead style="background: rgba(55, 224, 255, 0.1); border-bottom: 1px solid var(--hairline);">
-                                <tr>
-                                    <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Date</th>
-                                    <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Category</th>
-                                    <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Description</th>
-                                    <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Amount</th>
-                                    <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Payment Method</th>
-                                    <th style="padding: 12px; text-align: center; color: #A6B0BF; font-weight: 600;">Actions</th>
-                                </tr>
-                            </thead><tbody>`;
-                    
-                    filteredExpenses.forEach(exp => {
-                        html += `<tr style="border-bottom: 1px solid var(--hairline); transition: all 0.2s ease;" onmouseover="this.style.background='rgba(55, 224, 255, 0.05)'" onmouseout="this.style.background='transparent'">
-                                    <td style="padding: 12px; color: var(--text-primary);">${exp.date}</td>
-                                    <td style="padding: 12px; color: #A6B0BF;">${exp.category}</td>
-                                    <td style="padding: 12px; color: var(--text-primary);">${exp.description}</td>
-                                    <td style="padding: 12px; color: #35E6A6; font-weight: 600;">$${exp.amount.toFixed(2)}</td>
-                                    <td style="padding: 12px; color: #A6B0BF;">${exp.payment_method}</td>
-                                    <td style="padding: 12px; text-align: center;">
-                                        <button class="btn btn-secondary" onclick="openEditModal(${exp.id})" style="padding: 8px 12px; font-size: 0.85em; margin-right: 4px;">Edit</button>
-                                        <button class="btn btn-danger" onclick="deleteExpense(${exp.id})" style="padding: 8px 12px; font-size: 0.85em;">Delete</button>
-                                    </td>
-                                </tr>`;
-                    });
-                    
-                    html += '</tbody></table></div>';
-                    monthContainer.innerHTML = html;
-                    
-                    // Scroll to the table
-                    monthContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                // Render filtered expenses directly into the month container
+                const deleteDisabled = filteredExpenses.length === 0 ? 'disabled' : '';
+                let html = `<h3 style="margin-bottom: 20px;">${category} in ${monthName}</h3>
+                            <div style="margin-bottom: 30px; display:flex; gap: 8px;">
+                                <button class="btn btn-secondary" onclick="renderMonth('${month}', ${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;">Show All</button>
+                                <button class="btn btn-danger" onclick="deleteAllExpensesForMonth(${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;" ${deleteDisabled}>Delete All</button>
+                            </div>`;
+                
+                html += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
+                html += `<thead style="background: rgba(55, 224, 255, 0.1); border-bottom: 1px solid var(--hairline);">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Date</th>
+                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Category</th>
+                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Description</th>
+                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Amount</th>
+                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Payment Method</th>
+                                <th style="padding: 12px; text-align: center; color: #A6B0BF; font-weight: 600;">Actions</th>
+                            </tr>
+                        </thead><tbody>`;
+                
+                filteredExpenses.forEach(exp => {
+                    html += `<tr style="border-bottom: 1px solid var(--hairline); transition: all 0.2s ease;" onmouseover="this.style.background='rgba(55, 224, 255, 0.05)'" onmouseout="this.style.background='transparent'">
+                                <td style="padding: 12px; color: var(--text-primary);">${exp.date}</td>
+                                <td style="padding: 12px; color: #A6B0BF;">${exp.category}</td>
+                                <td style="padding: 12px; color: var(--text-primary);">${exp.description}</td>
+                                <td style="padding: 12px; color: #35E6A6; font-weight: 600;">$${exp.amount.toFixed(2)}</td>
+                                <td style="padding: 12px; color: #A6B0BF;">${exp.payment_method}</td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <button class="btn btn-secondary" onclick="openEditModal(${exp.id})" style="padding: 8px 12px; font-size: 0.85em; margin-right: 4px;">Edit</button>
+                                    <button class="btn btn-danger" onclick="deleteExpense(${exp.id})" style="padding: 8px 12px; font-size: 0.85em;">Delete</button>
+                                </td>
+                            </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                monthContent.innerHTML = html;
+                
+                // Scroll to the table
+                monthContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
         // Render vendor analytics and spending insights
-        async function renderInsights() {
+        function renderInsights() {
             renderTopVendorsSection();
             renderSpendingTrendChart();
             renderCategoryComparisonChart();
             renderVendorAnalyticsTable();
-            await renderAIInsightsSection();
         }
 
         // Render vendor analytics and spending insights
@@ -6749,80 +6113,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
-        }
-
-        // 🤖 AI INSIGHTS RENDERING
-
-        async function renderAIInsightsSection() {
-            // Get the analytics tab or create a container
-            const container = document.getElementById('insightsContainer');
-            if (!container) return;
-
-            let html = '<div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08);">';
-            html += '<h2 style="margin-bottom: 24px; font-size: 20px;">🤖 AI Insights & Trends</h2>';
-
-            // Get all insights (now async)
-            const insights = await generateSpendingInsights();
-            const forecast = await forecastSpending();
-
-            // Render insights
-            if (insights.length > 0) {
-                html += '<div style="margin-bottom: 24px;">';
-                html += '<h3 style="margin-bottom: 12px; font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Spending Insights</h3>';
-                html += '<div style="display: grid; gap: 10px;">';
-                
-                insights.forEach(insight => {
-                    html += `
-                        <div style="padding: 12px; background: rgba(55, 224, 255, 0.05); border-left: 3px solid #37E0FF; border-radius: 6px;">
-                            <div style="color: #cbd5e1; font-size: 0.95em;">${insight.text}</div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div></div>';
-            }
-
-            // Forecast section
-            if (forecast) {
-                html += '<div style="margin-bottom: 24px;">';
-                html += '<h3 style="margin-bottom: 12px; font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Monthly Forecast</h3>';
-                html += `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div style="padding: 16px; background: rgba(55, 224, 255, 0.05); border-radius: 8px; border: 1px solid rgba(55, 224, 255, 0.1);">
-                            <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 4px;">Projected Total</div>
-                            <div style="font-size: 24px; font-weight: 700; color: #35E6A6;">$${forecast.projectedTotal.toFixed(2)}</div>
-                            <div style="color: #cbd5e1; font-size: 0.8em; margin-top: 4px;">Already spent: $${forecast.currentSpent.toFixed(2)}</div>
-                        </div>
-                        <div style="padding: 16px; background: rgba(55, 224, 255, 0.05); border-radius: 8px; border: 1px solid rgba(55, 224, 255, 0.1);">
-                            <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 4px;">Daily Average</div>
-                            <div style="font-size: 24px; font-weight: 700; color: #37E0FF;">$${forecast.avgPerDay.toFixed(2)}</div>
-                            <div style="color: #cbd5e1; font-size: 0.8em; margin-top: 4px;">Per day</div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 12px; padding: 12px; background: rgba(123, 97, 255, 0.05); border-radius: 8px; border: 1px solid rgba(123, 97, 255, 0.1);">
-                        <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 8px;">Category Forecasts</div>
-                        <div style="display: grid; gap: 6px;">
-                `;
-                
-                Object.entries(forecast.categoryForecasts).forEach(([category, forecast]) => {
-                    html += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
-                            <span style="color: #cbd5e1; font-size: 0.9em;">${category}</span>
-                            <span style="color: #37E0FF; font-weight: 600;">$${forecast.toFixed(2)}</span>
-                        </div>
-                    `;
-                });
-                
-                html += '</div></div></div>';
-            }
-
-            html += '</div>';
-
-            // Insert after vendor analytics or at the end
-            const vendorContainer = document.getElementById('vendorAnalyticsContainer');
-            if (vendorContainer && vendorContainer.parentElement) {
-                vendorContainer.insertAdjacentHTML('afterend', html);
-            }
         }
     </script>
 </body>
