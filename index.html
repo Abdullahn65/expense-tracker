@@ -973,6 +973,118 @@
             }
         }
 
+        /* Global Search */
+        .search-input-lg {
+            width: 100%;
+            padding: 16px 20px 16px 48px;
+            background: rgba(15,18,24,0.85);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: #FFFFFF;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        .search-input-lg:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(55, 224, 255, 0.1);
+        }
+        .search-input-wrapper {
+            position: relative;
+        }
+        .search-input-wrapper::before {
+            content: '🔍';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            pointer-events: none;
+        }
+        .search-filters {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .search-filters select, .search-filters input {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 13px;
+        }
+        .search-result-row {
+            padding: 14px 16px;
+            background: rgba(15,18,24,0.6);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: 100px 1fr 120px 120px 100px;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .search-result-row:hover {
+            background: rgba(55, 224, 255, 0.05);
+            border-color: rgba(55, 224, 255, 0.15);
+        }
+        .search-highlight {
+            background: rgba(55, 224, 255, 0.25);
+            color: #fff;
+            padding: 1px 3px;
+            border-radius: 3px;
+        }
+        .fuzzy-badge {
+            display: inline-block;
+            background: rgba(123, 97, 255, 0.2);
+            color: #a78bfa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 4px;
+        }
+
+        /* Split Transaction */
+        .split-row {
+            display: grid;
+            grid-template-columns: 1fr 160px auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+        }
+        .split-remaining {
+            font-size: 18px;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .split-remaining.balanced {
+            background: rgba(53, 230, 166, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(53, 230, 166, 0.3);
+        }
+        .split-remaining.unbalanced {
+            background: rgba(255, 92, 92, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 92, 92, 0.3);
+        }
+        .split-badge {
+            display: inline-block;
+            background: rgba(123, 97, 255, 0.15);
+            color: #a78bfa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
         /* Chart legend text color fix */
         .chartjs-render-monitor {
             color: #FFFFFF !important;
@@ -1077,6 +1189,36 @@
                         <button type="button" class="btn btn-secondary" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Split Transaction Modal -->
+        <div id="splitModal" class="modal">
+            <div class="modal-content" style="max-width: 650px;">
+                <div class="modal-header">
+                    <h2 class="modal-title">🔀 Split Transaction</h2>
+                    <button class="close-modal" onclick="closeSplitModal()">×</button>
+                </div>
+                
+                <!-- Original expense info -->
+                <div id="splitOriginalInfo" style="background: rgba(55, 224, 255, 0.05); border: 1px solid rgba(55, 224, 255, 0.15); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                </div>
+
+                <!-- Split rows container -->
+                <div id="splitRowsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+                </div>
+
+                <button class="btn btn-secondary" onclick="addSplitRow()" style="width: 100%; margin-bottom: 16px; padding: 10px;">+ Add Another Split</button>
+
+                <!-- Remaining indicator -->
+                <div id="splitRemainingDisplay" class="split-remaining balanced">
+                    Remaining: $0.00
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                    <button id="splitSaveBtn" class="btn btn-primary" style="flex: 1;" onclick="saveSplitTransaction()" disabled>Split Transaction</button>
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="closeSplitModal()">Cancel</button>
+                </div>
             </div>
         </div>
 
@@ -1203,6 +1345,7 @@
 
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-tab="insights">Insights</button>
+            <button class="nav-tab" data-tab="search">🔍 Search</button>
             <button class="nav-tab" data-tab="comparison">Comparison</button>
             <button class="nav-tab" data-tab="add">Add Expense</button>
             <button class="nav-tab" data-tab="csvimport">CSV Import</button>
@@ -1276,6 +1419,64 @@
                         </thead>
                         <tbody id="vendorAnalyticsTable"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Search Tab -->
+            <div class="tab-content" id="search">
+                <h2 style="margin-bottom: 24px;">🔍 Search All Expenses</h2>
+                
+                <div class="search-input-wrapper">
+                    <input type="text" id="globalSearchInput" class="search-input-lg" 
+                           placeholder="Search by description, vendor, category, notes... (fuzzy matching enabled)"
+                           oninput="performGlobalSearch()">
+                </div>
+                
+                <div class="search-filters">
+                    <select id="searchYear" onchange="performGlobalSearch()">
+                        <option value="">All Years</option>
+                    </select>
+                    <select id="searchCategory" onchange="performGlobalSearch()">
+                        <option value="">All Categories</option>
+                    </select>
+                    <select id="searchPayment" onchange="performGlobalSearch()">
+                        <option value="">All Payment Methods</option>
+                    </select>
+                    <input type="number" id="searchMinAmount" placeholder="Min $" step="0.01" oninput="performGlobalSearch()">
+                    <input type="number" id="searchMaxAmount" placeholder="Max $" step="0.01" oninput="performGlobalSearch()">
+                    <input type="date" id="searchDateFrom" onchange="performGlobalSearch()">
+                    <input type="date" id="searchDateTo" onchange="performGlobalSearch()">
+                    <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="clearSearchFilters()">Clear Filters</button>
+                </div>
+
+                <!-- Search summary -->
+                <div id="searchSummary" style="display: none; margin-top: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div class="summary-card">
+                            <h3>Results</h3>
+                            <div class="value" id="searchResultCount">0</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Amount</h3>
+                            <div class="value" id="searchTotalAmount">$0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Average</h3>
+                            <div class="value" id="searchAvgAmount">$0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Date Range</h3>
+                            <div class="value" id="searchDateRange" style="font-size: 14px;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="searchResults" style="margin-top: 16px;">
+                    <div class="empty-state">
+                        <p style="font-size: 1.2em;">Start typing to search across all your expenses</p>
+                        <p style="margin-top: 10px;">Supports fuzzy matching — "costko" will find "Costco"</p>
+                    </div>
                 </div>
             </div>
 
@@ -2565,6 +2766,18 @@
                     monthSelector.value = '';
                 }
                 // Hide delete button
+                const deleteBtn = document.getElementById('deleteAllMonthBtn');
+                if (deleteBtn) deleteBtn.style.display = 'none';
+            } else if (tabName === 'search') {
+                populateSearchFilters();
+                setTimeout(() => {
+                    document.getElementById('globalSearchInput').focus();
+                }, 200);
+                // Reset month dropdown
+                const monthSelector = document.getElementById('monthSelector');
+                if (monthSelector) {
+                    monthSelector.value = '';
+                }
                 const deleteBtn = document.getElementById('deleteAllMonthBtn');
                 if (deleteBtn) deleteBtn.style.display = 'none';
             } else {
@@ -5468,16 +5681,18 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 `;
 
                 monthExpenses.forEach(exp => {
+                    const splitBadge = (exp.notes && exp.notes.includes('split_from:')) ? '<span class="split-badge">🔀 split</span> ' : '';
                     html += `
                         <tr>
                             <td>${exp.date}</td>
                             <td>${exp.category}</td>
-                            <td>${exp.description}</td>
+                            <td>${splitBadge}${exp.description}</td>
                             <td>${exp.vendor || '-'}</td>
                             <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
                             <td>${exp.payment_method}</td>
-                            <td style="display: flex; gap: 5px;">
+                            <td style="display: flex; gap: 5px; flex-wrap: wrap;">
                                 <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8em;" onclick="openEditModal(${exp.id})">Edit</button>
+                                <button class="btn btn-secondary" style="padding: 8px 10px; font-size: 0.8em;" onclick="openSplitModal(${exp.id})" title="Split transaction">🔀</button>
                                 <button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.8em;" onclick="deleteExpense(${exp.id})">Delete</button>
                             </td>
                         </tr>
@@ -6089,6 +6304,445 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
         function calculateMonthlyBudget() {
             return Object.values(budgets).reduce((sum, amount) => sum + amount, 0);
+        }
+
+        // ============================================
+        // GLOBAL SEARCH WITH FUZZY MATCHING
+        // ============================================
+
+        // Levenshtein distance for fuzzy matching
+        function levenshtein(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j - 1] + cost
+                    );
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // Check if query fuzzy-matches a target string
+        // Returns { match: bool, exact: bool } 
+        function fuzzyMatch(query, target) {
+            if (!query || !target) return { match: false, exact: false };
+            const q = query.toLowerCase().trim();
+            const t = target.toLowerCase();
+            
+            // Exact substring match
+            if (t.includes(q)) return { match: true, exact: true };
+            
+            // Word-level fuzzy: check each word in target
+            const targetWords = t.split(/[\s,.\-_/]+/);
+            const queryWords = q.split(/\s+/);
+            
+            for (const qw of queryWords) {
+                if (qw.length < 2) continue;
+                let wordMatched = false;
+                for (const tw of targetWords) {
+                    if (tw.length < 2) continue;
+                    // Allow typos proportional to word length
+                    const maxDist = qw.length <= 4 ? 1 : 2;
+                    if (levenshtein(qw, tw) <= maxDist) {
+                        wordMatched = true;
+                        break;
+                    }
+                    // Also check if query word is a prefix of target word
+                    if (tw.startsWith(qw) || qw.startsWith(tw)) {
+                        wordMatched = true;
+                        break;
+                    }
+                }
+                if (!wordMatched) return { match: false, exact: false };
+            }
+            return { match: true, exact: false };
+        }
+
+        function populateSearchFilters() {
+            const yearSelect = document.getElementById('searchYear');
+            const catSelect = document.getElementById('searchCategory');
+            const paySelect = document.getElementById('searchPayment');
+            if (!yearSelect) return;
+
+            // Years
+            const years = [...new Set(expenses.map(e => parseLocalDate(e.date).getFullYear()))].sort((a, b) => b - a);
+            yearSelect.innerHTML = '<option value="">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+            // Categories
+            catSelect.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            // Payment methods
+            const methods = [...new Set(expenses.map(e => e.payment_method).filter(Boolean))].sort();
+            paySelect.innerHTML = '<option value="">All Payment Methods</option>' + methods.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+
+        function clearSearchFilters() {
+            document.getElementById('searchYear').value = '';
+            document.getElementById('searchCategory').value = '';
+            document.getElementById('searchPayment').value = '';
+            document.getElementById('searchMinAmount').value = '';
+            document.getElementById('searchMaxAmount').value = '';
+            document.getElementById('searchDateFrom').value = '';
+            document.getElementById('searchDateTo').value = '';
+            performGlobalSearch();
+        }
+
+        function highlightMatch(text, query) {
+            if (!query || !text) return text;
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase().trim();
+            const idx = lowerText.indexOf(lowerQuery);
+            if (idx >= 0) {
+                return text.substring(0, idx) + 
+                       `<span class="search-highlight">${text.substring(idx, idx + lowerQuery.length)}</span>` + 
+                       text.substring(idx + lowerQuery.length);
+            }
+            return text;
+        }
+
+        function performGlobalSearch() {
+            const query = document.getElementById('globalSearchInput').value.trim();
+            const yearFilter = document.getElementById('searchYear').value;
+            const catFilter = document.getElementById('searchCategory').value;
+            const payFilter = document.getElementById('searchPayment').value;
+            const minAmount = parseFloat(document.getElementById('searchMinAmount').value) || 0;
+            const maxAmount = parseFloat(document.getElementById('searchMaxAmount').value) || Infinity;
+            const dateFrom = document.getElementById('searchDateFrom').value;
+            const dateTo = document.getElementById('searchDateTo').value;
+
+            const summaryDiv = document.getElementById('searchSummary');
+            const resultsDiv = document.getElementById('searchResults');
+
+            // Need at least a query or a filter
+            const hasFilters = yearFilter || catFilter || payFilter || minAmount > 0 || maxAmount < Infinity || dateFrom || dateTo;
+            if (!query && !hasFilters) {
+                summaryDiv.style.display = 'none';
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p style="font-size: 1.2em;">Start typing to search across all your expenses</p>
+                        <p style="margin-top: 10px;">Supports fuzzy matching — "costko" will find "Costco"</p>
+                    </div>`;
+                return;
+            }
+
+            // Score and filter expenses
+            let results = [];
+            for (const exp of expenses) {
+                // Apply hard filters first
+                if (yearFilter && parseLocalDate(exp.date).getFullYear() !== parseInt(yearFilter)) continue;
+                if (catFilter && exp.category !== catFilter) continue;
+                if (payFilter && exp.payment_method !== payFilter) continue;
+                if (exp.amount < minAmount || exp.amount > maxAmount) continue;
+                if (dateFrom && exp.date < dateFrom) continue;
+                if (dateTo && exp.date > dateTo) continue;
+
+                // If no text query but filters applied, include all
+                if (!query) {
+                    results.push({ exp, matchType: 'filter', matchField: '' });
+                    continue;
+                }
+
+                // Check fuzzy match across fields
+                const fields = [
+                    { name: 'description', val: exp.description },
+                    { name: 'vendor', val: exp.vendor },
+                    { name: 'category', val: exp.category },
+                    { name: 'notes', val: exp.notes },
+                    { name: 'payment', val: exp.payment_method },
+                ];
+
+                let bestMatch = null;
+                for (const field of fields) {
+                    if (!field.val) continue;
+                    const result = fuzzyMatch(query, field.val);
+                    if (result.match) {
+                        if (!bestMatch || (result.exact && !bestMatch.exact)) {
+                            bestMatch = { field: field.name, exact: result.exact };
+                        }
+                    }
+                }
+
+                // Also check amount as a number
+                if (!bestMatch && !isNaN(parseFloat(query))) {
+                    const qAmount = parseFloat(query);
+                    if (Math.abs(exp.amount - qAmount) < 0.01) {
+                        bestMatch = { field: 'amount', exact: true };
+                    }
+                }
+
+                if (bestMatch) {
+                    results.push({ 
+                        exp, 
+                        matchType: bestMatch.exact ? 'exact' : 'fuzzy',
+                        matchField: bestMatch.field 
+                    });
+                }
+            }
+
+            // Sort: exact matches first, then by date newest first
+            results.sort((a, b) => {
+                if (a.matchType === 'exact' && b.matchType !== 'exact') return -1;
+                if (b.matchType === 'exact' && a.matchType !== 'exact') return 1;
+                return new Date(b.exp.date) - new Date(a.exp.date);
+            });
+
+            // Update summary
+            summaryDiv.style.display = 'block';
+            document.getElementById('searchResultCount').textContent = results.length;
+            const totalAmt = results.reduce((sum, r) => sum + r.exp.amount, 0);
+            document.getElementById('searchTotalAmount').textContent = `$${totalAmt.toFixed(2)}`;
+            document.getElementById('searchAvgAmount').textContent = results.length > 0 
+                ? `$${(totalAmt / results.length).toFixed(2)}` : '$0.00';
+            
+            if (results.length > 0) {
+                const dates = results.map(r => r.exp.date).sort();
+                document.getElementById('searchDateRange').textContent = `${dates[0]} → ${dates[dates.length - 1]}`;
+            } else {
+                document.getElementById('searchDateRange').textContent = '-';
+            }
+
+            // Render results (cap at 200 for performance)
+            const displayResults = results.slice(0, 200);
+            if (displayResults.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p style="font-size: 1.2em;">No expenses match your search</p>
+                        <p style="margin-top: 10px;">Try a different spelling or adjust filters</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            if (results.length > 200) {
+                html += `<p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 13px;">Showing first 200 of ${results.length} results</p>`;
+            }
+
+            html += `<div style="display: flex; flex-direction: column; gap: 6px;">`;
+            displayResults.forEach(({ exp, matchType, matchField }) => {
+                const splitBadge = (exp.notes && exp.notes.includes('split_from:')) ? '<span class="split-badge">🔀</span> ' : '';
+                const fuzzyTag = matchType === 'fuzzy' ? `<span class="fuzzy-badge">fuzzy: ${matchField}</span>` : '';
+                const desc = query ? highlightMatch(exp.description || '', query) : (exp.description || '');
+                const vendor = query ? highlightMatch(exp.vendor || '-', query) : (exp.vendor || '-');
+
+                html += `
+                    <div class="search-result-row" onclick="navigateToExpenseMonth('${exp.date}')">
+                        <div style="color: var(--text-secondary); font-size: 13px;">${exp.date}</div>
+                        <div>
+                            <div style="color: var(--text-primary); font-weight: 500;">${splitBadge}${desc} ${fuzzyTag}</div>
+                            <div style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;">${vendor} · ${exp.category} · ${exp.payment_method}</div>
+                        </div>
+                        <div style="color: var(--success); font-weight: 600; text-align: right;">$${exp.amount.toFixed(2)}</div>
+                        <div style="text-align: right; display: flex; gap: 4px; justify-content: flex-end;">
+                            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.8em;" onclick="event.stopPropagation(); openEditModal(${exp.id})">Edit</button>
+                            <button class="btn btn-secondary" style="padding: 6px 8px; font-size: 0.8em;" onclick="event.stopPropagation(); openSplitModal(${exp.id})" title="Split">🔀</button>
+                        </div>
+                        <div style="text-align: right;">
+                            <button class="btn btn-danger" style="padding: 6px 10px; font-size: 0.8em;" onclick="event.stopPropagation(); deleteExpense(${exp.id})">Del</button>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // Navigate to the month containing a specific expense
+        function navigateToExpenseMonth(dateStr) {
+            const date = parseLocalDate(dateStr);
+            const monthIndex = date.getMonth();
+            const year = date.getFullYear();
+            
+            // Set year if different
+            const yearSelector = document.getElementById('yearSelector');
+            if (yearSelector && parseInt(yearSelector.value) !== year) {
+                yearSelector.value = year;
+                yearSelector.dispatchEvent(new Event('change'));
+            }
+
+            // Switch to month tab
+            const monthKey = months[monthIndex];
+            switchTab(monthKey);
+            
+            // Select month in dropdown
+            const monthSelector = document.getElementById('monthSelector');
+            if (monthSelector) monthSelector.value = monthKey;
+        }
+
+        // ============================================
+        // SPLIT TRANSACTION
+        // ============================================
+
+        let splitExpenseId = null;
+        let splitOriginalAmount = 0;
+
+        function openSplitModal(expenseId) {
+            const exp = expenses.find(e => e.id === expenseId);
+            if (!exp) return;
+
+            splitExpenseId = expenseId;
+            splitOriginalAmount = exp.amount;
+
+            // Show original expense info
+            document.getElementById('splitOriginalInfo').innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="color: var(--text-primary); font-weight: 600;">${exp.description}</div>
+                        <div style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">${exp.vendor || 'No vendor'} · ${exp.category} · ${exp.date}</div>
+                    </div>
+                    <div style="color: var(--accent); font-size: 22px; font-weight: 700;">$${exp.amount.toFixed(2)}</div>
+                </div>`;
+
+            // Initialize with 2 split rows
+            const container = document.getElementById('splitRowsContainer');
+            container.innerHTML = '';
+            addSplitRow(exp.description, exp.category, exp.amount);
+            addSplitRow(exp.description, '', 0);
+
+            updateSplitRemaining();
+
+            document.getElementById('splitModal').classList.add('active');
+        }
+
+        function closeSplitModal() {
+            document.getElementById('splitModal').classList.remove('active');
+            splitExpenseId = null;
+            splitOriginalAmount = 0;
+        }
+
+        function addSplitRow(defaultDesc = '', defaultCategory = '', defaultAmount = 0) {
+            const container = document.getElementById('splitRowsContainer');
+            const rowIndex = container.children.length;
+            
+            const categoryOptions = categories.map(c => 
+                `<option value="${c}" ${c === defaultCategory ? 'selected' : ''}>${c}</option>`
+            ).join('');
+
+            const row = document.createElement('div');
+            row.className = 'split-row';
+            row.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <input type="text" class="split-desc" value="${defaultDesc}" placeholder="Description" 
+                           style="padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(255,255,255,0.05); color: #fff; font-size: 14px;">
+                    <select class="split-cat" style="padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(255,255,255,0.05); color: #fff; font-size: 13px;">
+                        <option value="">Select Category</option>
+                        ${categoryOptions}
+                    </select>
+                </div>
+                <div>
+                    <input type="number" class="split-amount" value="${defaultAmount || ''}" placeholder="$0.00" step="0.01" min="0.01"
+                           style="width: 100%; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(255,255,255,0.05); color: #fff; font-size: 14px; text-align: right;"
+                           oninput="updateSplitRemaining()">
+                </div>
+                <button class="btn btn-danger" style="padding: 8px 10px; font-size: 0.85em;" onclick="removeSplitRow(this)" 
+                        ${rowIndex < 2 ? 'disabled title="Need at least 2 splits"' : ''}>✕</button>
+            `;
+            container.appendChild(row);
+            updateSplitRemaining();
+        }
+
+        function removeSplitRow(btn) {
+            const container = document.getElementById('splitRowsContainer');
+            if (container.children.length <= 2) return; // Must keep at least 2
+            btn.closest('.split-row').remove();
+            // Re-evaluate disable state on remaining rows
+            Array.from(container.children).forEach((row, i) => {
+                const delBtn = row.querySelector('.btn-danger');
+                delBtn.disabled = container.children.length <= 2;
+            });
+            updateSplitRemaining();
+        }
+
+        function updateSplitRemaining() {
+            const amounts = Array.from(document.querySelectorAll('.split-amount')).map(input => parseFloat(input.value) || 0);
+            const total = amounts.reduce((sum, a) => sum + a, 0);
+            const remaining = splitOriginalAmount - total;
+            const display = document.getElementById('splitRemainingDisplay');
+            const saveBtn = document.getElementById('splitSaveBtn');
+            
+            const isBalanced = Math.abs(remaining) < 0.01;
+            const allHaveAmounts = amounts.every(a => a > 0);
+            
+            display.textContent = isBalanced ? '✅ Balanced — amounts match!' : `Remaining: $${remaining.toFixed(2)}`;
+            display.className = `split-remaining ${isBalanced ? 'balanced' : 'unbalanced'}`;
+            
+            // Enable save only if balanced and all rows filled
+            const allDescs = Array.from(document.querySelectorAll('.split-desc')).map(i => i.value.trim());
+            const allCats = Array.from(document.querySelectorAll('.split-cat')).map(s => s.value);
+            const isValid = isBalanced && allHaveAmounts && allDescs.every(d => d.length > 0) && allCats.every(c => c.length > 0);
+            
+            saveBtn.disabled = !isValid;
+        }
+
+        async function saveSplitTransaction() {
+            const exp = expenses.find(e => e.id === splitExpenseId);
+            if (!exp) return;
+
+            const rows = document.querySelectorAll('.split-row');
+            const splits = Array.from(rows).map(row => ({
+                description: row.querySelector('.split-desc').value.trim(),
+                category: row.querySelector('.split-cat').value,
+                amount: parseFloat(row.querySelector('.split-amount').value),
+            }));
+
+            // Validate totals
+            const total = splits.reduce((sum, s) => sum + s.amount, 0);
+            if (Math.abs(total - exp.amount) > 0.01) {
+                alert('Split amounts must add up to the original amount.');
+                return;
+            }
+
+            // Build new expenses from splits
+            const newExpenses = splits.map(split => ({
+                date: exp.date,
+                description: split.description,
+                category: split.category,
+                amount: split.amount,
+                payment_method: exp.payment_method,
+                vendor: exp.vendor,
+                notes: `split_from:${exp.id}` + (exp.notes ? ` | ${exp.notes}` : ''),
+                source: exp.source || 'manual',
+                hash: generateExpenseHash(exp.date, split.description, split.amount),
+            }));
+
+            try {
+                // Insert new split expenses
+                const { data: insertedData, error: insertError } = await supabaseClient
+                    .from('expenses')
+                    .insert(newExpenses)
+                    .select();
+
+                if (insertError) {
+                    alert('Error creating split expenses: ' + insertError.message);
+                    return;
+                }
+
+                // Delete original expense
+                const { error: deleteError } = await supabaseClient
+                    .from('expenses')
+                    .delete()
+                    .eq('id', exp.id);
+
+                if (deleteError) {
+                    alert('Error removing original expense: ' + deleteError.message);
+                    return;
+                }
+
+                // Update local array
+                expenses = expenses.filter(e => e.id !== exp.id);
+                expenses.push(...insertedData);
+
+                closeSplitModal();
+                renderAllMonths();
+                renderInsights();
+                alert(`✅ Split into ${splits.length} transactions successfully!`);
+            } catch (err) {
+                alert('Error splitting transaction: ' + err.message);
+            }
         }
 
         // Export to CSV
