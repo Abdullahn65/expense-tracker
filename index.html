@@ -1014,6 +1014,7 @@
             border-radius: 8px;
             color: #fff;
             font-size: 13px;
+            color-scheme: dark;
         }
         .search-result-row {
             padding: 14px 16px;
@@ -1444,8 +1445,14 @@
                     </select>
                     <input type="number" id="searchMinAmount" placeholder="Min $" step="0.01" oninput="performGlobalSearch()">
                     <input type="number" id="searchMaxAmount" placeholder="Max $" step="0.01" oninput="performGlobalSearch()">
-                    <input type="date" id="searchDateFrom" onchange="performGlobalSearch()">
-                    <input type="date" id="searchDateTo" onchange="performGlobalSearch()">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="searchDateFrom" style="color: var(--text-secondary); font-size: 12px; white-space: nowrap;">From:</label>
+                        <input type="date" id="searchDateFrom" onchange="performGlobalSearch()" oninput="performGlobalSearch()">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="searchDateTo" style="color: var(--text-secondary); font-size: 12px; white-space: nowrap;">To:</label>
+                        <input type="date" id="searchDateTo" onchange="performGlobalSearch()" oninput="performGlobalSearch()">
+                    </div>
                     <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="clearSearchFilters()">Clear Filters</button>
                 </div>
 
@@ -6425,8 +6432,9 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 summaryDiv.style.display = 'none';
                 resultsDiv.innerHTML = `
                     <div class="empty-state">
-                        <p style="font-size: 1.2em;">Start typing to search across all your expenses</p>
-                        <p style="margin-top: 10px;">Supports fuzzy matching — "costko" will find "Costco"</p>
+                        <p style="font-size: 1.2em;">Search across all your expenses</p>
+                        <p style="margin-top: 10px;">Type a keyword <strong>or</strong> use the filters above — date range, category, payment method, amount</p>
+                        <p style="margin-top: 6px; color: var(--text-secondary); font-size: 13px;">Fuzzy matching enabled — "costko" will find "Costco"</p>
                     </div>`;
                 return;
             }
@@ -6455,6 +6463,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     { name: 'category', val: exp.category },
                     { name: 'notes', val: exp.notes },
                     { name: 'payment', val: exp.payment_method },
+                    { name: 'date', val: exp.date },
                 ];
 
                 let bestMatch = null;
