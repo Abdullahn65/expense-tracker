@@ -2178,10 +2178,7 @@
         const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         
-        // Get selected year from dropdown (default to current year)
-        let selectedYear = new Date().getFullYear();
-        
-        let currentYear = selectedYear;
+        let currentYear = new Date().getFullYear();
         
         // Initialize year selector with available years from data
         function initializeYearSelector() {
@@ -2195,13 +2192,11 @@
             // Always include current year
             years.add(thisYear);
             
-            // Add years from expenses (this captures ALL historical data)
+            // Add years from expenses
             expenses.forEach(exp => {
                 if (exp.date) {
                     const expYear = parseLocalDate(exp.date).getFullYear();
-                    if (expYear >= 2020 && expYear <= thisYear + 1) {
-                        years.add(expYear);
-                    }
+                    if (expYear >= 2020 && expYear <= thisYear + 1) years.add(expYear);
                 }
             });
             
@@ -2209,24 +2204,18 @@
             income.forEach(inc => {
                 if (inc.date) {
                     const incYear = parseLocalDate(inc.date).getFullYear();
-                    if (incYear >= 2020 && incYear <= thisYear + 1) {
-                        years.add(incYear);
-                    }
+                    if (incYear >= 2020 && incYear <= thisYear + 1) years.add(incYear);
                 }
             });
             
-            // Sort years descending (newest first)
             const sortedYears = Array.from(years).sort((a, b) => b - a);
             
-            // Populate dropdown
             yearSelector.innerHTML = sortedYears.map(y => 
-                `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>`
+                `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`
             ).join('');
             
-            // Add change listener
             yearSelector.addEventListener('change', function() {
-                selectedYear = parseInt(this.value);
-                currentYear = selectedYear; // Update the alias too
+                currentYear = parseInt(this.value);
                 refreshAllViews();
             });
         }
@@ -2718,61 +2707,27 @@
 
             // Render charts if needed
             if (months.includes(tabName)) {
-                // Render the month view with fresh data
                 const monthIndex = months.indexOf(tabName);
                 setTimeout(() => {
                     renderMonth(tabName, monthIndex);
                     renderMonthChart(tabName);
                     updateDeleteAllButton();
                 }, 100);
-            } else if (tabName === 'comparison') {
-                setTimeout(() => {
-                    renderComparison();
-                }, 200);
-                // Reset month dropdown when switching away from month tabs
-                const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
-                // Hide delete button
-                const deleteBtn = document.getElementById('deleteAllMonthBtn');
-                if (deleteBtn) deleteBtn.style.display = 'none';
-            } else if (tabName === 'insights') {
-                setTimeout(async () => {
-                    renderInsights();
-                }, 200);
-                // Reset month dropdown when switching away from month tabs
-                const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
-                // Hide delete button
-                const deleteBtn = document.getElementById('deleteAllMonthBtn');
-                if (deleteBtn) deleteBtn.style.display = 'none';
-            } else if (tabName === 'search') {
-                populateSearchFilters();
-                setTimeout(() => {
-                    document.getElementById('globalSearchInput').focus();
-                }, 200);
-                // Reset month dropdown
-                const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
-                const deleteBtn = document.getElementById('deleteAllMonthBtn');
-                if (deleteBtn) deleteBtn.style.display = 'none';
             } else {
-                // Reset month dropdown when switching to non-month tabs
+                // Reset month dropdown & hide delete button for non-month tabs
                 const monthSelector = document.getElementById('monthSelector');
-                if (monthSelector) {
-                    monthSelector.value = '';
-                }
-                // Hide delete button
+                if (monthSelector) monthSelector.value = '';
                 const deleteBtn = document.getElementById('deleteAllMonthBtn');
                 if (deleteBtn) deleteBtn.style.display = 'none';
-                
-                // Refresh settings lists when navigating to settings tab
-                if (tabName === 'settings') {
+
+                if (tabName === 'comparison') {
+                    setTimeout(() => renderComparison(), 200);
+                } else if (tabName === 'insights') {
+                    setTimeout(() => renderInsights(), 200);
+                } else if (tabName === 'search') {
+                    populateSearchFilters();
+                    setTimeout(() => document.getElementById('globalSearchInput').focus(), 200);
+                } else if (tabName === 'settings') {
                     renderSettings();
                 }
             }
@@ -3379,11 +3334,9 @@
             if (!OPENAI_API_KEY) return null;
 
             try {
-                const categoryList = ['Housing', 'Transportation', 'Groceries', 'Dining Out', 'Entertainment', 'Healthcare', 'Personal Care', 'Shopping', 'Insurance', 'Savings', 'Education', 'Gifts', 'Subscriptions', 'Investment Subscription', 'Investments', 'Other'];
-                
                 const prompt = initialCategory && initialCategory !== 'Other' 
-                    ? `Transaction: "${description}" | Amount: $${amount} | Pre-categorized as: ${initialCategory}\n\nRefine or confirm the category from: ${categoryList.join(', ')}. Reply with ONLY the category.`
-                    : `Categorize this transaction into ONE of: ${categoryList.join(', ')}. Transaction: "${description}" | Amount: $${amount}. Reply with ONLY the category.`;
+                    ? `Transaction: "${description}" | Amount: $${amount} | Pre-categorized as: ${initialCategory}\n\nRefine or confirm the category from: ${categories.join(', ')}. Reply with ONLY the category.`
+                    : `Categorize this transaction into ONE of: ${categories.join(', ')}. Transaction: "${description}" | Amount: $${amount}. Reply with ONLY the category.`;
                 
                 const response = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
