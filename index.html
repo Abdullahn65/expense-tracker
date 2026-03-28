@@ -1429,7 +1429,7 @@
                 
                 <div class="search-input-wrapper">
                     <input type="text" id="globalSearchInput" class="search-input-lg" 
-                           placeholder="Search by description, vendor, category, notes... (fuzzy matching enabled)"
+                           placeholder="Search by description, vendor, category, date, notes... (fuzzy matching enabled)"
                            oninput="performGlobalSearch()">
                 </div>
                 
@@ -1447,13 +1447,14 @@
                     <input type="number" id="searchMaxAmount" placeholder="Max $" step="0.01" oninput="performGlobalSearch()">
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <label for="searchDateFrom" style="color: var(--text-secondary); font-size: 12px; white-space: nowrap;">From:</label>
-                        <input type="date" id="searchDateFrom" onchange="performGlobalSearch()" oninput="performGlobalSearch()">
+                        <input type="date" id="searchDateFrom">
                     </div>
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <label for="searchDateTo" style="color: var(--text-secondary); font-size: 12px; white-space: nowrap;">To:</label>
-                        <input type="date" id="searchDateTo" onchange="performGlobalSearch()" oninput="performGlobalSearch()">
+                        <input type="date" id="searchDateTo">
                     </div>
-                    <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="clearSearchFilters()">Clear Filters</button>
+                    <button class="btn" style="padding: 8px 16px; font-size: 13px; background: var(--accent); color: #000; font-weight: 600;" onclick="performGlobalSearch()">Apply Filters</button>
+                    <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="clearSearchFilters()">Clear</button>
                 </div>
 
                 <!-- Search summary -->
@@ -6371,6 +6372,8 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             return { match: true, exact: false };
         }
 
+        let searchFiltersInitialized = false;
+
         function populateSearchFilters() {
             const yearSelect = document.getElementById('searchYear');
             const catSelect = document.getElementById('searchCategory');
@@ -6387,6 +6390,17 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             // Payment methods
             const methods = [...new Set(expenses.map(e => e.payment_method).filter(Boolean))].sort();
             paySelect.innerHTML = '<option value="">All Payment Methods</option>' + methods.map(m => `<option value="${m}">${m}</option>`).join('');
+
+            // Bind date input listeners once (onchange/oninput are unreliable for date inputs on Safari)
+            if (!searchFiltersInitialized) {
+                searchFiltersInitialized = true;
+                const dateFrom = document.getElementById('searchDateFrom');
+                const dateTo = document.getElementById('searchDateTo');
+                ['change', 'input', 'blur'].forEach(evt => {
+                    dateFrom.addEventListener(evt, () => performGlobalSearch());
+                    dateTo.addEventListener(evt, () => performGlobalSearch());
+                });
+            }
         }
 
         function clearSearchFilters() {
