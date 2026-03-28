@@ -6428,23 +6428,24 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         }
 
         function performGlobalSearch() {
+          try {
             const query = document.getElementById('globalSearchInput').value.trim();
             const yearFilter = document.getElementById('searchYear').value;
             const catFilter = document.getElementById('searchCategory').value;
             const payFilter = document.getElementById('searchPayment').value;
-            const minAmount = parseFloat(document.getElementById('searchMinAmount').value) || 0;
-            const maxAmount = parseFloat(document.getElementById('searchMaxAmount').value) || Infinity;
-            const dateFrom = document.getElementById('searchDateFrom').value || '';
-            const dateTo = document.getElementById('searchDateTo').value || '';
-
-            console.log('Search triggered:', { query, yearFilter, catFilter, payFilter, minAmount, maxAmount, dateFrom, dateTo, expenseCount: expenses.length });
+            const minAmountVal = document.getElementById('searchMinAmount').value;
+            const maxAmountVal = document.getElementById('searchMaxAmount').value;
+            const minAmount = minAmountVal ? parseFloat(minAmountVal) : 0;
+            const maxAmount = maxAmountVal ? parseFloat(maxAmountVal) : Infinity;
+            const dateFrom = document.getElementById('searchDateFrom').value;
+            const dateTo = document.getElementById('searchDateTo').value;
 
             const summaryDiv = document.getElementById('searchSummary');
             const resultsDiv = document.getElementById('searchResults');
 
-            // Need at least a query or a filter
-            const hasFilters = !!(yearFilter || catFilter || payFilter || minAmount > 0 || isFinite(maxAmount) || dateFrom || dateTo);
-            console.log('hasFilters:', hasFilters);
+            // Check if any filter is active
+            const hasFilters = (yearFilter !== '' || catFilter !== '' || payFilter !== '' || 
+                               minAmountVal !== '' || maxAmountVal !== '' || dateFrom !== '' || dateTo !== '');
             if (!query && !hasFilters) {
                 summaryDiv.style.display = 'none';
                 resultsDiv.innerHTML = `
@@ -6511,8 +6512,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 }
             }
 
-            console.log('Results found:', results.length);
-
             // Sort: exact matches first, then by date newest first
             results.sort((a, b) => {
                 if (a.matchType === 'exact' && b.matchType !== 'exact') return -1;
@@ -6577,6 +6576,11 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             });
             html += '</div>';
             resultsDiv.innerHTML = html;
+          } catch (err) {
+            console.error('Search error:', err);
+            const resultsDiv = document.getElementById('searchResults');
+            if (resultsDiv) resultsDiv.innerHTML = `<div class="empty-state"><p style="color: #ff6b6b;">Search error: ${err.message}</p></div>`;
+          }
         }
 
         // Navigate to the month containing a specific expense
