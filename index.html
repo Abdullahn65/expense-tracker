@@ -1999,10 +1999,6 @@
             return {}; // Empty by default — user adds what they need
         }
 
-        function saveUserCSVTemplates(templates) {
-            localStorage.setItem('user_csv_templates', JSON.stringify(templates));
-        }
-
         function getActiveCSVTemplates() {
             // Merge built-in with user's enabled selections
             const userEnabled = getUserEnabledCSVTemplates();
@@ -2159,7 +2155,6 @@
         function setOpenAIKey(key) {
             OPENAI_API_KEY = key;
             localStorage.setItem('openai_api_key', key);
-            console.log('✅ OpenAI API key configured');
         }
 
         // Prompt for API key on first load if not set
@@ -2176,7 +2171,6 @@
                     setOpenAIKey(userKey.trim());
                 } else {
                     localStorage.setItem('ai_setup_skipped', 'true');
-                    console.log('⏭️ Smart Categories skipped');
                 }
             }, 1500);
         }
@@ -2187,12 +2181,6 @@
         // Get selected year from dropdown (default to current year)
         let selectedYear = new Date().getFullYear();
         
-        // For backwards compatibility, currentYear now references selectedYear
-        function getCurrentYear() {
-            return selectedYear;
-        }
-        
-        // Alias for code that still uses currentYear directly
         let currentYear = selectedYear;
         
         // Initialize year selector with available years from data
@@ -2239,7 +2227,6 @@
             yearSelector.addEventListener('change', function() {
                 selectedYear = parseInt(this.value);
                 currentYear = selectedYear; // Update the alias too
-                console.log(`📅 Year changed to ${selectedYear}`);
                 refreshAllViews();
             });
         }
@@ -2271,7 +2258,6 @@
                 sortState[month].direction = column === 'amount' ? 'desc' : 'asc';
             }
             
-            console.log(`🔀 Sorting ${month} by ${column} (${sortState[month].direction})`);
             
             // Re-render the month with new sort
             const monthIndex = months.indexOf(month);
@@ -2363,7 +2349,6 @@
                 }
                 
                 localStorage.setItem('category_learning_data', JSON.stringify(categoryLearningData));
-                console.log(`📚 AI Learning: ${vendor || description} → ${correctCategory}`);
             }
         }
 
@@ -2530,7 +2515,6 @@
 
         async function initializeApp() {
             try {
-                console.log('🎯 initializeApp() called');
                 
                 // Initialize year selector first (needs expense data)
                 initializeYearSelector();
@@ -2547,7 +2531,6 @@
                 document.getElementById('incomeDate').value = localDate;
 
                 // Setup event listeners
-                console.log('Setting up event listeners...');
                 setupNavigation();
                 setupForm();
                 
@@ -2572,7 +2555,6 @@
                 // Get and log current user info for debugging
                 const { data: { user } } = await supabaseClient.auth.getUser();
                 if (user) {
-                    console.log('Logged in as:', user.email, '(ID:', user.id, ')');
                 }
 
                 // Reload income to ensure it's up to date
@@ -2584,7 +2566,6 @@
                 if (fixedIncomeData) {
                     income = fixedIncomeData;
                     renderIncomeList();
-                    console.log('Reloaded income entries:', income.length);
                 }
             } catch (err) {
                 console.error('Error in initializeApp:', err);
@@ -2615,9 +2596,7 @@
 
             if (incomeData) {
                 income = incomeData;
-                console.log('Loaded income entries:', income.length);
             } else {
-                console.log('No income data returned');
                 income = [];
             }
 
@@ -2645,7 +2624,6 @@
 
             if (templatesData) {
                 expenseTemplates = templatesData;
-                console.log('✅ Loaded templates:', expenseTemplates.length);
                 // Initialize usage stats for each template
                 expenseTemplates.forEach(t => {
                     if (!templateUsageStats[t.id]) {
@@ -2658,7 +2636,6 @@
                     }
                 });
             } else {
-                console.log('⚠️ No templates data returned (might be empty)');
                 expenseTemplates = [];
             }
 
@@ -2683,9 +2660,7 @@
                 incomeTemplates = [];
             } else if (incomeTemplatesData && incomeTemplatesData.length > 0) {
                 incomeTemplates = incomeTemplatesData;
-                console.log('✅ Loaded income templates:', incomeTemplates.length);
             } else {
-                console.log('ℹ️ No income templates found for this user');
                 incomeTemplates = [];
             }
         }
@@ -2752,7 +2727,6 @@
                 }, 100);
             } else if (tabName === 'comparison') {
                 setTimeout(() => {
-                    console.debug('Comparison tab clicked. Rendering comparison data.');
                     renderComparison();
                 }, 200);
                 // Reset month dropdown when switching away from month tabs
@@ -2765,7 +2739,6 @@
                 if (deleteBtn) deleteBtn.style.display = 'none';
             } else if (tabName === 'insights') {
                 setTimeout(async () => {
-                    console.debug('Insights tab clicked. Rendering vendor analytics and trends.');
                     renderInsights();
                 }, 200);
                 // Reset month dropdown when switching away from month tabs
@@ -3037,7 +3010,6 @@
             // ========== AUTO-DETECT DELIMITER (tab vs comma) ==========
             const firstDataLine = csvText.split('\n')[0] || '';
             const delimiter = firstDataLine.includes('\t') ? '\t' : ',';
-            console.log(`🔍 Auto-detected delimiter: ${delimiter === '\t' ? 'TAB' : 'COMMA'}`);
 
             // Parse a single CSV/TSV line handling quoted fields
             function parseCSVLine(line) {
@@ -3100,10 +3072,8 @@
                     headerRowIndex = i;
                 }
             }
-            console.log(`📋 Header row detected at line ${headerRowIndex + 1} (matched ${bestMatchCount}/${expectedColumns.length} columns)`);
 
             const headers = parseCSVLine(allLines[headerRowIndex]);
-            console.log('📋 Headers found:', headers);
             const dataLines = allLines.slice(headerRowIndex + 1);
 
             // ========== MAP COLUMNS ==========
@@ -3123,7 +3093,6 @@
                 }
                 columnMap[field] = index;
             }
-            console.log('🗺️ Column map:', columnMap);
 
             // Helper: safely get value from column map
             function getVal(fieldName, values) {
@@ -3147,7 +3116,6 @@
                 processed: 0
             };
             
-            console.log(`📊 Starting to parse ${dataLines.length} CSV rows (template: ${template.name})...`);
             
             for (let i = 0; i < dataLines.length; i++) {
                 const values = parseCSVLine(dataLines[i]);
@@ -3167,7 +3135,6 @@
 
                 if (!dateStr || !description || !amountStr) {
                     skipReasons.missingData++;
-                    console.debug(`Row ${i + 1}: Missing data - Date: "${dateStr}", Desc: "${description}", Amount: "${amountStr}"`);
                     continue;
                 }
 
@@ -3213,7 +3180,6 @@
                 if (skipReason) {
                     skipReasons.filtered++;
                     skippedTransactions.push({ date: dateStr, description, amount: amountStr, reason: skipReason });
-                    console.debug(`Row ${i + 1}: ${skipReason} - ${description}`);
                     continue;
                 }
 
@@ -3232,7 +3198,6 @@
                 let amount = parseFloat(amountValue);
                 if (isNaN(amount)) {
                     skipReasons.missingData++;
-                    console.debug(`Row ${i + 1}: Unparseable amount "${amountStr}" - ${description}`);
                     continue;
                 }
                 if (isNegative && amount > 0) {
@@ -3257,7 +3222,6 @@
                 
                 if (amount > 0) {
                     skipReasons.processed++;
-                    console.debug(`Row ${i + 1}: Income - ${description} ($${amount.toFixed(2)})`);
                     
                     // Auto-detect income source from description
                     let incomeSource = 'Other';
@@ -3286,7 +3250,6 @@
                 } else if (amount < 0) {
                     skipReasons.processed++;
                     amount = Math.abs(amount);
-                    console.debug(`Row ${i + 1}: Expense - ${description} ($${amount.toFixed(2)})`);
 
                     let initialCategory = csvCategory ? mapCategoryFromCSV(csvCategory) : 'Other';
 
@@ -3309,7 +3272,6 @@
                 const isDup = isDuplicateExpense(newExp);
                 if (isDup) {
                     skippedTransactions.push({ date: newExp.date, description: newExp.description, amount: `$${newExp.amount.toFixed(2)}`, reason: 'Duplicate expense' });
-                    console.debug(`Duplicate: ${newExp.description} - $${newExp.amount} on ${newExp.date}`);
                 }
                 return !isDup;
             });
@@ -3318,7 +3280,6 @@
             const totalRows = dataLines.length;
             const totalSkipped = totalRows - skipReasons.processed;
             const dupsRemoved = expensesToImport.length - dedupedExpenses.length;
-            console.log(`📊 CSV parsed: ${totalRows} rows → ${dedupedExpenses.length} expenses + ${incomeToImport.length} income (skipped ${totalSkipped}, deduped ${dupsRemoved})`);
 
             return {
                 expenses: dedupedExpenses,
@@ -3335,7 +3296,6 @@
                 
                 if (learnedCategory) {
                     expense.category = learnedCategory;
-                    console.log(`✅ Using learned category for "${expense.vendor || expense.description}": ${learnedCategory}`);
                 } else if (OPENAI_API_KEY) {
                     // Use AI if no learned category exists
                     expense.category = await suggestCategoryAI(expense.description, expense.category, expense.amount) || expense.category;
@@ -3509,7 +3469,6 @@
                             const idx = expenses.findIndex(e => e.id === exp.id);
                             if (idx !== -1) expenses[idx].category = newCategory;
                             updated++;
-                            console.log(`✅ ${exp.description}: ${exp.category} → ${newCategory}`);
                         } else {
                             failed++;
                             console.error(`❌ Failed to update ${exp.description}:`, error);
@@ -3594,7 +3553,6 @@
                                 .eq('id', inc.id);
 
                             if (!error) {
-                                console.log(`✅ Income "${inc.description}": ${inc.source} → ${suggestedSource}`);
                                 inc.source = suggestedSource;
                                 updated++;
                             } else {
@@ -3794,7 +3752,6 @@
 
                     // If batch_id column doesn't exist, retry without it
                     if (error && error.message && error.message.includes('batch_id')) {
-                        console.log('⚠️ batch_id column not found. Retrying without batch tracking...');
                         const expensesToInsertWithoutBatch = expensesToInsert.map(exp => {
                             const { batch_id, ...rest } = exp;
                             return rest;
@@ -3814,7 +3771,6 @@
                     expensesInserted = data.length;
                     expenses.push(...data);
                     lastImportedExpenseIds = data.map(exp => exp.id);
-                    console.log(`✅ Inserted ${expensesInserted} expenses`);
                 }
 
                 // Import INCOME
@@ -3824,7 +3780,6 @@
                     const incomeToInsert = csvIncomePreviewData.filter(inc => {
                         const isDup = detectDuplicateIncome(inc.date, inc.description, inc.amount);
                         if (isDup) {
-                            console.log(`⏭️ Skipping duplicate income: ${inc.description} - $${inc.amount} on ${inc.date}`);
                         }
                         return !isDup;
                     }).map(inc => ({
@@ -3843,12 +3798,10 @@
                         
                         incomeInserted = data.length;
                         income.push(...data);
-                        console.log(`✅ Inserted ${incomeInserted} income entries`);
                     }
                     
                     const skippedCount = csvIncomePreviewData.length - incomeToInsert.length;
                     if (skippedCount > 0) {
-                        console.log(`⏭️ Skipped ${skippedCount} duplicate income entries`);
                     }
                 }
 
@@ -3935,7 +3888,6 @@
                     throw new Error(error.message);
                 }
 
-                console.log(`✅ Deleted ${batchEntry.count} expenses with batch_id: ${batchId}`);
 
                 // Remove from local array
                 expenses = expenses.filter(exp => exp.batch_id !== batchId);
@@ -4124,7 +4076,6 @@
                 });
                 const deletedCount = beforeCount - expenses.length;
 
-                console.log(`✅ Deleted ${deletedCount} expenses for ${monthName} ${currentYear}`);
 
                 renderAllMonths();
                 renderInsights();
@@ -4252,7 +4203,6 @@
                         }
                     }
                 } catch (error) {
-                    console.log('Claude duplicate check failed, using basic detection');
                 }
             }
 
@@ -4386,7 +4336,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 // Validate the category
                 if (categories.includes(suggestedCategory)) {
                     document.getElementById('category').value = suggestedCategory;
-                    console.log(`✅ AI suggested: ${suggestedCategory}`);
                 } else {
                     console.warn(`⚠️ AI suggested invalid category: ${suggestedCategory}`);
                     // Try to find a close match
@@ -4555,8 +4504,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            console.log('✅ Successfully inserted template:', data[0].id);
-            console.log('Data saved:', data[0]);
 
             expenseTemplates.push(data[0]);
             templateUsageStats[data[0].id] = {
@@ -4820,26 +4767,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             showSuccess('Template updated!');
         }
 
-        async function updateTemplateAmount(templateId, newAmount) {
-            const { error } = await supabaseClient
-                .from('expense_templates')
-                .update({ amount: newAmount })
-                .eq('id', templateId);
-
-            if (!error) {
-                const template = expenseTemplates.find(t => t.id === templateId);
-                if (template) {
-                    template.amount = newAmount;
-                    templateUsageStats[templateId].averageAmount = newAmount;
-                }
-                renderAllTemplates();
-                renderFavoriteTemplates();
-                showSuccess('Template updated!');
-            } else {
-                alert('Error updating template: ' + error.message);
-            }
-        }
-
         async function deleteTemplate(templateId) {
             if (!confirm('Delete this template?')) return;
 
@@ -5006,7 +4933,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             if (error) {
                 if (error.message.includes('income_templates')) {
                     // Table doesn't exist, create it first
-                    console.log('Income templates table does not exist. Creating...');
                     // For now, just store in local array
                     template.id = Date.now();
                     incomeTemplates.push(template);
@@ -5021,7 +4947,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            console.log('✅ Successfully inserted income template:', data[0].id);
             incomeTemplates.push(data[0]);
             hideCreateIncomeTemplate();
             renderIncomeTemplatesList();
@@ -5135,7 +5060,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 hash: generateExpenseHash(date, description, amount)
             };
 
-            console.log('💰 Adding income:', incomeEntry);
 
             // Check for duplicates
             const duplicate = detectDuplicateIncome(date, description, amount);
@@ -5147,7 +5071,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     `Continue adding this income anyway?`
                 );
                 if (!confirmAdd) {
-                    console.log('⏭️ User cancelled duplicate income entry');
                     return;
                 }
             }
@@ -5164,7 +5087,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     return;
                 }
 
-                console.log('✅ Income added successfully:', data[0]);
                 income.push(data[0]);
 
                 // Reset form
@@ -5390,18 +5312,15 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         // Smart search and filter for monthly expenses
         function filterExpensesInMonth(month, query) {
             query = query.toLowerCase().trim();
-            console.log('🔍 Search triggered:', { month, query });
             
             // Get the expense table in this month's container
             const monthContainer = document.getElementById(month);
-            console.log('Month container:', monthContainer);
             if (!monthContainer) {
                 console.error('❌ Month container not found for:', month);
                 return;
             }
             
             const table = monthContainer.querySelector('.expense-table');
-            console.log('Table found:', !!table);
             if (!table) {
                 console.error('❌ Expense table not found in container');
                 return;
@@ -5409,7 +5328,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             
             const rows = table.querySelectorAll('tbody tr');
             let visibleCount = 0;
-            console.log('Total rows to search:', rows.length);
             
             rows.forEach(row => {
                 if (!row.dataset.expenseId) {
@@ -5496,7 +5414,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 if (matches) visibleCount++;
             });
             
-            console.log('✅ Search complete. Visible:', visibleCount, 'Total:', rows.length);
             
             // Update or create result counter
             let resultCounter = monthContainer.querySelector('.search-result-counter');
@@ -5516,7 +5433,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 resultCounter.style.color = '#94a3b8';
                 resultCounter.style.marginTop = '8px';
                 resultCounter.style.marginLeft = '2px';
-                console.log('Result counter updated:', resultCounter.textContent);
             } else {
                 resultCounter.textContent = '';
             }
@@ -5543,7 +5459,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
             });
 
-            console.debug(`renderMonth(${month}, ${monthIndex}): ${monthExpenses.length} expenses`);
 
             const monthContainer = document.getElementById(month);
             
