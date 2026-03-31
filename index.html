@@ -1611,7 +1611,6 @@
                             <input type="file" id="csvFile" accept=".csv,.tsv,.txt" style="padding: 12px 14px; border: 2px dashed var(--hairline); border-radius: 8px; cursor: pointer;" disabled>
                         </div>
 
-
                         <div id="csvPreview" style="display: none; margin-top: 24px;">
                             <h3 style="margin-bottom: 16px;">Preview Imports</h3>
                             <div style="overflow-x: auto; background: rgba(15, 18, 24, 0.5); border-radius: 8px; border: 1px solid var(--hairline);">
@@ -2246,7 +2245,6 @@
                 // Default to desc for amount (highest first), asc for others
                 sortState[month].direction = column === 'amount' ? 'desc' : 'asc';
             }
-            
             
             // Re-render the month with new sort
             const monthIndex = months.indexOf(month);
@@ -3071,7 +3069,6 @@
                 processed: 0
             };
             
-            
             for (let i = 0; i < dataLines.length; i++) {
                 const values = parseCSVLine(dataLines[i]);
                 
@@ -3841,7 +3838,6 @@
                     throw new Error(error.message);
                 }
 
-
                 // Remove from local array
                 expenses = expenses.filter(exp => exp.batch_id !== batchId);
 
@@ -4028,7 +4024,6 @@
                     return expDate < start || expDate > end;
                 });
                 const deletedCount = beforeCount - expenses.length;
-
 
                 renderAllMonths();
                 renderInsights();
@@ -4456,7 +4451,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 alert('Error creating template: ' + error.message);
                 return;
             }
-
 
             expenseTemplates.push(data[0]);
             templateUsageStats[data[0].id] = {
@@ -5013,7 +5007,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 hash: generateExpenseHash(date, description, amount)
             };
 
-
             // Check for duplicates
             const duplicate = detectDuplicateIncome(date, description, amount);
             if (duplicate) {
@@ -5265,127 +5258,64 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         // Smart search and filter for monthly expenses
         function filterExpensesInMonth(month, query) {
             query = query.toLowerCase().trim();
-            
-            // Get the expense table in this month's container
             const monthContainer = document.getElementById(month);
-            if (!monthContainer) {
-                console.error('❌ Month container not found for:', month);
-                return;
-            }
-            
+            if (!monthContainer) return;
             const table = monthContainer.querySelector('.expense-table');
-            if (!table) {
-                console.error('❌ Expense table not found in container');
-                return;
-            }
-            
+            if (!table) return;
+
             const rows = table.querySelectorAll('tbody tr');
             let visibleCount = 0;
-            
+
             rows.forEach(row => {
-                if (!row.dataset.expenseId) {
-                    // Add data-expenseId if not already present (for first filter run)
-                    row.dataset.expenseId = row.textContent;
-                }
-                
-                // Get cell data
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 6) return; // Skip if malformed
-                
-                const date = cells[0].textContent.toLowerCase();
-                const category = cells[1].textContent.toLowerCase();
-                const description = cells[2].textContent.toLowerCase();
-                const vendor = cells[3].textContent.toLowerCase();
-                const amountText = cells[4].textContent.toLowerCase();
-                const paymentMethod = cells[5].textContent.toLowerCase();
-                
-                // Parse amount from "$XX.XX" format
-                const amountMatch = amountText.match(/\$?([\d.]+)/);
-                const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
-                
+                if (cells.length < 6) return;
+
+                const fieldTexts = Array.from(cells).slice(0, 6).map(c => c.textContent.toLowerCase());
+                const [date, category, description, vendor, amountText, paymentMethod] = fieldTexts;
+                const amount = parseFloat((amountText.match(/\$?([\d.]+)/) || [0, 0])[1]);
+
                 let matches = false;
-                
                 if (query === '') {
-                    // Empty query shows all
                     matches = true;
                 } else {
-                    // Parse query for different filter types
-                    const queryLower = query.toLowerCase();
-                    
-                    // Check for amount filters (over/under/more than/less than)
-                    const overMatch = queryLower.match(/(?:over|more than|>)\s*[\$]?([\d.]+)/);
-                    const underMatch = queryLower.match(/(?:under|less than|<)\s*[\$]?([\d.]+)/);
-                    
-                    let amountFilterMatches = true;
-                    if (overMatch) {
-                        const threshold = parseFloat(overMatch[1]);
-                        amountFilterMatches = amount > threshold;
-                    }
-                    if (underMatch) {
-                        const threshold = parseFloat(underMatch[1]);
-                        amountFilterMatches = amountFilterMatches && amount < threshold;
-                    }
-                    
-                    // If amount filters were used, only check amount filters (unless other terms present)
+                    const overMatch = query.match(/(?:over|more than|>)\s*\$?([\d.]+)/);
+                    const underMatch = query.match(/(?:under|less than|<)\s*\$?([\d.]+)/);
+
                     if (overMatch || underMatch) {
-                        if (amountFilterMatches) {
-                            // Check if there are other keywords to match
-                            const otherTerms = queryLower
+                        matches = (!overMatch || amount > parseFloat(overMatch[1])) &&
+                                  (!underMatch || amount < parseFloat(underMatch[1]));
+                        if (matches) {
+                            const otherTerms = query
                                 .replace(/(?:over|under|more than|less than|>|<)/g, '')
-                                .replace(/[\$\d.]/g, '')
-                                .split(/\s+/)
-                                .filter(term => term.length > 0);
-                            
-                            if (otherTerms.length === 0) {
-                                matches = true;
-                            } else {
-                                // Match other terms with any field
-                                matches = otherTerms.some(term => 
-                                    description.includes(term) || 
-                                    vendor.includes(term) || 
-                                    category.includes(term) ||
-                                    paymentMethod.includes(term)
-                                );
+                                .replace(/[\$\d.]/g, '').trim().split(/\s+/).filter(t => t);
+                            if (otherTerms.length > 0) {
+                                matches = otherTerms.some(t => 
+                                    description.includes(t) || vendor.includes(t) || 
+                                    category.includes(t) || paymentMethod.includes(t));
                             }
                         }
                     } else {
-                        // No amount filters - do keyword matching
-                        const searchTerms = query.split(/\s+/).filter(term => term.length > 0);
-                        
-                        matches = searchTerms.every(term => {
-                            // Check if term matches any field
-                            return description.includes(term) || 
-                                   vendor.includes(term) || 
-                                   category.includes(term) ||
-                                   paymentMethod.includes(term) ||
-                                   date.includes(term);
-                        });
+                        const terms = query.split(/\s+/).filter(t => t);
+                        matches = terms.every(t =>
+                            description.includes(t) || vendor.includes(t) ||
+                            category.includes(t) || paymentMethod.includes(t) || date.includes(t));
                     }
                 }
-                
+
                 row.style.display = matches ? '' : 'none';
                 if (matches) visibleCount++;
             });
-            
-            
-            // Update or create result counter
+
             let resultCounter = monthContainer.querySelector('.search-result-counter');
             if (!resultCounter) {
                 resultCounter = document.createElement('div');
                 resultCounter.className = 'search-result-counter';
                 const searchBar = monthContainer.querySelector('input[id^="searchExpenses_"]');
-                if (searchBar) {
-                    searchBar.parentElement.appendChild(resultCounter);
-                }
+                if (searchBar) searchBar.parentElement.appendChild(resultCounter);
             }
-            
             if (query.length > 0) {
-                const totalRows = rows.length;
-                resultCounter.textContent = `Found ${visibleCount} of ${totalRows} expenses`;
-                resultCounter.style.fontSize = '0.85em';
-                resultCounter.style.color = '#94a3b8';
-                resultCounter.style.marginTop = '8px';
-                resultCounter.style.marginLeft = '2px';
+                resultCounter.textContent = `Found ${visibleCount} of ${rows.length} expenses`;
+                resultCounter.style.cssText = 'font-size:0.85em;color:#94a3b8;margin-top:8px;margin-left:2px';
             } else {
                 resultCounter.textContent = '';
             }
@@ -5411,7 +5341,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 const incDate = parseLocalDate(inc.date);
                 return incDate.getFullYear() === currentYear && incDate.getMonth() === monthIndex;
             });
-
 
             const monthContainer = document.getElementById(month);
             
@@ -5666,8 +5595,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             });
         }
 
-        // Dashboard functions removed - tab no longer exists
-
         // Comparison Page
         function renderComparison() {
             renderComparisonTable();
@@ -5756,7 +5683,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 canvas.parentElement.innerHTML = '<div style="padding: 40px; text-align: center; color: #A6B0BF;">No expense data for annual breakdown</div>';
                 return;
             }
-
 
             // Force white text color on the canvas container
             canvas.parentElement.style.color = '#FFFFFF';
@@ -5894,16 +5820,12 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
         }
 
         function filterTransactionsByCategory(month, category) {
-            // Get the month index
             const monthIndex = months.indexOf(month);
             const monthName = monthNames[monthIndex];
-            
-            // Filter expenses for this month and category
+
             const filteredExpenses = expenses.filter(exp => {
-                const expDate = parseLocalDate(exp.date);
-                return expDate.getFullYear() === currentYear && 
-                       expDate.getMonth() === monthIndex && 
-                       exp.category === category;
+                const d = parseLocalDate(exp.date);
+                return d.getFullYear() === currentYear && d.getMonth() === monthIndex && exp.category === category;
             });
 
             if (filteredExpenses.length === 0) {
@@ -5911,51 +5833,32 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            // Scroll to the month content and display the filtered list
             const monthContent = document.getElementById(month);
-            if (monthContent) {
-                monthContent.classList.add('active');
-                
-                // Render filtered expenses directly into the month container
-                const deleteDisabled = filteredExpenses.length === 0 ? 'disabled' : '';
-                let html = `<h3 style="margin-bottom: 20px;">${category} in ${monthName}</h3>
-                            <div style="margin-bottom: 30px; display:flex; gap: 8px;">
-                                <button class="btn btn-secondary" onclick="renderMonth('${month}', ${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;">Show All</button>
-                                <button class="btn btn-danger" onclick="deleteAllExpensesForMonth(${monthIndex})" style="padding: 10px 16px; font-size: 0.9em;" ${deleteDisabled}>Delete All</button>
-                            </div>`;
-                
-                html += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-                html += `<thead style="background: rgba(55, 224, 255, 0.1); border-bottom: 1px solid var(--hairline);">
-                            <tr>
-                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Date</th>
-                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Category</th>
-                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Description</th>
-                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Amount</th>
-                                <th style="padding: 12px; text-align: left; color: #A6B0BF; font-weight: 600;">Payment Method</th>
-                                <th style="padding: 12px; text-align: center; color: #A6B0BF; font-weight: 600;">Actions</th>
-                            </tr>
-                        </thead><tbody>`;
-                
-                filteredExpenses.forEach(exp => {
-                    html += `<tr style="border-bottom: 1px solid var(--hairline); transition: all 0.2s ease;" onmouseover="this.style.background='rgba(55, 224, 255, 0.05)'" onmouseout="this.style.background='transparent'">
-                                <td style="padding: 12px; color: var(--text-primary);">${exp.date}</td>
-                                <td style="padding: 12px; color: #A6B0BF;">${exp.category}</td>
-                                <td style="padding: 12px; color: var(--text-primary);">${exp.description}</td>
-                                <td style="padding: 12px; color: #35E6A6; font-weight: 600;">$${exp.amount.toFixed(2)}</td>
-                                <td style="padding: 12px; color: #A6B0BF;">${exp.payment_method}</td>
-                                <td style="padding: 12px; text-align: center;">
-                                    <button class="btn btn-secondary" onclick="openEditModal(${exp.id})" style="padding: 8px 12px; font-size: 0.85em; margin-right: 4px;">Edit</button>
-                                    <button class="btn btn-danger" onclick="deleteExpense(${exp.id})" style="padding: 8px 12px; font-size: 0.85em;">Delete</button>
-                                </td>
-                            </tr>`;
-                });
-                
-                html += '</tbody></table></div>';
-                monthContent.innerHTML = html;
-                
-                // Scroll to the table
-                monthContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            if (!monthContent) return;
+            monthContent.classList.add('active');
+
+            let html = `<h3 style="margin-bottom:20px">${category} in ${monthName}</h3>
+                <div style="margin-bottom:30px;display:flex;gap:8px">
+                    <button class="btn btn-secondary" onclick="renderMonth('${month}',${monthIndex})" style="padding:10px 16px;font-size:0.9em">Show All</button>
+                    <button class="btn btn-danger" onclick="deleteAllExpensesForMonth(${monthIndex})" style="padding:10px 16px;font-size:0.9em">Delete All</button>
+                </div>
+                <div style="overflow-x:auto"><table class="expense-table"><thead><tr>
+                    <th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Payment Method</th><th>Actions</th>
+                </tr></thead><tbody>`;
+
+            filteredExpenses.forEach(exp => {
+                html += `<tr>
+                    <td>${exp.date}</td><td>${exp.category}</td><td>${exp.description}</td>
+                    <td style="font-weight:600">$${exp.amount.toFixed(2)}</td><td>${exp.payment_method}</td>
+                    <td style="text-align:center">
+                        <button class="btn btn-secondary" onclick="openEditModal(${exp.id})" style="padding:8px 12px;font-size:0.85em;margin-right:4px">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteExpense(${exp.id})" style="padding:8px 12px;font-size:0.85em">Delete</button>
+                    </td></tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            monthContent.innerHTML = html;
+            monthContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // Render vendor analytics and spending insights
