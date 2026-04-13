@@ -458,6 +458,7 @@
             height: auto !important;
             display: block;
             max-height: 350px !important;
+            color: #FFFFFF;
         }
 
         .budget-item {
@@ -1032,6 +1033,43 @@
             background: rgba(55, 224, 255, 0.05);
             border-color: rgba(55, 224, 255, 0.15);
         }
+        .search-sort-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+            padding: 10px 14px;
+            background: rgba(15,18,24,0.5);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+        }
+        .search-sort-options {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .search-sort-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .search-sort-btn:hover {
+            background: rgba(55, 224, 255, 0.08);
+            border-color: rgba(55, 224, 255, 0.2);
+            color: #fff;
+        }
+        .search-sort-btn.active {
+            background: rgba(55, 224, 255, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+            font-weight: 600;
+        }
         .search-highlight {
             background: rgba(55, 224, 255, 0.25);
             color: #fff;
@@ -1429,7 +1467,7 @@
                 
                 <div class="search-input-wrapper">
                     <input type="text" id="globalSearchInput" class="search-input-lg" 
-                           placeholder="Search by description, vendor, category, date, notes... (fuzzy matching enabled)"
+                           placeholder="Search by description, vendor, category, date, notes..."
                            oninput="performGlobalSearch()">
                 </div>
                 
@@ -1455,6 +1493,19 @@
                     </div>
                     <button class="btn" style="padding: 8px 16px; font-size: 13px; background: var(--accent); color: #000; font-weight: 600;" onclick="performGlobalSearch()">Apply Filters</button>
                     <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="clearSearchFilters()">Clear</button>
+                </div>
+
+                <!-- Sort controls -->
+                <div class="search-sort-bar">
+                    <span style="color: var(--text-secondary); font-size: 13px; white-space: nowrap;">Sort by:</span>
+                    <div class="search-sort-options">
+                        <button class="search-sort-btn active" data-sort="newest" onclick="setSearchSort('newest')">🕐 Newest</button>
+                        <button class="search-sort-btn" data-sort="oldest" onclick="setSearchSort('oldest')">📅 Oldest</button>
+                        <button class="search-sort-btn" data-sort="highest" onclick="setSearchSort('highest')">💰 Highest $</button>
+                        <button class="search-sort-btn" data-sort="lowest" onclick="setSearchSort('lowest')">🏷️ Lowest $</button>
+                        <button class="search-sort-btn" data-sort="category" onclick="setSearchSort('category')">📂 Category</button>
+                        <button class="search-sort-btn" data-sort="vendor" onclick="setSearchSort('vendor')">🏪 Vendor</button>
+                    </div>
                 </div>
 
                 <!-- Search summary -->
@@ -5684,18 +5735,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
-            // Force white text color on the canvas container
-            canvas.parentElement.style.color = '#FFFFFF';
-            const canvasStyle = document.createElement('style');
-            canvasStyle.textContent = `
-                #annualCategoryChart { color: #FFFFFF !important; }
-                #annualCategoryChart + * { color: #FFFFFF !important; }
-                .chartjs-render-monitor { color: #FFFFFF !important; }
-            `;
-            if (!document.querySelector('#annualChartStyle')) {
-                canvasStyle.id = 'annualChartStyle';
-                document.head.appendChild(canvasStyle);
-            }
             const sortedData = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
             const labels = sortedData.map(([cat]) => cat);
             const data = sortedData.map(([, amount]) => amount);
@@ -5735,10 +5774,6 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                                 boxWidth: 12,
                                 textAlign: 'left'
                             }
-                        },
-                        chartLegendPlugin: {
-                            // Custom plugin to ensure text color is white
-                            id: 'chartLegendPlugin'
                         },
                         tooltip: {
                             backgroundColor: 'rgba(15,18,24,0.95)',
@@ -6182,7 +6217,8 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             document.getElementById('searchMaxAmount').value = '';
             document.getElementById('searchDateFrom').value = '';
             document.getElementById('searchDateTo').value = '';
-            performGlobalSearch();
+            document.getElementById('globalSearchInput').value = '';
+            setSearchSort('newest');
         }
 
         function highlightMatch(text, query) {
@@ -6196,6 +6232,16 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                        text.substring(idx + lowerQuery.length);
             }
             return text;
+        }
+
+        let searchSortMode = 'newest';
+
+        function setSearchSort(mode) {
+            searchSortMode = mode;
+            document.querySelectorAll('.search-sort-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.sort === mode);
+            });
+            performGlobalSearch();
         }
 
         function performGlobalSearch() {
@@ -6283,11 +6329,28 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 }
             }
 
-            // Sort: exact matches first, then by date newest first
+            // Sort: exact matches first, then by selected sort mode
             results.sort((a, b) => {
-                if (a.matchType === 'exact' && b.matchType !== 'exact') return -1;
-                if (b.matchType === 'exact' && a.matchType !== 'exact') return 1;
-                return new Date(b.exp.date) - new Date(a.exp.date);
+                // Always prioritize exact matches over fuzzy when there's a text query
+                if (query) {
+                    if (a.matchType === 'exact' && b.matchType !== 'exact') return -1;
+                    if (b.matchType === 'exact' && a.matchType !== 'exact') return 1;
+                }
+                switch (searchSortMode) {
+                    case 'oldest':
+                        return new Date(a.exp.date) - new Date(b.exp.date);
+                    case 'highest':
+                        return b.exp.amount - a.exp.amount;
+                    case 'lowest':
+                        return a.exp.amount - b.exp.amount;
+                    case 'category':
+                        return (a.exp.category || '').localeCompare(b.exp.category || '') || new Date(b.exp.date) - new Date(a.exp.date);
+                    case 'vendor':
+                        return (a.exp.vendor || '').localeCompare(b.exp.vendor || '') || new Date(b.exp.date) - new Date(a.exp.date);
+                    case 'newest':
+                    default:
+                        return new Date(b.exp.date) - new Date(a.exp.date);
+                }
             });
 
             // Update summary
