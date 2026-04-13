@@ -3172,11 +3172,20 @@
                         skipReason = 'Payment/transfer in description';
                     }
                 } else if (isDebit) {
-                    // DEBIT CARD filters: only skip internal bank transfers (account-to-account)
+                    // DEBIT CARD filters: skip internal bank transfers and CC bill payments
                     const descLower = description.toLowerCase();
                     if ((descLower.includes('online transfer to') || descLower.includes('online transfer from')) &&
                         descLower.match(/x{3,}\d+/i)) {
                         skipReason = 'Internal bank transfer';
+                    } else if (
+                        descLower.includes('credit crd autopay') ||
+                        descLower.includes('credit card autopay') ||
+                        descLower.includes('cc payment') ||
+                        descLower.includes('credit card payment') ||
+                        descLower.includes('card ending in') && descLower.includes('payment') ||
+                        descLower.match(/crd\s*auto\s*pay/i)
+                    ) {
+                        skipReason = 'Credit card bill payment';
                     }
                 }
 
