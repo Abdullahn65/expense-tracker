@@ -2813,6 +2813,18 @@
                 }
             }
             
+            // Heuristic: treat Fidelity / Moneyline related descriptions as investments
+            // Examples: "FID BKG SVC LLC MONEYLINE PPD ID: 0368004600", "FID BKG SVC LLC MONEYLINE ACH WEB ..."
+            const combined = ((vendor || '') + ' ' + (description || '')).toLowerCase();
+            if (combined.includes('fid') || combined.includes('fidelity') || combined.includes('moneyline')) {
+                // If it's an autopay/ppd/subscription style transaction, mark as Investment Subscription
+                if (combined.includes('ppd') || combined.includes('autopay') || combined.includes('subscription') || combined.includes('moneyline ppd') || combined.includes('moneyline ach')) {
+                    return 'Investment Subscription';
+                }
+                // Otherwise mark as Investments
+                return 'Investments';
+            }
+
             // Fallback: keyword-based suggestions
             const lowerDesc = description.toLowerCase();
             const keywordMap = {
@@ -3389,6 +3401,15 @@
 
         async function suggestCategoryAI(description, initialCategory, amount) {
             if (!OPENAI_API_KEY) return null;
+
+            // Local heuristic override: catch Fidelity / Moneyline descriptions
+            const combined = (description || '').toLowerCase();
+            if (combined.includes('fid') || combined.includes('fidelity') || combined.includes('moneyline')) {
+                if (combined.includes('ppd') || combined.includes('autopay') || combined.includes('subscription') || combined.includes('moneyline ppd') || combined.includes('moneyline ach')) {
+                    return 'Investment Subscription';
+                }
+                return 'Investments';
+            }
 
             try {
                 const prompt = initialCategory && initialCategory !== 'Other' 
