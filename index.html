@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
@@ -1915,6 +1915,22 @@
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // Escape user-controlled strings before inserting into innerHTML.
+        // Data from CSV imports and Supabase rows must never reach the DOM unescaped.
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Escape a string for use inside a single-quoted JS string within an inline handler attribute.
+        function escapeJsString(value) {
+            return escapeHtml(String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+        }
+
         // Data structure
         let expenses = [];
         let budgets = {};
@@ -2111,13 +2127,13 @@
                 return `
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
                         <span style="font-size: 14px; color: #fff;">
-                            ${isDefault ? '🏷️' : '💳'} ${method}
+                            ${isDefault ? '🏷️' : '💳'} ${escapeHtml(method)}
                             ${isDefault ? '<span style="color: var(--neutral-500); font-size: 11px; margin-left: 6px;">(default)</span>' : ''}
                         </span>
-                        <button onclick="removePaymentMethodFromSettings('${method.replace(/'/g, "\\'")}')" 
+                        <button onclick="removePaymentMethodFromSettings('${escapeJsString(method)}')"
                                 style="background: none; border: none; color: #EF4444; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;"
                                 onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='none'"
-                                title="Remove ${method}">✕</button>
+                                title="Remove ${escapeHtml(method)}">✕</button>
                     </div>
                 `;
             }).join('');
@@ -2590,11 +2606,6 @@
                 const lastTab = localStorage.getItem('lastViewedTab') || 'insights';
                 switchTab(lastTab);
 
-                // Get and log current user info for debugging
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (user) {
-                }
-
                 // Reload income to ensure it's up to date
                 const { data: fixedIncomeData } = await supabaseClient
                     .from('income')
@@ -2965,7 +2976,7 @@
             document.getElementById('csvFile').disabled = false;
             const template = csvTemplates[selectedTemplateId];
             const infoDiv = document.getElementById('csvTemplateInfo');
-            infoDiv.innerHTML = `✓ Selected: <strong>${template.name}</strong> • Payment Method: <strong>${template.paymentMethod}</strong>`;
+            infoDiv.innerHTML = `✓ Selected: <strong>${escapeHtml(template.name)}</strong> • Payment Method: <strong>${escapeHtml(template.paymentMethod)}</strong>`;
             infoDiv.style.display = 'block';
             
             document.getElementById('csvFile').value = '';
@@ -3300,11 +3311,6 @@
                 return !isDup;
             });
 
-            // Consolidated CSV parse summary
-            const totalRows = dataLines.length;
-            const totalSkipped = totalRows - skipReasons.processed;
-            const dupsRemoved = expensesToImport.length - dedupedExpenses.length;
-
             return {
                 expenses: dedupedExpenses,
                 income: incomeToImport,
@@ -3442,7 +3448,7 @@
                 const suggestedCategory = data.choices[0].message.content.trim();
                 
                 // Verify the category is valid
-                if (categoryList.includes(suggestedCategory)) {
+                if (categories.includes(suggestedCategory)) {
                     return suggestedCategory;
                 }
                 return null;
@@ -3672,11 +3678,11 @@
                             <tbody>`;
                 csvPreviewData.forEach(exp => {
                     html += `<tr>
-                        <td>${exp.date}</td>
-                        <td>${exp.description}</td>
-                        <td>${exp.category}</td>
+                        <td>${escapeHtml(exp.date)}</td>
+                        <td>${escapeHtml(exp.description)}</td>
+                        <td>${escapeHtml(exp.category)}</td>
                         <td style="color: #ef4444; font-weight: 600;">-$${exp.amount.toFixed(2)}</td>
-                        <td>${exp.payment_method}</td>
+                        <td>${escapeHtml(exp.payment_method)}</td>
                     </tr>`;
                 });
                 html += `</tbody></table></div></div>`;
@@ -3697,9 +3703,9 @@
                             <tbody>`;
                 csvIncomePreviewData.forEach(inc => {
                     html += `<tr>
-                        <td>${inc.date}</td>
-                        <td>${inc.description}</td>
-                        <td>${inc.source}</td>
+                        <td>${escapeHtml(inc.date)}</td>
+                        <td>${escapeHtml(inc.description)}</td>
+                        <td>${escapeHtml(inc.source)}</td>
                         <td style="color: #10b981; font-weight: 600;">+$${inc.amount.toFixed(2)}</td>
                     </tr>`;
                 });
@@ -3721,10 +3727,10 @@
                             <tbody>`;
                 csvSkippedData.forEach(s => {
                     html += `<tr style="opacity: 0.7;">
-                        <td>${s.date || '-'}</td>
-                        <td>${s.description || '-'}</td>
-                        <td>${s.amount || '-'}</td>
-                        <td style="color: #f59e0b; font-style: italic;">${s.reason}</td>
+                        <td>${escapeHtml(s.date || '-')}</td>
+                        <td>${escapeHtml(s.description || '-')}</td>
+                        <td>${escapeHtml(s.amount || '-')}</td>
+                        <td style="color: #f59e0b; font-style: italic;">${escapeHtml(s.reason)}</td>
                     </tr>`;
                 });
                 html += `</tbody></table></div></div>`;
@@ -3760,6 +3766,7 @@
             }
 
             const importBtn = document.getElementById('importCSVBtn');
+            const importBtnLabel = importBtn.textContent;
             importBtn.disabled = true;
             importBtn.textContent = 'Importing...';
 
@@ -3808,12 +3815,9 @@
                 let incomeInserted = 0;
                 if (csvIncomePreviewData.length > 0) {
                     // Filter out duplicates before inserting
-                    const incomeToInsert = csvIncomePreviewData.filter(inc => {
-                        const isDup = detectDuplicateIncome(inc.date, inc.description, inc.amount);
-                        if (isDup) {
-                        }
-                        return !isDup;
-                    }).map(inc => ({
+                    const incomeToInsert = csvIncomePreviewData.filter(inc =>
+                        !detectDuplicateIncome(inc.date, inc.description, inc.amount)
+                    ).map(inc => ({
                         ...inc,
                         id: Math.floor(Date.now() + Math.random() * 1000000),
                         batch_id: batchId
@@ -3829,10 +3833,6 @@
                         
                         incomeInserted = data.length;
                         income.push(...data);
-                    }
-                    
-                    const skippedCount = csvIncomePreviewData.length - incomeToInsert.length;
-                    if (skippedCount > 0) {
                     }
                 }
 
@@ -3873,7 +3873,7 @@
                 alert('Error importing expenses: ' + error.message);
             } finally {
                 importBtn.disabled = false;
-                importBtn.textContent = 'Import Expenses';
+                importBtn.textContent = importBtnLabel;
             }
         }
 
@@ -4562,7 +4562,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     <button type="button" class="btn btn-secondary" style="padding: 12px 16px; font-size: 0.9em; display: flex; flex-direction: column; align-items: flex-start; line-height: 1.4;" 
                             title="Used ${stats.timesUsed || 0}x • Last: ${stats.lastUsed ? new Date(stats.lastUsed).toLocaleDateString() : 'never'}"
                             onclick="useTemplate(${template.id})">
-                        <span style="font-weight: 600; font-size: 0.95em;">${template.name}</span>
+                        <span style="font-weight: 600; font-size: 0.95em;">${escapeHtml(template.name)}</span>
                         <span style="font-size: 0.8em; color: #cbd5e1;">$${template.amount.toFixed(2)}</span>
                     </button>
                 `;
@@ -4592,8 +4592,8 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 html += `
                     <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 16px 18px; border-radius: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45);">
                         <div>
-                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">⭐ ${template.name}</div>
-                            <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${stats.timesUsed || 0}x</div>
+                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">⭐ ${escapeHtml(template.name)}</div>
+                            <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${escapeHtml(template.category)} • Used ${stats.timesUsed || 0}x</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="useTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Use</button>
@@ -4628,8 +4628,8 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 html += `
                     <div style="background: linear-gradient(140deg, rgba(7,13,28,0.9), rgba(10,21,38,0.85)); padding: 16px 18px; border-radius: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 18px 30px rgba(2,6,23,0.45);">
                         <div>
-                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${template.name}</div>
-                            <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${template.category} • Used ${stats.timesUsed || 0}x • Avg: $${(stats.averageAmount || template.amount).toFixed(2)}</div>
+                            <div style="font-weight: 600; color: #f8fafc; font-size: 0.95em;">${escapeHtml(template.name)}</div>
+                            <div style="font-size: 0.85em; color: #94a3b8; margin-top: 4px;">$${template.amount.toFixed(2)} • ${escapeHtml(template.category)} • Used ${stats.timesUsed || 0}x • Avg: $${(stats.averageAmount || template.amount).toFixed(2)}</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="useTemplate(${template.id})" style="padding: 9px 12px; font-size: 0.75em; white-space: nowrap;">Use</button>
@@ -4829,9 +4829,9 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             incomeTemplates.forEach((template) => {
                 html += `
                     <button type="button" class="btn btn-secondary" style="padding: 12px 16px; font-size: 0.9em; display: flex; flex-direction: column; align-items: flex-start; line-height: 1.4;" 
-                            title="${template.source}"
+                            title="${escapeHtml(template.source)}"
                             onclick="useIncomeTemplate(${template.id})">
-                        <span style="font-weight: 600; font-size: 0.95em;">${template.source}</span>
+                        <span style="font-weight: 600; font-size: 0.95em;">${escapeHtml(template.source)}</span>
                         <span style="font-size: 0.8em; color: #cbd5e1;">$${template.amount.toFixed(2)}</span>
                     </button>
                 `;
@@ -4996,9 +4996,9 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 html += `
                     <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <div style="font-weight: 600;">${template.description}</div>
+                            <div style="font-weight: 600;">${escapeHtml(template.description)}</div>
                             <div style="color: #94a3b8; font-size: 0.9em; margin-top: 4px;">
-                                ${template.source} • $${template.amount.toFixed(2)}
+                                ${escapeHtml(template.source)} • $${template.amount.toFixed(2)}
                             </div>
                         </div>
                         <div style="display: flex; gap: 8px;">
@@ -5316,9 +5316,9 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             sortedIncome.forEach(inc => {
                 html += `
                     <tr id="income-${inc.id}" data-income-id="${inc.id}" style="cursor: pointer; transition: background-color 0.2s ease;" onclick="highlightIncomeEntry(${inc.id})">
-                        <td>${inc.date}</td>
-                        <td>${inc.source}</td>
-                        <td>${inc.description}</td>
+                        <td>${escapeHtml(inc.date)}</td>
+                        <td>${escapeHtml(inc.source)}</td>
+                        <td>${escapeHtml(inc.description)}</td>
                         <td style="font-weight: 600; color: #28a745;">$${inc.amount.toFixed(2)}</td>
                         <td style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.85em;" onclick="openEditIncomeModal(${inc.id}); event.stopPropagation();">Edit</button>
@@ -5570,12 +5570,12 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                     const splitBadge = (exp.notes && exp.notes.includes('split_from:')) ? '<span class="split-badge">🔀 split</span> ' : '';
                     html += `
                         <tr>
-                            <td>${exp.date}</td>
-                            <td>${exp.category}</td>
-                            <td>${splitBadge}${exp.description}</td>
-                            <td>${exp.vendor || '-'}</td>
+                            <td>${escapeHtml(exp.date)}</td>
+                            <td>${escapeHtml(exp.category)}</td>
+                            <td>${splitBadge}${escapeHtml(exp.description)}</td>
+                            <td>${escapeHtml(exp.vendor || '-')}</td>
                             <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
-                            <td>${exp.payment_method}</td>
+                            <td>${escapeHtml(exp.payment_method)}</td>
                             <td style="display: flex; gap: 5px; flex-wrap: wrap;">
                                 <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8em;" onclick="openEditModal(${exp.id})">Edit</button>
                                 <button class="btn btn-secondary" style="padding: 8px 10px; font-size: 0.8em;" onclick="openSplitModal(${exp.id})" title="Split transaction">🔀</button>
@@ -5902,7 +5902,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             if (!monthContent) return;
             monthContent.classList.add('active');
 
-            let html = `<h3 style="margin-bottom:20px">${category} in ${monthName}</h3>
+            let html = `<h3 style="margin-bottom:20px">${escapeHtml(category)} in ${monthName}</h3>
                 <div style="margin-bottom:30px;display:flex;gap:8px">
                     <button class="btn btn-secondary" onclick="renderMonth('${month}',${monthIndex})" style="padding:10px 16px;font-size:0.9em">Show All</button>
                     <button class="btn btn-danger" onclick="deleteAllExpensesForMonth(${monthIndex})" style="padding:10px 16px;font-size:0.9em">Delete All</button>
@@ -5913,8 +5913,8 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
             filteredExpenses.forEach(exp => {
                 html += `<tr>
-                    <td>${exp.date}</td><td>${exp.category}</td><td>${exp.description}</td>
-                    <td style="font-weight:600">$${exp.amount.toFixed(2)}</td><td>${exp.payment_method}</td>
+                    <td>${escapeHtml(exp.date)}</td><td>${escapeHtml(exp.category)}</td><td>${escapeHtml(exp.description)}</td>
+                    <td style="font-weight:600">$${exp.amount.toFixed(2)}</td><td>${escapeHtml(exp.payment_method)}</td>
                     <td style="text-align:center">
                         <button class="btn btn-secondary" onclick="openEditModal(${exp.id})" style="padding:8px 12px;font-size:0.85em;margin-right:4px">Edit</button>
                         <button class="btn btn-danger" onclick="deleteExpense(${exp.id})" style="padding:8px 12px;font-size:0.85em">Delete</button>
@@ -5958,7 +5958,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 item.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                         <div>
-                            <div style="font-weight: 600; color: #37E0FF; margin-bottom: 4px;">${vendor}</div>
+                            <div style="font-weight: 600; color: #37E0FF; margin-bottom: 4px;">${escapeHtml(vendor)}</div>
                             <div style="font-size: 0.85em; color: #94a3b8;">
                                 ${data.count} transaction${data.count !== 1 ? 's' : ''} • Avg: $${data.average.toFixed(2)}
                             </div>
@@ -6122,12 +6122,12 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             sortedVendors.forEach(([vendor, data]) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${vendor}</td>
+                    <td>${escapeHtml(vendor)}</td>
                     <td style="font-weight: 600; color: #35E6A6;">$${data.total.toFixed(2)}</td>
                     <td style="text-align: center;">${data.count}</td>
                     <td style="color: #94a3b8;">$${data.average.toFixed(2)}</td>
-                    <td style="font-size: 0.85em; color: #cbd5e1;">${data.category}</td>
-                    <td style="font-size: 0.85em; color: #94a3b8;">${data.lastDate}</td>
+                    <td style="font-size: 0.85em; color: #cbd5e1;">${escapeHtml(data.category)}</td>
+                    <td style="font-size: 0.85em; color: #94a3b8;">${escapeHtml(data.lastDate)}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -6225,7 +6225,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
 
             // Payment methods
             const methods = [...new Set(expenses.map(e => e.payment_method).filter(Boolean))].sort();
-            paySelect.innerHTML = '<option value="">All Payment Methods</option>' + methods.map(m => `<option value="${m}">${m}</option>`).join('');
+            paySelect.innerHTML = '<option value="">All Payment Methods</option>' + methods.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
 
             // Bind date input listeners once (onchange/oninput are unreliable for date inputs on Safari)
             if (!searchFiltersInitialized) {
@@ -6251,17 +6251,18 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             setSearchSort('newest');
         }
 
+        // Returns escaped HTML with the matched substring wrapped in a highlight span
         function highlightMatch(text, query) {
-            if (!query || !text) return text;
+            if (!query || !text) return escapeHtml(text);
             const lowerText = text.toLowerCase();
             const lowerQuery = query.toLowerCase().trim();
             const idx = lowerText.indexOf(lowerQuery);
             if (idx >= 0) {
-                return text.substring(0, idx) + 
-                       `<span class="search-highlight">${text.substring(idx, idx + lowerQuery.length)}</span>` + 
-                       text.substring(idx + lowerQuery.length);
+                return escapeHtml(text.substring(0, idx)) +
+                       `<span class="search-highlight">${escapeHtml(text.substring(idx, idx + lowerQuery.length))}</span>` +
+                       escapeHtml(text.substring(idx + lowerQuery.length));
             }
-            return text;
+            return escapeHtml(text);
         }
 
         let searchSortMode = 'newest';
@@ -6418,15 +6419,15 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             displayResults.forEach(({ exp, matchType, matchField }) => {
                 const splitBadge = (exp.notes && exp.notes.includes('split_from:')) ? '<span class="split-badge">🔀</span> ' : '';
                 const fuzzyTag = matchType === 'fuzzy' ? `<span class="fuzzy-badge">fuzzy: ${matchField}</span>` : '';
-                const desc = query ? highlightMatch(exp.description || '', query) : (exp.description || '');
-                const vendor = query ? highlightMatch(exp.vendor || '-', query) : (exp.vendor || '-');
+                const desc = query ? highlightMatch(exp.description || '', query) : escapeHtml(exp.description || '');
+                const vendor = query ? highlightMatch(exp.vendor || '-', query) : escapeHtml(exp.vendor || '-');
 
                 html += `
-                    <div class="search-result-row" onclick="navigateToExpenseMonth('${exp.date}')">
-                        <div style="color: var(--text-secondary); font-size: 13px;">${exp.date}</div>
+                    <div class="search-result-row" onclick="navigateToExpenseMonth('${escapeJsString(exp.date)}')">
+                        <div style="color: var(--text-secondary); font-size: 13px;">${escapeHtml(exp.date)}</div>
                         <div>
                             <div style="color: var(--text-primary); font-weight: 500;">${splitBadge}${desc} ${fuzzyTag}</div>
-                            <div style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;">${vendor} · ${exp.category} · ${exp.payment_method}</div>
+                            <div style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;">${vendor} · ${escapeHtml(exp.category)} · ${escapeHtml(exp.payment_method)}</div>
                         </div>
                         <div style="color: var(--success); font-weight: 600; text-align: right;">$${exp.amount.toFixed(2)}</div>
                         <div style="text-align: right; display: flex; gap: 4px; justify-content: flex-end;">
@@ -6443,7 +6444,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
           } catch (err) {
             console.error('Search error:', err);
             const resultsDiv = document.getElementById('searchResults');
-            if (resultsDiv) resultsDiv.innerHTML = `<div class="empty-state"><p style="color: #ff6b6b;">Search error: ${err.message}</p></div>`;
+            if (resultsDiv) resultsDiv.innerHTML = `<div class="empty-state"><p style="color: #ff6b6b;">Search error: ${escapeHtml(err.message)}</p></div>`;
           }
         }
 
@@ -6487,8 +6488,8 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             document.getElementById('splitOriginalInfo').innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="color: var(--text-primary); font-weight: 600;">${exp.description}</div>
-                        <div style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">${exp.vendor || 'No vendor'} · ${exp.category} · ${exp.date}</div>
+                        <div style="color: var(--text-primary); font-weight: 600;">${escapeHtml(exp.description)}</div>
+                        <div style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">${escapeHtml(exp.vendor || 'No vendor')} · ${escapeHtml(exp.category)} · ${escapeHtml(exp.date)}</div>
                     </div>
                     <div style="color: var(--accent); font-size: 22px; font-weight: 700;">$${exp.amount.toFixed(2)}</div>
                 </div>`;
@@ -6522,7 +6523,7 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
             row.className = 'split-row';
             row.innerHTML = `
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <input type="text" class="split-desc" value="${defaultDesc}" placeholder="Description" 
+                    <input type="text" class="split-desc" value="${escapeHtml(defaultDesc)}" placeholder="Description"
                            style="padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(255,255,255,0.05); color: #fff; font-size: 14px;">
                     <select class="split-cat" style="padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(255,255,255,0.05); color: #fff; font-size: 13px;">
                         <option value="">Select Category</option>
@@ -6648,10 +6649,18 @@ Return ONLY the category name, nothing else. No explanation, no quotes, just the
                 return;
             }
 
+            // Quote fields, double embedded quotes, and neutralize spreadsheet formula injection (=, +, -, @)
+            const csvField = (value) => {
+                let s = String(value ?? '');
+                if (/^[=+\-@]/.test(s)) s = "'" + s;
+                return `"${s.replace(/"/g, '""')}"`;
+            };
+
             let csv = 'Date,Category,Description,Amount,Payment Method,Vendor,Notes\n';
 
             expenses.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(exp => {
-                csv += `${exp.date},${exp.category},"${exp.description}",${exp.amount},${exp.payment_method},"${exp.vendor || ''}","${exp.notes || ''}"\n`;
+                csv += [csvField(exp.date), csvField(exp.category), csvField(exp.description), exp.amount,
+                        csvField(exp.payment_method), csvField(exp.vendor || ''), csvField(exp.notes || '')].join(',') + '\n';
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
